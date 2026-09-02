@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
+  serializedVersion: 3
   tags: []
   layers:
   - Default
@@ -41,3 +41,36 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Surface_Ground
+    uniqueID: 892307402
+    locked: 0
+  - name: Surface_Pipes
+    uniqueID: 2139563618
+    locked: 0
+  - name: Surface_Water
+    uniqueID: 6534100
+    locked: 0
+  - name: Surface_Entities
+    uniqueID: 1523742518
+    locked: 0
+  - name: Surface_Overlay
+    uniqueID: 783723727
+    locked: 0
+  - name: Underground_Ground
+    uniqueID: 1393072036
+    locked: 0
+  - name: Underground_Pipes
+    uniqueID: 2144634764
+    locked: 0
+  - name: Underground_Water
+    uniqueID: 1826597994
+    locked: 0
+  - name: Underground_Entities
+    uniqueID: 793023952
+    locked: 0
+  - name: Underground_Overlay
+    uniqueID: 1568683993
+    locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []
