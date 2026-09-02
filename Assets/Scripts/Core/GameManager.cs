@@ -1,3 +1,4 @@
+using SousLaVille.Network;
 using UnityEngine;
 
 namespace SousLaVille.Core
@@ -15,8 +16,16 @@ namespace SousLaVille.Core
 
         [SerializeField] private SceneRouter router;
 
+        [SerializeField] private FlowSolver flow;
+
         /// <summary>Routeur de scenes : chargement additif et bascule surface / sous-sol.</summary>
         public SceneRouter Router => router;
+
+        /// <summary>
+        /// Le solveur d'ecoulement. Il vit ici et non dans l'Underground : la couche eteinte
+        /// ne repondrait plus aux maisons de la surface.
+        /// </summary>
+        public FlowSolver Flow => flow;
 
         private void Awake()
         {
@@ -40,6 +49,11 @@ namespace SousLaVille.Core
             if (router == null)
             {
                 router = GetComponent<SceneRouter>();
+            }
+
+            if (flow == null)
+            {
+                flow = GetComponent<FlowSolver>();
             }
         }
 

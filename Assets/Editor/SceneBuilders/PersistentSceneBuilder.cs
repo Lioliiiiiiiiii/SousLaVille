@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using SousLaVille.Core;
+using SousLaVille.Network;
 using SousLaVille.Player;
 using SousLaVille.UI;
 using UnityEditor;
@@ -55,9 +57,14 @@ namespace SousLaVille.EditorTools
             GameManager manager = managerObject.AddComponent<GameManager>();
             SceneRouter router = managerObject.GetComponent<SceneRouter>();
 
-            // Cablage explicite du champ serialise : visible dans l'inspecteur.
+            // Le solveur vit ici et non dans l'Underground : la couche eteinte ne pourrait
+            // plus repondre aux maisons de la surface.
+            FlowSolver flow = managerObject.AddComponent<FlowSolver>();
+
+            // Cablage explicite des champs serialises : visibles dans l'inspecteur.
             SerializedObject serialized = new SerializedObject(manager);
             serialized.FindProperty("router").objectReferenceValue = router;
+            serialized.FindProperty("flow").objectReferenceValue = flow;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return router;
@@ -205,6 +212,7 @@ namespace SousLaVille.EditorTools
 
             Image veil = CreateFullScreenVeil(canvasObject.transform);
             Image icon = CreateLayerIcon(canvasObject.transform);
+            List<Image> drops = CreateHouseDrops(canvasObject.transform);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
             SerializedObject serializedFader = new SerializedObject(fader);
@@ -223,6 +231,64 @@ namespace SousLaVille.EditorTools
             SerializedObject serializedRouter = new SerializedObject(router);
             serializedRouter.FindProperty("fader").objectReferenceValue = fader;
             serializedRouter.ApplyModifiedPropertiesWithoutUndo();
+
+            HouseCounter counter = canvasObject.AddComponent<HouseCounter>();
+
+            SerializedObject serializedCounter = new SerializedObject(counter);
+            SerializedProperty dropProperty = serializedCounter.FindProperty("drops");
+            dropProperty.arraySize = drops.Count;
+            for (int i = 0; i < drops.Count; i++)
+            {
+                dropProperty.GetArrayElementAtIndex(i).objectReferenceValue = drops[i];
+            }
+
+            serializedCounter.FindProperty("dropServed").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoDropFull);
+            serializedCounter.FindProperty("dropIdle").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
+            serializedCounter.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Une goutte par maison, en haut a droite. Le seul but affiche du jeu, et il tient
+        /// sans un mot.
+        /// </summary>
+        private static List<Image> CreateHouseDrops(Transform parent)
+        {
+            const float size = 16f;
+            const float margin = 4f;
+            const float spacing = 2f;
+
+            int count = VillageLayout.FindAll(VillageLayout.House).Count;
+            Sprite idle = LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
+
+            List<Image> drops = new List<Image>(count);
+
+            for (int i = 0; i < count; i++)
+            {
+                GameObject dropObject = new GameObject($"Drop_{i + 1:00}");
+                dropObject.transform.SetParent(parent, false);
+
+                Image drop = dropObject.AddComponent<Image>();
+                drop.raycastTarget = false;
+                drop.sprite = idle;
+
+                RectTransform rect = drop.rectTransform;
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(1f, 1f);
+                rect.sizeDelta = new Vector2(size, size);
+
+                // La rangee est calee sur le coin droit, mais elle se remplit de la gauche
+                // vers la droite : la premiere goutte allumee est la plus a gauche, comme on
+                // compte sur ses doigts.
+                int fromRight = count - 1 - i;
+                rect.anchoredPosition = new Vector2(-(margin + fromRight * (size + spacing)), -margin);
+
+                drops.Add(drop);
+            }
+
+            return drops;
         }
 
         private static Image CreateFullScreenVeil(Transform parent)

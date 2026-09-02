@@ -53,7 +53,9 @@ namespace SousLaVille.EditorTools
             PaintVillage(ground, blocking);
             CreateManholes(root);
             CreateTreatmentPlant(root);
-            AttachSurfaceMap(root, grid, ground, blocking);
+
+            SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
+            AttachHouseSpawner(root, map);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
@@ -99,6 +101,7 @@ namespace SousLaVille.EditorTools
             Tile plantFloor = LoadTile(PlaceholderArtGenerator.TilePlantFloor);
             Tile hedge = LoadTile(PlaceholderArtGenerator.TileHedge);
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
+            Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
 
             int width = VillageLayout.Width;
             int height = VillageLayout.Height;
@@ -136,6 +139,13 @@ namespace SousLaVille.EditorTools
                         default:
                             groundTiles[index] = grass;
                             break;
+                    }
+
+                    // La maison est un marqueur : GroundAt a deja rendu de l'herbe, la tuile
+                    // bloquante se pose par-dessus et disparait sous le sprite.
+                    if (VillageLayout.At(x, y) == VillageLayout.House)
+                    {
+                        blockingTiles[index] = house;
                     }
                 }
             }
@@ -192,7 +202,7 @@ namespace SousLaVille.EditorTools
             PortalBuilder.Attach(plant, cell, GameLayer.Surface, GameLayer.Underground);
         }
 
-        private static void AttachSurfaceMap(GameObject root, Grid grid, Tilemap ground,
+        private static SurfaceMap AttachSurfaceMap(GameObject root, Grid grid, Tilemap ground,
             Tilemap blocking)
         {
             SurfaceMap map = root.AddComponent<SurfaceMap>();
@@ -203,6 +213,40 @@ namespace SousLaVille.EditorTools
                 new Vector2Int(VillageLayout.Width, VillageLayout.Height);
             serialized.FindProperty("ground").objectReferenceValue = ground;
             serialized.FindProperty("blocking").objectReferenceValue = blocking;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return map;
+        }
+
+        /// <summary>
+        /// Les maisons ne sont pas posees ici : le spawner les cree au reveil a partir de
+        /// cette liste de cases. La scene reste legere et le nom du composant dit vrai.
+        /// </summary>
+        private static void AttachHouseSpawner(GameObject root, SurfaceMap map)
+        {
+            List<Vector2Int> cells = VillageLayout.FindAll(VillageLayout.House);
+            if (cells.Count == 0)
+            {
+                Debug.LogWarning("[Sous la Ville] Aucune maison dans le plan du village.");
+            }
+
+            HouseSpawner spawner = root.AddComponent<HouseSpawner>();
+
+            SerializedObject serialized = new SerializedObject(spawner);
+            SerializedProperty cellsProperty = serialized.FindProperty("cells");
+            cellsProperty.arraySize = cells.Count;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                cellsProperty.GetArrayElementAtIndex(i).vector2IntValue = cells[i];
+            }
+
+            serialized.FindProperty("map").objectReferenceValue = map;
+            serialized.FindProperty("houseSprite").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.HouseTexture);
+            serialized.FindProperty("dropServed").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoDropFull);
+            serialized.FindProperty("dropIdle").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

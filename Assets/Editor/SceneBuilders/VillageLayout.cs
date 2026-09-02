@@ -14,9 +14,11 @@ namespace SousLaVille.EditorTools
     ///   .  herbe              #  chemin             P  dalle du parc
     ///   S  sol station        H  haie (bloquant)    B  batiment station (bloquant)
     ///   M  bouche d'egout     X  depart du joueur   T  entree de la station
+    ///   A  maison (bloquant)
     ///
-    /// M, X et T sont des marqueurs : le builder peint le sol correspondant dessous et
-    /// pose un GameObject par-dessus.
+    /// M, X, T et A sont des marqueurs : le builder peint le sol correspondant dessous et
+    /// pose un GameObject par-dessus. Une maison est en plus bloquante : on passe devant,
+    /// pas dedans.
     /// </summary>
     public static class VillageLayout
     {
@@ -32,6 +34,7 @@ namespace SousLaVille.EditorTools
         public const char Manhole = 'M';
         public const char PlayerStart = 'X';
         public const char PlantInlet = 'T';
+        public const char House = 'A';
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
@@ -45,23 +48,23 @@ namespace SousLaVille.EditorTools
             "H.BSSSSSSSB............................H",
             "H.BBBBSBBBB............................H",
             "H.....#................................H",
-            "H.....#................................H",
+            "H....A#................................H",
             "H.....##M######################........H",
             "H...........#.......#.......#..........H",
-            "H...........#...PPPPPPPPP...#..........H",
+            "H...........#A..PPPPPPPPP..A#..........H",
             "H...........#...PPPPPPPPP...#....HHH...H",
             "H...........##X#PPPPPPPPP####....HHH...H",
             "H...........#...PPPPPPPPP...#..........H",
             "H...........#...PPPPPPPPP...#..........H",
             "H...........#...PPPPPPPPP...#..........H",
             "H...........#.......#.......#..........H",
-            "H...........########M########..........H",
+            "H...........########M########A.........H",
             "H...........................#..........H",
             "H...........................#..........H",
             "H.....HHH...................#..........H",
             "H.....HHH...................#..........H",
             "H...........................#####M#....H",
-            "H......................................H",
+            "H.................................A....H",
             "H......................................H",
             "H......................................H",
             "H......................................H",
@@ -92,6 +95,9 @@ namespace SousLaVille.EditorTools
                 case Manhole:
                 case PlayerStart:
                     return Road;
+                case House:
+                    // De l'herbe sous la maison : la tuile bloquante se pose par-dessus.
+                    return Grass;
                 case PlantInlet:
                     return PlantFloor;
                 default:

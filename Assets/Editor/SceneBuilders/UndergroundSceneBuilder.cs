@@ -69,6 +69,7 @@ namespace SousLaVille.EditorTools
 
             PaintUnderground(ground, blocking);
             CreateLadders(root);
+            CreateHouseInlets(root);
 
             UndergroundMap map = AttachUndergroundMap(root, grid, ground, blocking);
             AttachNetwork(root, map, pipes);
@@ -186,6 +187,36 @@ namespace SousLaVille.EditorTools
             }
         }
 
+        /// <summary>
+        /// Le repere d'arrivee d'une maison, dans son alcove. Aucun portail : on ne monte pas
+        /// dans les maisons, on y raccorde un tuyau.
+        /// </summary>
+        private static void CreateHouseInlets(GameObject root)
+        {
+            List<Vector2Int> cells = UndergroundLayout.FindAll(UndergroundLayout.HouseOutlet);
+            if (cells.Count == 0)
+            {
+                return;
+            }
+
+            Sprite sprite = LoadSprite(PlaceholderArtGenerator.HouseInletTexture);
+
+            GameObject parent = new GameObject("HouseInlets");
+            parent.transform.SetParent(root.transform, false);
+
+            for (int i = 0; i < cells.Count; i++)
+            {
+                GameObject inlet = new GameObject($"HouseInlet_{i + 1:00}");
+                inlet.transform.SetParent(parent.transform, false);
+                inlet.transform.position = SurfaceSceneBuilder.CellCenter(cells[i]);
+
+                SpriteRenderer renderer = inlet.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                SceneBuilderUtility.ApplySortingLayer(renderer,
+                    GameSortingLayers.UndergroundEntities, 0);
+            }
+        }
+
         private static void CreateExit(GameObject parent, string name, Vector2Int cell, Sprite sprite)
         {
             GameObject exit = new GameObject(name);
@@ -251,13 +282,23 @@ namespace SousLaVille.EditorTools
                 AssetDatabase.LoadAssetAtPath<PipeType>(ScriptableObjectSetup.PipeTypeStandard);
 
             List<Vector2Int> outlets = UndergroundLayout.FindAll(UndergroundLayout.PlantOutlet);
+            List<Vector2Int> houses = UndergroundLayout.FindAll(UndergroundLayout.HouseOutlet);
+
             SerializedProperty fixedNodes = serializedNetwork.FindProperty("fixedNodes");
-            fixedNodes.arraySize = outlets.Count;
-            for (int i = 0; i < outlets.Count; i++)
+            fixedNodes.arraySize = outlets.Count + houses.Count;
+
+            int index = 0;
+            foreach (Vector2Int cell in outlets)
             {
-                SerializedProperty element = fixedNodes.GetArrayElementAtIndex(i);
-                element.FindPropertyRelative("cell").vector2IntValue = outlets[i];
-                element.FindPropertyRelative("type").enumValueIndex = (int)NodeType.PlantInlet;
+                SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell, NodeType.PlantInlet);
+            }
+
+            // Les maisons sont des noeuds permanents comme la station : le joueur ne les pose
+            // pas et ne peut pas les retirer, il vient s'y raccorder.
+            foreach (Vector2Int cell in houses)
+            {
+                SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell,
+                    NodeType.HouseConnection);
             }
 
             serializedNetwork.ApplyModifiedPropertiesWithoutUndo();
@@ -277,6 +318,12 @@ namespace SousLaVille.EditorTools
             }
 
             serializedView.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetFixedNode(SerializedProperty element, Vector2Int cell, NodeType type)
+        {
+            element.FindPropertyRelative("cell").vector2IntValue = cell;
+            element.FindPropertyRelative("type").enumValueIndex = (int)type;
         }
 
         private static Tile LoadTile(string path)

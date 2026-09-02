@@ -32,6 +32,11 @@ namespace SousLaVille.EditorTools
         public const string PlantWallTexture = TilesFolder + "/tile_plant_wall.png";
         public const string LadderTexture = SpritesFolder + "/ladder.png";
 
+        // Les maisons, phase 4.
+        public const string HouseTexture = SpritesFolder + "/house.png";
+        public const string HouseInletTexture = SpritesFolder + "/house_inlet.png";
+        public const string TileHouse = TilesFolder + "/Tile_House.asset";
+
         // Le personnage, un sprite par direction. Decide le 2 septembre 2026.
         public const string PlayerDown = SpritesFolder + "/player_down.png";
         public const string PlayerUp = SpritesFolder + "/player_up.png";
@@ -47,6 +52,8 @@ namespace SousLaVille.EditorTools
         public const string PictoPipe = PictosFolder + "/picto_pipe.png";
         public const string PictoRemove = PictosFolder + "/picto_remove.png";
         public const string CursorTarget = PictosFolder + "/cursor_target.png";
+        public const string PictoDropFull = PictosFolder + "/picto_drop_full.png";
+        public const string PictoDropEmpty = PictosFolder + "/picto_drop_empty.png";
 
         /// <summary>Nombre de nuances de profondeur : 1 peu profond, 3 profond.</summary>
         public const int DepthCount = 3;
@@ -147,6 +154,7 @@ namespace SousLaVille.EditorTools
                 WriteTileTexture("tile_plant_floor", new Color32(0x6E, 0x7B, 0x8B, 0xFF));
                 WriteTileTexture("tile_hedge", new Color32(0x1F, 0x5C, 0x2E, 0xFF));
                 WriteTileTexture("tile_plant_wall", new Color32(0x3A, 0x6E, 0xA5, 0xFF));
+                WriteTileTexture("tile_house", new Color32(0xA0, 0x44, 0x2B, 0xFF));
 
                 for (int depth = 1; depth <= DepthCount; depth++)
                 {
@@ -161,6 +169,8 @@ namespace SousLaVille.EditorTools
 
                 WriteTexture(ManholeTexture, BuildManhole());
                 WriteTexture(LadderTexture, BuildLadder());
+                WriteTexture(HouseTexture, BuildHouse(), PlayerWidth);
+                WriteTexture(HouseInletTexture, BuildHouseInlet());
 
                 WriteTexture(PlayerDown, BuildPlayer(Vector2Int.down), PlayerWidth);
                 WriteTexture(PlayerUp, BuildPlayer(Vector2Int.up), PlayerWidth);
@@ -175,6 +185,8 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoPipe, BuildPipePicto());
                 WriteTexture(PictoRemove, BuildRemovePicto());
                 WriteTexture(CursorTarget, BuildCursor());
+                WriteTexture(PictoDropFull, BuildDrop(full: true));
+                WriteTexture(PictoDropEmpty, BuildDrop(full: false));
             }
             finally
             {
@@ -183,7 +195,7 @@ namespace SousLaVille.EditorTools
 
             // Les importeurs se reglent apres l'ecriture : ils ont besoin de l'asset importe.
             foreach (string name in new[] { "tile_grass", "tile_path", "tile_park",
-                         "tile_plant_floor", "tile_hedge", "tile_plant_wall" })
+                         "tile_plant_floor", "tile_hedge", "tile_plant_wall", "tile_house" })
             {
                 ConfigureImporter($"{TilesFolder}/{name}.png", null);
             }
@@ -201,6 +213,10 @@ namespace SousLaVille.EditorTools
 
             ConfigureImporter(ManholeTexture, null);
             ConfigureImporter(LadderTexture, null);
+            ConfigureImporter(HouseInletTexture, null);
+
+            // Meme pivot que le personnage : la maison se pose sur sa case et son toit deborde.
+            ConfigureImporter(HouseTexture, PlayerPivot);
 
             foreach (string path in new[] { PlayerDown, PlayerUp, PlayerLeft, PlayerRight })
             {
@@ -208,7 +224,8 @@ namespace SousLaVille.EditorTools
             }
 
             foreach (string path in new[] { PictoSurface, PictoUnderground, PictoDown, PictoUp,
-                         PictoDig, PictoPipe, PictoRemove, CursorTarget })
+                         PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
+                         PictoDropEmpty })
             {
                 ConfigureImporter(path, null);
             }
@@ -219,6 +236,7 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TilePlantFloor, $"{TilesFolder}/tile_plant_floor.png");
             CreateTileAsset(TileHedge, $"{TilesFolder}/tile_hedge.png");
             CreateTileAsset(TilePlantWall, PlantWallTexture);
+            CreateTileAsset(TileHouse, $"{TilesFolder}/tile_house.png");
 
             for (int depth = 1; depth <= DepthCount; depth++)
             {
@@ -233,7 +251,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 37 textures, 28 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 42 textures, 29 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -241,7 +259,7 @@ namespace SousLaVille.EditorTools
         {
             string[] tiles =
             {
-                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall
+                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse
             };
 
             foreach (string path in tiles)
@@ -271,9 +289,10 @@ namespace SousLaVille.EditorTools
 
             string[] sprites =
             {
-                ManholeTexture, LadderTexture, PlayerDown, PlayerUp, PlayerLeft, PlayerRight,
-                PictoSurface, PictoUnderground, PictoDown, PictoUp, PictoDig, PictoPipe,
-                PictoRemove, CursorTarget
+                ManholeTexture, LadderTexture, HouseTexture, HouseInletTexture, PlayerDown,
+                PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
+                PictoUp, PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
+                PictoDropEmpty
             };
 
             foreach (string path in sprites)
@@ -449,6 +468,90 @@ namespace SousLaVille.EditorTools
             }
 
             return pixels;
+        }
+
+        /// <summary>
+        /// Une maison 16x24 : quatre murs, un toit et une porte. Meme pivot que le
+        /// personnage, elle se pose sur sa case et son toit deborde vers le haut.
+        /// </summary>
+        private static Color32[] BuildHouse()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 wall = new Color32(0xD9, 0xC7, 0xA0, 0xFF);
+            Color32 roof = new Color32(0xA0, 0x44, 0x2B, 0xFF);
+            Color32 door = new Color32(0x5A, 0x3A, 0x22, 0xFF);
+            Color32 window = new Color32(0x6E, 0x9E, 0xC4, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            Fill(pixels, width, 2, 13, 0, 14, wall);
+            Fill(pixels, width, 6, 9, 0, 6, door);
+            Fill(pixels, width, 3, 5, 9, 12, window);
+            Fill(pixels, width, 10, 12, 9, 12, window);
+
+            // Toit en pente : chaque ligne se resserre vers le faite.
+            for (int row = 0; row <= 7; row++)
+            {
+                int half = 8 - row;
+                Fill(pixels, width, 8 - half, 7 + half, 15 + row, 15 + row, roof);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// L'arrivee d'une maison, vue du sous-sol : une collerette de raccordement, pour
+        /// qu'on la distingue d'un tuyau ordinaire.
+        /// </summary>
+        private static Color32[] BuildHouseInlet()
+        {
+            Color32 flange = new Color32(0xD9, 0xC7, 0xA0, 0xFF);
+            Color32 mouth = new Color32(0x5A, 0x3A, 0x22, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            Fill(pixels, TileSize, 2, 13, 2, 13, flange);
+            Fill(pixels, TileSize, 5, 10, 5, 10, mouth);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// La goutte : pleine quand la maison est raccordee, vide sinon. Aucune croix, aucun
+        /// rouge : ne pas etre reliee n'est pas une faute.
+        /// </summary>
+        private static Color32[] BuildDrop(bool full)
+        {
+            Color32 fill = full
+                ? new Color32(0x4F, 0xA9, 0xEF, 0xFF)
+                : new Color32(0x9A, 0xA0, 0xA6, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            DrawDrop(pixels, grow: 1, color: outline);
+            DrawDrop(pixels, grow: 0, color: fill);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Une goutte : rond en bas, pointe en haut. Dessinee deux fois, la premiere elargie
+        /// d'un pixel, ce qui donne le contour.
+        /// </summary>
+        private static void DrawDrop(Color32[] pixels, int grow, Color32 color)
+        {
+            // Demi-largeur de chaque ligne, du bas vers le haut.
+            int[] halves = { 2, 3, 4, 5, 5, 5, 5, 4, 3, 2, 2, 1, 1, 1 };
+
+            for (int row = 0; row < halves.Length; row++)
+            {
+                int half = Mathf.Min(halves[row] + grow, 7);
+                int y = 1 + row;
+                Fill(pixels, TileSize, 8 - half, 7 + half, y, y, color);
+            }
         }
 
         /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>

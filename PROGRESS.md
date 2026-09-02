@@ -11,7 +11,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 1 | Le personnage et la surface | Terminée |
 | 2 | Le portail | Terminée |
 | 3 | Creuser et poser | Terminée |
-| 4 | L'eau coule | À faire |
+| 4 | L'eau coule | Terminée |
 | 5 | Les saisons et le gel | À faire |
 | 6 | Sauvegarde | À faire |
 | 7 | La plaque gravable | À faire |
@@ -241,21 +241,112 @@ Recompiler pendant que le jeu tourne provoque un rechargement de domaine. Unity 
 révélée ici. `PlayerController` et `PlayerInteractor` créent désormais leur input dans un
 `EnsureInput()` appelé aux deux endroits.
 
-## Prochaine étape, phase 4
+## Phase 4, ce qui est fait
 
-L'eau coule, et les maisons arrivent avec elle. Le terrain est prêt :
+- `Assets/Scripts/Network/FlowSolver.cs` : le parcours de CLAUDE.md à la lettre, un parcours
+  en largeur par maison jusqu'à la station. Une arête n'est franchissable que si la profondeur
+  ne diminue pas dans le sens de l'écoulement, si `condition > 0.3`, si le segment n'est ni
+  gelé ni bouché. Vit dans **Persistent** : le sous-sol éteint ne pourrait plus répondre aux
+  maisons de la surface.
+- `Assets/Scripts/World/House.cs` et `HouseSpawner.cs` : cinq maisons créées au réveil à partir
+  d'une liste de cases cuite par le builder, chacune avec sa goutte.
+- `Assets/Scripts/UI/HouseCounter.cs` : la rangée de gouttes du HUD, remplie de la gauche vers
+  la droite.
+- `PipeNetworkView` teinte en bleu les tuyaux qui portent l'eau. Aucune image nouvelle : une
+  couleur par case, posée après `SetTileFlags(TileFlags.None)`, sans quoi Unity ignorerait la
+  teinte en silence.
+- `GameManager` expose `Flow` comme il exposait déjà `Router`.
+- `VillageLayout` : cinq maisons, marqueur `A`, sur des cases devenues bloquantes.
+- `UndergroundLayout` : cinq alcôves alignées sous les maisons, la validation qui refuse de
+  construire s'il en manque une, et **le plan des profondeurs avec ses deux crêtes**.
+- `PlaceholderArtGenerator` : maison, tuile bloquante de maison, arrivée de maison sous terre,
+  goutte pleine et goutte vide. 42 textures et 29 tuiles au total.
 
-- **`PipeNetwork.Changed`** est le seul signal dont le `FlowSolver` a besoin. Il ne tournera
-  que là-dessus et aux ticks de saison, jamais par frame.
-- **`PipeNode.Depth`** est déjà rempli à la pose, et la station est le seul point à la
-  profondeur 3 : la règle de profondeur croissante se vérifie telle quelle.
-- **`HouseSpawner` et le type `HouseConnection`** restent à écrire. Les maisons se poseront en
-  surface et déclareront un nœud permanent sous elles, comme la station le fait déjà via
-  `fixedNodes`.
-- **La phase 6, la sauvegarde, devient prioritaire juste après.** C'est depuis la phase 3 le
-  premier moment où le joueur perd du travail en relançant.
+### Les crêtes
+
+Deux arcs peu profonds traversent la couronne de profondeur 2, à quatorze et à huit cases de la
+station, chacun percé d'une seule porte, les deux portes opposées. Un arc à profondeur 1 posé au
+milieu de la profondeur 2 est un mur pour l'eau : un trajet déjà descendu à 2 ne peut pas y
+remonter. Ils se voient dans la terre avant même d'être creusés, puisque la terre est teintée
+par sa profondeur depuis la phase 3.
+
+Solvabilité vérifiée par calcul **avant** d'écrire le plan, puis confirmée en jeu :
+
+| Maison | Sans crête | Avec crêtes |
+|---|---|---|
+| (5, 20) | 6 | 6 |
+| (13, 17) | 15 | 31 |
+| (27, 17) | 29 | 45 |
+| (29, 10) | 38 | 46 |
+| (34, 4) | 49 | 57 |
+
+## Phase 4, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**.
+- Scènes relues par script : cinq maisons, toutes sur des cases **bloquantes** ; six nœuds
+  permanents, la station en profondeur 3 et les cinq `HouseConnection` en profondeur 1 ou 2,
+  toutes dans des alcôves déjà creusées ; cinq gouttes au HUD ; `GameManager.Flow` câblé.
+- Play depuis `Boot` :
+  - **un chemin correct** de la maison (5, 20) à la station : maison desservie, 1/5 au HUD,
+    tuyaux teintés `#5CA8F0` sur tout le trajet, goutte de la maison pleine ;
+  - **un chemin qui remonte** : depuis la maison (13, 17), un trajet tout droit vers l'ouest,
+    **physiquement raccordé jusqu'à la station**, vérifié segment par segment. La maison reste
+    grise et l'eau n'entre pas : la crête en (12, 17) retombe à la profondeur 1. C'est la règle
+    qui bloque, pas un maillon manquant ;
+  - **le bon chemin** pour la même maison, trouvé par parcours à profondeur non décroissante :
+    31 cases, exactement la longueur calculée à la conception, porte franchie en (11, 25). La
+    maison passe à desservie, 2/5, et le trajet naïf reste sec ;
+  - **retrait d'un tuyau au milieu** d'un trajet qui marchait : la maison redevient grise dans
+    la foulée, 2/5 tombe à 1/5, le tuyau voisin reprend sa couleur grise. Reposé, tout revient ;
+  - **le solveur ne tourne qu'aux changements** : 46 résolutions figées sur 64 images sans
+    modification, cinq placements égalent cinq résolutions ;
+  - remonter en surface rafraîchit les gouttes des maisons ;
+  - console **entièrement vide** sur une session de play complète.
+- Rendu vérifié par capture d'écran : maisons et gouttes en surface, réseau bleu sous terre.
+
+### Note d'atelier : le solveur démarrait trop tôt
+
+`FlowSolver` vit dans Persistent, qui est chargée **avant** l'Underground. Résoudre sa référence
+au réseau une seule fois au `Start` le laissait muet pour toujours, avec une erreur en console.
+Même piège que la carte du joueur en phase 1, même remède : résolution paresseuse, retentée tant
+qu'elle échoue, puis plus jamais.
+
+## Prochaine étape, phase 5
+
+**Question d'ordre à trancher : la phase 6, la sauvegarde, devrait sans doute passer avant la
+phase 5.** Le joueur peut maintenant perdre un vrai réseau de trente cases en relançant. Les
+saisons rendront cette perte plus douloureuse encore.
+
+Ce qui est prêt pour les saisons, quand elles viendront :
+
+- **`FlowSolver.Solve()` est public** : le tick de saison n'aura qu'à l'appeler.
+- **`PipeSegment.Condition`, `IsFrozen` et `IsClogged`** sont déjà lus par le solveur et
+  modifiables. Geler un segment le retire du réseau sans une ligne de plus côté écoulement.
+- **`PipeType.FrostResistance` et `WearPerSeason`** attendent leur premier usage réel.
 
 ## Décisions prises
+
+### Phase 4
+
+- **Cinq maisons posées à la main**, marqueur `A` dans le plan du village, sur des cases
+  bloquantes. Validé le 2 septembre 2026.
+- **Une alcôve déjà creusée sous chaque maison**, portant un nœud permanent `HouseConnection`.
+  Le joueur creuse jusqu'à elle : c'est la boucle de jeu.
+- **Deux crêtes peu profondes**, arcs percés d'une porte, pour forcer de vrais détours. Validé
+  le 2 septembre 2026. Solvabilité vérifiée par calcul avant écriture.
+- **Trois retours visuels** : tuyaux teintés, goutte par maison, rangée de gouttes en HUD.
+  La rangée est un compteur et non une liste : l'ordre des maisons n'a pas à être appris.
+- **Le solveur vit dans Persistent.** La couche éteinte ne peut pas répondre aux maisons de la
+  couche allumée.
+- **`GameManager` expose `Flow`.** Core dépend de Network, comme il dépend déjà de UI.
+- **La teinte plutôt qu'une animation d'eau.** Une eau qui défile demanderait des images
+  animées et un composant de plus. À rediscuter à l'habillage, phase 12.
+- **Le solveur recalcule tout à chaque changement.** Cinq maisons sur quelques centaines de
+  nœuds : le calcul incrémental serait un risque d'erreur sans gain mesurable.
+- **`House.cs` en plus de la liste de CLAUDE.md.** Une maison a un état, il lui faut un
+  composant.
+- **L'eau d'une maison non reliée ne se voit pas.** La goutte reste grise ; les débordements
+  restent le sujet de la phase 10. Validé le 2 septembre 2026.
 
 ### Phase 3
 
@@ -381,6 +472,10 @@ L'eau coule, et les maisons arrivent avec elle. Le terrain est prêt :
 
 ## Placeholders à remplacer
 
+- **Les cinq PNG de la phase 4** : maison, tuile bloquante de maison, arrivée de maison sous
+  terre, goutte pleine, goutte vide.
+- **La goutte au-dessus des maisons est grande** par rapport au toit, et flotte au ras des
+  tuiles. À caler à l'habillage.
 - **Les trente PNG de la phase 3** : les six nuances de terre et de galerie, les seize
   canalisations, les quatre personnages, les pictos et le curseur.
 - **Le picto « enlever »** est un disque barré, vocabulaire d'interdiction plutôt que de
@@ -402,6 +497,12 @@ L'eau coule, et les maisons arrivent avec elle. Le terrain est prêt :
 - Couleur de fond de la caméra : `#181425`, provisoire.
 
 ## Questions ouvertes
+
+- **L'ordre des phases 5 et 6.** La sauvegarde devrait probablement passer avant les saisons :
+  le joueur peut désormais perdre un réseau entier en relançant.
+- **La difficulté des crêtes pour un enfant de six ans.** Les portes se voient dans la teinte
+  de la terre, mais elles demandent de comprendre que la bande claire est un mur. À observer
+  quand Victorien jouera, en dernière phase.
 
 - **Lisibilité des trois nuances de profondeur.** Le brun s'assombrit et la galerie vire au
   gris froid au plus profond. Distinct sur les captures, mais l'écart entre profondeur 1 et 2

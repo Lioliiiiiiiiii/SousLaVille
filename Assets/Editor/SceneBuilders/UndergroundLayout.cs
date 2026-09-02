@@ -22,6 +22,7 @@ namespace SousLaVille.EditorTools
     /// Legende
     ///   #  terre pleine (bloquant)   .  galerie creusee
     ///   E  echelle vers la surface   T  arrivee sous la station
+    ///   A  alcove d'une maison, deja creusee
     ///
     /// E et T sont des marqueurs : le builder peint du sol de galerie dessous et pose un
     /// GameObject par-dessus.
@@ -35,6 +36,7 @@ namespace SousLaVille.EditorTools
         public const char Tunnel = '.';
         public const char Ladder = 'E';
         public const char PlantOutlet = 'T';
+        public const char HouseOutlet = 'A';
 
         /// <summary>Profondeur maximale de la carte. La station y est, et elle seule.</summary>
         public const int MaxDepth = 3;
@@ -51,23 +53,23 @@ namespace SousLaVille.EditorTools
             "######.#################################",
             "######.#################################",
             "######.#################################",
-            "######....##############################",
+            "#####A....##############################",
             "######..E.##############################",
             "#######...##############################",
-            "########.###############################",
+            "########.####A#############A############",
             "########.###############################",
             "########.###############################",
             "########.###############################",
             "########.###############################",
             "########.###############################",
             "########.##########...##################",
-            "########............E.##################",
+            "########............E.#######A##########",
             "###################...##################",
             "####################.###################",
             "####################.###################",
             "####################.###########...#####",
             "####################.............E.#####",
-            "################################...#####",
+            "################################..A#####",
             "########################################",
             "########################################",
             "########################################",
@@ -77,26 +79,34 @@ namespace SousLaVille.EditorTools
         /// <summary>
         /// Profondeur de chaque case, meme orientation que Rows. Zones concentriques autour
         /// de la station : 3 jusqu'a cinq cases de distance, 2 jusqu'a vingt, 1 au-dela.
+        ///
+        /// Deux cretes peu profondes traversent la couronne, a quatorze et a huit cases de la
+        /// station, chacune percee d'une seule porte, les deux portes opposees. Une crete a
+        /// profondeur 1 posee au milieu de la profondeur 2 est un mur pour l'eau : un trajet
+        /// deja descendu a 2 ne peut pas y remonter. Il faut trouver la porte.
+        ///
+        /// Solvabilite verifiee avant ecriture : chaque maison garde un chemin a profondeur
+        /// non decroissante jusqu'a la station, avec un detour de zero a seize cases.
         /// </summary>
         private static readonly string[] DepthRows =
         {
-            "2222233322222222222222211111111111111111",
-            "2222333332222222222222221111111111111111",
-            "2223333333222222222222222111111111111111",
-            "2233333333322222222222222211111111111111",
-            "2333333333332222222222222221111111111111",
-            "2233333333322222222222222211111111111111",
-            "2223333333222222222222222111111111111111",
-            "2222333332222222222222221111111111111111",
-            "2222233322222222222222211111111111111111",
-            "2222223222222222222222111111111111111111",
-            "2222222222222222222221111111111111111111",
-            "2222222222222222222211111111111111111111",
-            "2222222222222222222111111111111111111111",
-            "2222222222222222221111111111111111111111",
-            "2222222222222222211111111111111111111111",
-            "2222222222222222111111111111111111111111",
-            "2222222222222221111111111111111111111111",
+            "2212233322122222122222211111111111111111",
+            "2122333332212222212222221111111111111111",
+            "1223333333222222221222222111111111111111",
+            "2233333333322222222122222211111111111111",
+            "2333333333332222222212222221111111111111",
+            "2233333333322222222122222211111111111111",
+            "1223333333222222221222222111111111111111",
+            "2122333332212222212222221111111111111111",
+            "2212233322122222122222211111111111111111",
+            "2221223221222221222222111111111111111111",
+            "2222122212222212222221111111111111111111",
+            "2222212122222122222211111111111111111111",
+            "1222221222221222222111111111111111111111",
+            "2122222222212222221111111111111111111111",
+            "2212222222122222211111111111111111111111",
+            "2221222221222222111111111111111111111111",
+            "2222122222222221111111111111111111111111",
             "2222222222222211111111111111111111111111",
             "2222222222222111111111111111111111111111",
             "1222222222221111111111111111111111111111",
@@ -246,6 +256,37 @@ namespace SousLaVille.EditorTools
                 {
                     Debug.LogError($"[Sous la Ville] Échelle orpheline en {ladder} : " +
                                    "aucune bouche au-dessus.");
+                    ok = false;
+                }
+            }
+
+            // Chaque maison doit avoir son alcove juste dessous, sinon elle ne pourra jamais
+            // etre raccordee et le joueur chercherait pour rien.
+            List<Vector2Int> villageHouses = VillageLayout.FindAll(VillageLayout.House);
+            List<Vector2Int> outlets = FindAll(HouseOutlet);
+
+            if (villageHouses.Count != outlets.Count)
+            {
+                Debug.LogError($"[Sous la Ville] {villageHouses.Count} maison(s) en surface mais " +
+                               $"{outlets.Count} alcôve(s) au sous-sol.");
+                ok = false;
+            }
+
+            foreach (Vector2Int house in villageHouses)
+            {
+                if (At(house.x, house.y) != HouseOutlet)
+                {
+                    Debug.LogError($"[Sous la Ville] Aucune alcôve sous la maison {house}.");
+                    ok = false;
+                }
+            }
+
+            foreach (Vector2Int outlet in outlets)
+            {
+                if (VillageLayout.At(outlet.x, outlet.y) != VillageLayout.House)
+                {
+                    Debug.LogError($"[Sous la Ville] Alcôve orpheline en {outlet} : " +
+                                   "aucune maison au-dessus.");
                     ok = false;
                 }
             }
