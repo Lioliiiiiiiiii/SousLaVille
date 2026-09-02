@@ -9,7 +9,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 |---|---|---|
 | 0 | Fondations | Terminée |
 | 1 | Le personnage et la surface | Terminée |
-| 2 | Le portail | À faire |
+| 2 | Le portail | Terminée |
 | 3 | Creuser et poser | À faire |
 | 4 | L'eau coule | À faire |
 | 5 | Les saisons et le gel | À faire |
@@ -107,22 +107,126 @@ faux) et le New Input System coupe les périphériques hors focus
 pont MCP il faut donc l'éditeur au premier plan, ou `Application.runInBackground = true` posé
 à chaud. Rien de tout cela n'a été écrit dans les ProjectSettings, vérifié par `git status`.
 
-## Prochaine étape, phase 2
+## Phase 2, ce qui est fait
 
-Le portail. Les objets `Manhole_01` à `Manhole_03` et `TreatmentPlant` existent déjà en
-scène : il n'y aura qu'à leur ajouter `ManholePortal`, sans retoucher la carte.
+- `Assets/Scripts/Core/GameSortingLayers.cs` : les dix noms de Sorting Layers en constantes
+  runtime, plus `EntitiesFor(GameLayer)`. `SortingLayerSetup` et les trois builders les
+  consomment. Source unique, plus de chaîne en dur.
+- `Assets/Scripts/World/UndergroundMap.cs` : `GridMap` du sous-sol, deux tilemaps comme la
+  surface. `Ground` et `Blocking` sont publics : creuser, en phase 3, sera retirer une tuile
+  bloquante et repeindre le sol.
+- `Assets/Scripts/World/ManholePortal.cs` : un composant pour les deux bouts du passage, avec
+  registre statique. `Find(layer, cell)` prend la couche en argument, car une bouche et son
+  échelle occupent la même case.
+- `Assets/Scripts/Player/PlayerInteractor.cs` : Espace, lu par `WasPressedThisFrame`. Cherche
+  un portail sur la case occupée, allume le picto d'action au-dessus de la tête, éteint
+  `PlayerController` le temps du voyage.
+- `Assets/Scripts/UI/ScreenFader.cs` et `Assets/Scripts/UI/LayerIndicator.cs` : le fondu au
+  noir et le repère de couche, en uGUI.
+- `SceneRouter.TravelAsync(target, whileBlack)` : fondu, bascule, callback écran noir, fondu
+  inverse, sous garde `IsBusy`. Le routeur ne connaît toujours pas le personnage.
+- `PlayerController.Teleport(cell)` publique, et bascule du Sorting Layer de tous ses
+  `SpriteRenderer` à chaque changement de carte, via `GridMap.Layer`.
+- `Assets/Editor/SceneBuilders/UndergroundLayout.cs` : le plan du sous-sol, 30 lignes de 40
+  caractères, plus `ValidateAgainstVillage()`.
+- `Assets/Editor/SceneBuilders/PortalBuilder.cs` : pose un `ManholePortal` sur un objet déjà
+  construit. Factorisé entre les deux builders.
+- `UndergroundSceneBuilder` construit la vraie scène : Grid, deux tilemaps, trois échelles,
+  l'arrivée de la station, `UndergroundMap`, lumière globale à 0,8.
+- `SurfaceSceneBuilder` pose un `ManholePortal` sur les trois bouches et sur la station.
+- `PersistentSceneBuilder` ajoute `PlayerInteractor`, l'enfant `Prompt` du personnage et le
+  `HUD_Canvas` (voile du fondu, repère de couche), et câble le fader sur le routeur.
+- `PlaceholderArtGenerator` produit sept fichiers de plus : `tile_earth`, `tile_tunnel`,
+  `ladder`, `picto_surface`, `picto_underground`, `picto_down`, `picto_up`, plus les assets
+  `Tile_Earth` et `Tile_Tunnel`. Quinze textures et huit tuiles au total.
+- Les deux `.asmdef` gagnent `UnityEngine.UI`, requis par le Canvas et les `Image`.
 
-Deux points à traiter en phase 2, déjà repérés :
+## Phase 2, vérifications faites
 
-- **Le Sorting Layer du personnage.** Il vit dans Persistent mais rend sur
-  `Surface_Entities`. Descendre sous terre devra basculer son `sortingLayerName` en
-  `Underground_Entities` en même temps que la couche, sinon il devient noir : la lumière
-  globale de l'Underground ne porte pas sur la famille Surface.
-- **`UndergroundMap`.** Elle héritera de `GridMap`. `PlayerController` et `CameraFollow` la
-  trouveront sans une ligne de changement : ils re-résolvent leur carte dès que celle qu'ils
-  tenaient s'éteint.
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**. Seul subsiste un warning
+  du package MCP lui-même, `[WebSocket] Unexpected receive error`, émis depuis
+  `Library/PackageCache`, étranger au projet.
+- `Générer l'art placeholder` puis `Construire toutes les scènes` : console propre, quatre
+  scènes régénérées.
+- Contenu des scènes relu par script : **huit portails, appariés en quatre couples**
+  bouche / échelle sur les cases (33, 5), (20, 10), (8, 19) et (6, 25) ; **74 cases
+  praticables** au sous-sol ; aucun renderer de l'Underground hors de la famille
+  `Underground_*` ; lumière globale à 0,8 restreinte à ses cinq layers ; `HUD_Canvas` en
+  320x180, voile éteint, repère à `picto_surface`.
+- `ValidateAgainstVillage()` : les deux plans sont alignés, aucune échelle orpheline.
+- Play depuis `Boot`, par injection clavier :
+  - marche en surface vérifiée après refonte : 18 cases parcourues flèche droite maintenue ;
+  - sur une bouche, le picto `picto_down` apparaît au-dessus de la tête ;
+  - Espace : arrivée sous terre **à la même case** (20, 10), carte `UndergroundMap`, sprite du
+    personnage **et** du picto passés sur `Underground_Entities`, repère du HUD passé sur
+    `picto_underground`, caméra recentrée ;
+  - marche dans la galerie de (20, 10) à (8, 10), arrêt net sur la terre pleine, puis remontée
+    du couloir jusqu'à (8, 20), bloqué par le plafond de terre, le personnage se tourne sans
+    avancer ;
+  - Espace sur l'échelle (8, 19) : retour en surface à la même case. **Descendre par une
+    bouche et remonter par une autre fonctionne.**
+  - martelage : fondu allongé à 6 s le temps du test, Espace et flèche droite enfoncés en
+    plein fondu. Résultat : une seule transition, `PlayerController` bien éteint pendant le
+    voyage, arrivée exacte sur (8, 19), et la marche ne reprend qu'une fois l'écran rendu.
+    Durée remise à 0,15 s ensuite ; rien de tout cela n'a été enregistré.
+  - console **entièrement vide** sur une session de play complète, transition comprise.
+- Rendu vérifié par capture d'écran des deux couches : le personnage est éclairé sous terre,
+  la terre pleine se distingue des galeries, les deux pictos du HUD sont lisibles.
+
+## Prochaine étape, phase 3
+
+Creuser et poser. Trois points déjà en place pour l'accueillir :
+
+- **`PlayerInteractor` est le seul endroit où Espace agit.** Le creusement s'y ajoutera sur
+  `FacingCell`, sans toucher au passage par les bouches, qui agit sur la case occupée.
+- **`UndergroundMap.Ground` et `.Blocking` sont publics.** Creuser sera retirer une tuile
+  bloquante et peindre `Tile_Tunnel` sur le sol. Aucune donnée de collision à tenir à jour :
+  la carte de collision, c'est la tilemap.
+- **Les quatre sprites de direction du personnage**, décidés le 2 septembre 2026, restent à
+  produire. `Facing` est déjà correct côté code.
 
 ## Décisions prises
+
+### Phase 2
+
+- **Le sous-sol démarre en terre pleine plus un réseau de galeries déjà creusées.** Une salle
+  3x3 sous chaque bouche et sous la station, reliées par des couloirs d'une case. 74 cases
+  praticables sur 1200. Praticable pour vérifier le portail dès la phase 2, très majoritairement
+  plein pour que la phase 3 ait de quoi creuser. Validé le 2 septembre 2026.
+- **Un repère de couche en HUD plus un picto d'action au-dessus de la tête, pas de mini-carte.**
+  Une mini-carte serait vide de sens tant que le réseau n'existe pas, et demanderait une
+  légende, donc du texte.
+- **Descendre remet le personnage à la même case.** Les deux cartes font 40x30 et partagent le
+  même repère. `destinationCell` reste tout de même un champ sérialisé, au cas où la phase 11
+  en aurait besoin.
+- **Fondu au noir de 0,15 s dans chaque sens.**
+- **L'interaction porte sur la case occupée, pas sur la case regardée.** Marcher sur la bouche
+  puis appuyer, c'est le geste le plus simple à six ans. La case regardée reste libre pour le
+  creusement de la phase 3 : on ne creuse pas la case où l'on se tient.
+- **`WasPressedThisFrame` et non `ReadValue`.** Espace maintenu ne fait pas descendre et
+  remonter en boucle.
+- **`PlayerController` éteint pendant le voyage.** Une flèche maintenue pendant le fondu ne
+  doit pas faire partir le personnage de travers à l'arrivée. Vérifié.
+- **HUD en uGUI plutôt qu'en sprites enfants de la caméra.** Un sprite d'interface devrait
+  choisir une famille de Sorting Layers et en changer à chaque bascule, sous peine de passer
+  derrière le décor ou de rendre noir. Le Canvas en Screen Space ignore les Sorting Layers et
+  les lumières 2D. Coût : `UnityEngine.UI` dans les deux `.asmdef`.
+- **`SceneRouter` référence `ScreenFader`, donc Core dépend de UI.** Une seule assembly
+  runtime, aucun cycle possible. Une interface intermédiaire serait de la cérémonie pour deux
+  méthodes.
+- **`GameSortingLayers` côté runtime**, fichier hors liste CLAUDE.md. Le personnage a besoin
+  des noms pour changer de famille en descendant ; les garder en double avec l'éditeur aurait
+  fini par diverger.
+- **`PortalBuilder` côté Editor**, non prévu au plan. Les deux bouts d'un passage se décrivent
+  exactement de la même façon : la factorisation évite de recopier quatre lignes de
+  `SerializedObject` dans deux builders.
+- **`UndergroundMap` ne partage pas le code de `SurfaceMap`.** Trois lignes dupliquées plutôt
+  qu'un couplage prématuré : dès la phase 3, le sous-sol devient mutable et la surface non.
+- **Lumière globale du sous-sol à 0,8.** À rediscuter une fois vu à l'écran en grand.
+- **Rien n'est sauvegardé de la couche courante.** La phase 6 s'en charge ; on démarre toujours
+  en surface.
+
+### Phases 0 et 1
 
 - **Surface et Underground restent chargées en permanence.** `SceneRouter` bascule la scène
   active et allume ou éteint la racine de chaque couche. La transition de la phase 2 sera
@@ -177,6 +281,11 @@ Deux points à traiter en phase 2, déjà repérés :
 
 ## Placeholders à remplacer
 
+- **Les sept PNG de la phase 2** : terre, galerie, échelle, et les quatre pictogrammes. Mêmes
+  carrés de couleur que le reste.
+- **L'échelle disparaît sous le personnage** quand il se tient dessus, les deux occupant la
+  même case. Sans conséquence sur le jeu, mais un vrai sprite d'échelle devra déborder vers le
+  haut, comme le personnage, pour rester visible.
 - **Les huit PNG de la phase 1**, carrés de couleur pleins bordés d'un liseré. Le pixel art
   viendra à la toute fin, une fois le gameplay validé.
 - **`TreatmentPlant` réutilise le sprite `tile_plant_wall`.** Le plan de la phase 1 listait
@@ -189,6 +298,9 @@ Deux points à traiter en phase 2, déjà repérés :
 - Couleur de fond de la caméra : `#181425`, provisoire.
 
 ## Questions ouvertes
+
+- **Intensité de la lumière du sous-sol et contraste terre / galerie.** 0,8 et deux bruns
+  distincts sur les captures ; à juger en vrai, plein écran, avant de figer.
 
 - **`companyName` reste `DefaultCompany`.** Les sauvegardes de la phase 6 iront donc dans
   `~/Library/Application Support/DefaultCompany/SousLaVille`. À trancher avant la phase 6 :

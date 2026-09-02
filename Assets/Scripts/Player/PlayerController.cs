@@ -19,6 +19,7 @@ namespace SousLaVille.Player
 
         private SousLaVilleInputActions input;
         private GridMap map;
+        private SpriteRenderer[] renderers;
 
         private Vector2Int currentCell;
         private Vector2Int targetCell;
@@ -41,6 +42,10 @@ namespace SousLaVille.Player
         private void Awake()
         {
             input = new SousLaVilleInputActions();
+
+            // Le corps et le picto d'action : tous deux doivent suivre la famille de
+            // Sorting Layers de la couche courante.
+            renderers = GetComponentsInChildren<SpriteRenderer>(true);
         }
 
         private void OnEnable()
@@ -127,10 +132,44 @@ namespace SousLaVille.Player
 
             if (changedLayer)
             {
+                ApplyLayerVisuals();
                 SnapToGrid();
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Repose le personnage sur une case donnee de la couche courante. Appele par
+        /// PlayerInteractor pendant que l'ecran est noir, juste apres la bascule de couche.
+        /// </summary>
+        public void Teleport(Vector2Int cell)
+        {
+            if (!ResolveMap())
+            {
+                return;
+            }
+
+            currentCell = cell;
+            targetCell = cell;
+            stepProgress = 0f;
+            isMoving = false;
+            transform.position = map.CellToWorld(cell);
+        }
+
+        /// <summary>
+        /// Fait rendre le personnage dans la famille de Sorting Layers de sa couche. Sans
+        /// cela, il descend et devient noir : la lumiere globale du sous-sol ne porte que
+        /// sur la famille Underground.
+        /// </summary>
+        private void ApplyLayerVisuals()
+        {
+            string layerName = GameSortingLayers.EntitiesFor(map.Layer);
+
+            foreach (SpriteRenderer renderer in renderers)
+            {
+                renderer.sortingLayerName = layerName;
+            }
         }
 
         /// <summary>Recale le personnage au centre de sa case sur la carte fraichement trouvee.</summary>

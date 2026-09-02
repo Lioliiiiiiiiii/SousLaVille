@@ -1,4 +1,5 @@
 using System;
+using SousLaVille.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,6 +15,9 @@ namespace SousLaVille.Core
         public const string PersistentSceneName = "Persistent";
         public const string SurfaceSceneName = "Surface";
         public const string UndergroundSceneName = "Underground";
+
+        [Tooltip("Fondu au noir des transitions. Cable par PersistentSceneBuilder.")]
+        [SerializeField] private ScreenFader fader;
 
         /// <summary>Couche actuellement visible et jouable.</summary>
         public GameLayer CurrentLayer { get; private set; } = GameLayer.Surface;
@@ -47,6 +51,42 @@ namespace SousLaVille.Core
                 await LoadSceneIfNeededAsync(SurfaceSceneName);
                 await LoadSceneIfNeededAsync(UndergroundSceneName);
                 SetActiveLayer(GameLayer.Surface);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Voyage d'une couche a l'autre : fondu au noir, bascule, puis fondu inverse.
+        /// L'action <paramref name="whileBlack"/> est jouee pendant que l'ecran est noir,
+        /// une fois la couche cible allumee : c'est la que l'appelant replace son
+        /// personnage. Le routeur n'a ainsi jamais besoin de connaitre le joueur.
+        /// </summary>
+        public async Awaitable TravelAsync(GameLayer target, Action whileBlack = null)
+        {
+            // Espace martele pendant le fondu ne doit pas empiler deux transitions.
+            if (IsBusy)
+            {
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                if (fader != null)
+                {
+                    await fader.FadeToBlackAsync();
+                }
+
+                SetActiveLayer(target);
+                whileBlack?.Invoke();
+
+                if (fader != null)
+                {
+                    await fader.FadeFromBlackAsync();
+                }
             }
             finally
             {

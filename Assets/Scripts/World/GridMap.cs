@@ -1,3 +1,4 @@
+using SousLaVille.Core;
 using UnityEngine;
 
 namespace SousLaVille.World
@@ -39,6 +40,13 @@ namespace SousLaVille.World
                 return bounds;
             }
         }
+
+        /// <summary>
+        /// Couche portee par cette carte. Le personnage s'en sert pour choisir sa famille
+        /// de Sorting Layers : sans cela, descendre le laisserait sur la famille Surface,
+        /// que la lumiere globale du sous-sol n'eclaire pas, et il rendrait tout noir.
+        /// </summary>
+        public abstract GameLayer Layer { get; }
 
         /// <summary>Vrai si le personnage peut se tenir sur cette case.</summary>
         public abstract bool IsWalkable(Vector2Int cell);

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Core;
 using SousLaVille.World;
 using UnityEditor;
 using UnityEngine;
@@ -18,8 +19,8 @@ namespace SousLaVille.EditorTools
     {
         public const string SceneName = "Surface";
 
-        private const string GroundSortingLayer = "Surface_Ground";
-        private const string EntitiesSortingLayer = "Surface_Entities";
+        private const string GroundSortingLayer = GameSortingLayers.SurfaceGround;
+        private const string EntitiesSortingLayer = GameSortingLayers.SurfaceEntities;
 
         [MenuItem("Sous La Ville/Construire la scène Surface")]
         public static void Build()
@@ -43,7 +44,7 @@ namespace SousLaVille.EditorTools
             }
 
             GameObject root = LayerRootBuilder.CreateRoot(SceneName, globalLightIntensity: 1f,
-                SortingLayerSetup.SurfaceLayers);
+                GameSortingLayers.Surface);
 
             Tilemap ground;
             Tilemap blocking;
@@ -162,8 +163,7 @@ namespace SousLaVille.EditorTools
 
             for (int i = 0; i < cells.Count; i++)
             {
-                // La phase 2 n'aura plus qu'a ajouter ManholePortal sur ces objets, sans
-                // retoucher la carte.
+                // Chaque bouche est un passage vers le sous-sol, sur sa propre case.
                 GameObject manhole = new GameObject($"Manhole_{i + 1:00}");
                 manhole.transform.SetParent(parent.transform, false);
                 manhole.transform.position = CellCenter(cells[i]);
@@ -171,6 +171,8 @@ namespace SousLaVille.EditorTools
                 SpriteRenderer renderer = manhole.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+
+                PortalBuilder.Attach(manhole, cells[i], GameLayer.Surface, GameLayer.Underground);
             }
         }
 
@@ -185,6 +187,9 @@ namespace SousLaVille.EditorTools
             SpriteRenderer renderer = plant.AddComponent<SpriteRenderer>();
             renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlantWallTexture);
             SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+
+            // La station est un passage comme les autres : on y descend et on en remonte.
+            PortalBuilder.Attach(plant, cell, GameLayer.Surface, GameLayer.Underground);
         }
 
         private static void AttachSurfaceMap(GameObject root, Grid grid, Tilemap ground,

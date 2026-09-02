@@ -31,7 +31,22 @@ namespace SousLaVille.EditorTools
         public const string PlayerTexture = SpritesFolder + "/player.png";
         public const string PlantWallTexture = TilesFolder + "/tile_plant_wall.png";
 
+        // Sous-sol et interface, phase 2.
+        public const string PictosFolder = "Assets/Art/Pictos";
+
+        public const string TileEarth = TilesFolder + "/Tile_Earth.asset";
+        public const string TileTunnel = TilesFolder + "/Tile_Tunnel.asset";
+
+        public const string LadderTexture = SpritesFolder + "/ladder.png";
+        public const string PictoSurface = PictosFolder + "/picto_surface.png";
+        public const string PictoUnderground = PictosFolder + "/picto_underground.png";
+        public const string PictoDown = PictosFolder + "/picto_down.png";
+        public const string PictoUp = PictosFolder + "/picto_up.png";
+
         private const int TileSize = 16;
+
+        // Les pictos du HUD sont en 32x32 : ils doivent rester lisibles a 320x180.
+        private const int PictoSize = 32;
         private const int PixelsPerUnit = 16;
         private const int PlayerWidth = 16;
         private const int PlayerHeight = 24;
@@ -45,6 +60,7 @@ namespace SousLaVille.EditorTools
         {
             EnsureFolder(TilesFolder);
             EnsureFolder(SpritesFolder);
+            EnsureFolder(PictosFolder);
 
             AssetDatabase.StartAssetEditing();
             try
@@ -55,9 +71,16 @@ namespace SousLaVille.EditorTools
                 WriteTileTexture("tile_plant_floor", new Color32(0x6E, 0x7B, 0x8B, 0xFF));
                 WriteTileTexture("tile_hedge", new Color32(0x1F, 0x5C, 0x2E, 0xFF));
                 WriteTileTexture("tile_plant_wall", new Color32(0x3A, 0x6E, 0xA5, 0xFF));
+                WriteTileTexture("tile_earth", new Color32(0x4A, 0x37, 0x28, 0xFF));
+                WriteTileTexture("tile_tunnel", new Color32(0x8A, 0x7A, 0x66, 0xFF));
 
                 WriteTexture(ManholeTexture, BuildManhole());
                 WriteTexture(PlayerTexture, BuildPlayer(), PlayerWidth);
+                WriteTexture(LadderTexture, BuildLadder());
+                WriteTexture(PictoSurface, BuildSunPicto(), PictoSize);
+                WriteTexture(PictoUnderground, BuildLadderPicto(), PictoSize);
+                WriteTexture(PictoDown, BuildArrow(pointingDown: true));
+                WriteTexture(PictoUp, BuildArrow(pointingDown: false));
             }
             finally
             {
@@ -66,13 +89,19 @@ namespace SousLaVille.EditorTools
 
             // Les importeurs se reglent apres l'ecriture : ils ont besoin de l'asset importe.
             foreach (string name in new[] { "tile_grass", "tile_path", "tile_park",
-                         "tile_plant_floor", "tile_hedge", "tile_plant_wall" })
+                         "tile_plant_floor", "tile_hedge", "tile_plant_wall", "tile_earth",
+                         "tile_tunnel" })
             {
                 ConfigureImporter($"{TilesFolder}/{name}.png", null);
             }
 
             ConfigureImporter(ManholeTexture, null);
             ConfigureImporter(PlayerTexture, PlayerPivot);
+            ConfigureImporter(LadderTexture, null);
+            ConfigureImporter(PictoSurface, null);
+            ConfigureImporter(PictoUnderground, null);
+            ConfigureImporter(PictoDown, null);
+            ConfigureImporter(PictoUp, null);
 
             CreateTileAsset(TileGrass, $"{TilesFolder}/tile_grass.png");
             CreateTileAsset(TilePath, $"{TilesFolder}/tile_path.png");
@@ -80,16 +109,23 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TilePlantFloor, $"{TilesFolder}/tile_plant_floor.png");
             CreateTileAsset(TileHedge, $"{TilesFolder}/tile_hedge.png");
             CreateTileAsset(TilePlantWall, PlantWallTexture);
+            CreateTileAsset(TileEarth, $"{TilesFolder}/tile_earth.png");
+            CreateTileAsset(TileTunnel, $"{TilesFolder}/tile_tunnel.png");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 8 textures, 6 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 15 textures, 8 tuiles.");
         }
 
-        /// <summary>Vrai si les six assets Tile et les deux sprites sont sur le disque.</summary>
+        /// <summary>Vrai si les huit assets Tile et les six sprites sont sur le disque.</summary>
         public static bool AreAssetsPresent()
         {
-            string[] tiles = { TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall };
+            string[] tiles =
+            {
+                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall,
+                TileEarth, TileTunnel
+            };
+
             foreach (string path in tiles)
             {
                 if (AssetDatabase.LoadAssetAtPath<Tile>(path) == null)
@@ -98,8 +134,21 @@ namespace SousLaVille.EditorTools
                 }
             }
 
-            return AssetDatabase.LoadAssetAtPath<Sprite>(ManholeTexture) != null
-                   && AssetDatabase.LoadAssetAtPath<Sprite>(PlayerTexture) != null;
+            string[] sprites =
+            {
+                ManholeTexture, PlayerTexture, LadderTexture, PictoSurface, PictoUnderground,
+                PictoDown, PictoUp
+            };
+
+            foreach (string path in sprites)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // ---------------------------------------------------------------- dessin
@@ -199,6 +248,131 @@ namespace SousLaVille.EditorTools
             Fill(pixels, width, 7, 8, 15, 16, marker);  // repere de direction, 2 px
 
             return pixels;
+        }
+
+        /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>
+        private static Color32[] BuildLadder()
+        {
+            Color32 rail = new Color32(0xC9, 0xA2, 0x27, 0xFF);
+            Color32 rung = Darken(rail, 0.6f);
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = clear;
+            }
+
+            Fill(pixels, TileSize, 3, 4, 1, 14, rail);
+            Fill(pixels, TileSize, 11, 12, 1, 14, rail);
+
+            foreach (int y in new[] { 3, 7, 11 })
+            {
+                Fill(pixels, TileSize, 5, 10, y, y + 1, rung);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>Repere « je suis en haut » : un soleil et ses quatre rayons sur fond de ciel.</summary>
+        private static Color32[] BuildSunPicto()
+        {
+            Color32 sky = new Color32(0x2A, 0x4C, 0x7D, 0xFF);
+            Color32 sun = new Color32(0xF2, 0xC1, 0x4E, 0xFF);
+
+            Color32[] pixels = new Color32[PictoSize * PictoSize];
+            const float center = (PictoSize - 1) * 0.5f;
+
+            for (int y = 0; y < PictoSize; y++)
+            {
+                for (int x = 0; x < PictoSize; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    pixels[y * PictoSize + x] = Mathf.Sqrt(dx * dx + dy * dy) <= 8f ? sun : sky;
+                }
+            }
+
+            // Quatre rayons, un par point cardinal.
+            Fill(pixels, PictoSize, 15, 16, 2, 5, sun);
+            Fill(pixels, PictoSize, 15, 16, 26, 29, sun);
+            Fill(pixels, PictoSize, 2, 5, 15, 16, sun);
+            Fill(pixels, PictoSize, 26, 29, 15, 16, sun);
+
+            return pixels;
+        }
+
+        /// <summary>Repere « je suis en bas » : une echelle sur fond de terre.</summary>
+        private static Color32[] BuildLadderPicto()
+        {
+            Color32 earth = new Color32(0x3A, 0x2C, 0x20, 0xFF);
+            Color32 rail = new Color32(0xC9, 0xA2, 0x27, 0xFF);
+            Color32 rung = Darken(rail, 0.6f);
+
+            Color32[] pixels = new Color32[PictoSize * PictoSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = earth;
+            }
+
+            Fill(pixels, PictoSize, 9, 11, 3, 28, rail);
+            Fill(pixels, PictoSize, 20, 22, 3, 28, rail);
+
+            foreach (int y in new[] { 6, 12, 18, 24 })
+            {
+                Fill(pixels, PictoSize, 12, 19, y, y + 1, rung);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Picto d'action affiche au-dessus de la tete : une fleche vers le bas sur une
+        /// bouche, vers le haut sur une echelle. Cerne d'un contour sombre pour rester
+        /// lisible sur n'importe quel sol.
+        /// </summary>
+        private static Color32[] BuildArrow(bool pointingDown)
+        {
+            Color32 fill = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = clear;
+            }
+
+            DrawArrow(pixels, pointingDown, grow: 1, color: outline);
+            DrawArrow(pixels, pointingDown, grow: 0, color: fill);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Une fleche : tete triangulaire de sept lignes, puis une tige. Dessinee deux fois,
+        /// la premiere elargie d'un pixel, ce qui donne le contour.
+        /// </summary>
+        private static void DrawArrow(Color32[] pixels, bool pointingDown, int grow, Color32 color)
+        {
+            if (grow > 0)
+            {
+                int tip = pointingDown ? 0 : TileSize - 1;
+                Fill(pixels, TileSize, 7, 8, tip, tip, color);
+            }
+
+            for (int step = 1; step <= 7; step++)
+            {
+                int half = Mathf.Min(step + grow, 7);
+                int row = pointingDown ? step : TileSize - 1 - step;
+                Fill(pixels, TileSize, 8 - half, 7 + half, row, row, color);
+            }
+
+            for (int step = 8; step <= 14; step++)
+            {
+                int row = pointingDown ? step : TileSize - 1 - step;
+                Fill(pixels, TileSize, 6 - grow, 9 + grow, row, row, color);
+            }
         }
 
         private static void Fill(Color32[] pixels, int width, int x0, int x1, int y0, int y1,

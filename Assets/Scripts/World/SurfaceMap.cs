@@ -1,3 +1,4 @@
+using SousLaVille.Core;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -15,6 +16,8 @@ namespace SousLaVille.World
 
         [Tooltip("Haies et batiments. Une tuile ici veut dire : on ne passe pas.")]
         [SerializeField] private Tilemap blocking;
+
+        public override GameLayer Layer => GameLayer.Surface;
 
         /// <summary>Tilemap du sol, utile aux phases suivantes pour lire le type de terrain.</summary>
         public Tilemap Ground => ground;

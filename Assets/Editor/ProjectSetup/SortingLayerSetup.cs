@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Core;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,23 +15,10 @@ namespace SousLaVille.EditorTools
     /// </summary>
     public static class SortingLayerSetup
     {
-        public static readonly string[] SurfaceLayers =
-        {
-            "Surface_Ground",   // herbe, chemins, dalles
-            "Surface_Pipes",    // raccordements visibles en surface
-            "Surface_Water",    // flaques, fontaine
-            "Surface_Entities", // joueur, maisons, batiments
-            "Surface_Overlay"   // pictogrammes et retours visuels
-        };
-
-        public static readonly string[] UndergroundLayers =
-        {
-            "Underground_Ground",   // terre, roche
-            "Underground_Pipes",    // canalisations posees
-            "Underground_Water",    // particules d'eau, geysers
-            "Underground_Entities", // joueur, bouches, station
-            "Underground_Overlay"   // pictogrammes et retours visuels
-        };
+        // Les noms vivent cote runtime : le personnage en a besoin pour changer de famille
+        // en descendant. Une seule liste, aucune derive possible entre l'editeur et le jeu.
+        public static readonly string[] SurfaceLayers = GameSortingLayers.Surface;
+        public static readonly string[] UndergroundLayers = GameSortingLayers.Underground;
 
         /// <summary>Noms non prefixes de la phase 0, remplaces par les deux familles.</summary>
         private static readonly string[] LegacyLayers =
