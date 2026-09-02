@@ -62,6 +62,26 @@ namespace SousLaVille.EditorTools
             EditorBuildSettings.scenes = scenes.ToArray();
         }
 
+        /// <summary>
+        /// Pose le Sorting Layer d'un renderer et verifie qu'il existe. Unity retombe
+        /// silencieusement sur Default pour un nom inconnu, et sous le Renderer2D un objet
+        /// laisse sur Default n'est eclaire par aucune des deux lumieres globales : il
+        /// apparait noir sans le moindre message d'erreur.
+        /// </summary>
+        public static void ApplySortingLayer(Renderer renderer, string layerName, int order)
+        {
+            int id = SortingLayer.NameToID(layerName);
+            if (!SortingLayer.IsValid(id) || SortingLayer.IDToName(id) != layerName)
+            {
+                Debug.LogError($"[Sous la Ville] Sorting Layer manquant : {layerName}. " +
+                               "Lance d'abord « Sous La Ville/Créer les Sorting Layers ».");
+                return;
+            }
+
+            renderer.sortingLayerName = layerName;
+            renderer.sortingOrder = order;
+        }
+
         /// <summary>Ajoute une scene aux Build Settings si elle n'y est pas deja.</summary>
         public static void EnsureInBuildSettings(string scenePath)
         {

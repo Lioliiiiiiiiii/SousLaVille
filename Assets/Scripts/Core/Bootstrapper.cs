@@ -41,8 +41,9 @@ namespace SousLaVille.Core
 
             await manager.Router.LoadGameplayScenesAsync();
 
-            // Boot n'a plus de raison d'exister. On ne l'attend pas : cet objet meurt avec elle.
-            SceneManager.UnloadSceneAsync(bootScene);
+            // Boot n'a plus de raison d'exister. Le discard dit au compilateur que ne pas
+            // attendre est voulu : cet objet meurt avec la scene qu'il decharge.
+            _ = SceneManager.UnloadSceneAsync(bootScene);
         }
     }
 }

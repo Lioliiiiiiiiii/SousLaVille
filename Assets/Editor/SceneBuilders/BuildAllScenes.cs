@@ -12,6 +12,15 @@ namespace SousLaVille.EditorTools
         [MenuItem("Sous La Ville/Construire toutes les scènes")]
         public static void BuildAll()
         {
+            // L'art doit exister avant les scenes : Surface reference les assets Tile et
+            // Persistent le sprite du personnage.
+            if (!PlaceholderArtGenerator.AreAssetsPresent())
+            {
+                Debug.LogError("[Sous la Ville] Art placeholder absent. Lance d'abord " +
+                               "« Sous La Ville/Générer l'art placeholder ».");
+                return;
+            }
+
             // Les Sorting Layers doivent exister avant les scenes : les lumieres globales
             // s'y accrochent au moment de leur creation.
             SortingLayerSetup.CreateSortingLayers();
