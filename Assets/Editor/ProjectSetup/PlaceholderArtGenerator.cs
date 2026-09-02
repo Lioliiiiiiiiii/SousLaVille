@@ -6,17 +6,18 @@ using UnityEngine.Tilemaps;
 namespace SousLaVille.EditorTools
 {
     /// <summary>
-    /// Ecrit les placeholders graphiques de la phase 1 : de vrais fichiers PNG, puis les
-    /// assets Tile correspondants. Des carres de couleurs franches, le pixel art viendra
-    /// a la toute fin, une fois le gameplay valide.
+    /// Ecrit les placeholders graphiques : de vrais fichiers PNG, puis les assets Tile
+    /// correspondants. Des carres de couleurs franches, le pixel art viendra a la toute fin,
+    /// une fois le gameplay valide.
     ///
-    /// Chaque tuile porte un lisere 1 px plus sombre : deux carres de meme couleur poses
-    /// cote a cote restent distincts, ce qui aide a lire la grille.
+    /// Chaque tuile porte un lisere 1 px plus sombre : deux carres de meme couleur poses cote
+    /// a cote restent distincts, ce qui aide a lire la grille.
     /// </summary>
     public static class PlaceholderArtGenerator
     {
         public const string TilesFolder = "Assets/Art/Tiles";
         public const string SpritesFolder = "Assets/Art/Sprites";
+        public const string PictosFolder = "Assets/Art/Pictos";
 
         // Assets Tile consommes par SurfaceSceneBuilder.
         public const string TileGrass = TilesFolder + "/Tile_Grass.asset";
@@ -28,24 +29,32 @@ namespace SousLaVille.EditorTools
 
         // Sprites poses sur des GameObjects, pas peints dans une tilemap.
         public const string ManholeTexture = SpritesFolder + "/manhole.png";
-        public const string PlayerTexture = SpritesFolder + "/player.png";
         public const string PlantWallTexture = TilesFolder + "/tile_plant_wall.png";
-
-        // Sous-sol et interface, phase 2.
-        public const string PictosFolder = "Assets/Art/Pictos";
-
-        public const string TileEarth = TilesFolder + "/Tile_Earth.asset";
-        public const string TileTunnel = TilesFolder + "/Tile_Tunnel.asset";
-
         public const string LadderTexture = SpritesFolder + "/ladder.png";
+
+        // Le personnage, un sprite par direction. Decide le 2 septembre 2026.
+        public const string PlayerDown = SpritesFolder + "/player_down.png";
+        public const string PlayerUp = SpritesFolder + "/player_up.png";
+        public const string PlayerLeft = SpritesFolder + "/player_left.png";
+        public const string PlayerRight = SpritesFolder + "/player_right.png";
+
+        // Pictogrammes : le jeu parle par panneaux, pas par phrases.
         public const string PictoSurface = PictosFolder + "/picto_surface.png";
         public const string PictoUnderground = PictosFolder + "/picto_underground.png";
         public const string PictoDown = PictosFolder + "/picto_down.png";
         public const string PictoUp = PictosFolder + "/picto_up.png";
+        public const string PictoDig = PictosFolder + "/picto_dig.png";
+        public const string PictoPipe = PictosFolder + "/picto_pipe.png";
+        public const string PictoRemove = PictosFolder + "/picto_remove.png";
+        public const string CursorTarget = PictosFolder + "/cursor_target.png";
+
+        /// <summary>Nombre de nuances de profondeur : 1 peu profond, 3 profond.</summary>
+        public const int DepthCount = 3;
+
+        /// <summary>Nombre d'images de canalisation, une par masque de raccords.</summary>
+        public const int PipeMaskCount = 16;
 
         private const int TileSize = 16;
-
-        // Les pictos du HUD sont en 32x32 : ils doivent rester lisibles a 320x180.
         private const int PictoSize = 32;
         private const int PixelsPerUnit = 16;
         private const int PlayerWidth = 16;
@@ -55,12 +64,79 @@ namespace SousLaVille.EditorTools
         // centre de la case et la tete du personnage deborde vers le haut.
         private static readonly Vector2 PlayerPivot = new Vector2(0.5f, 1f / 3f);
 
+        // Le brun s'assombrit avec la profondeur, et la galerie vire au gris froid au plus
+        // profond : la nuance se lit sans legende.
+        private static readonly Color32[] EarthColors =
+        {
+            new Color32(0x6B, 0x4F, 0x38, 0xFF),
+            new Color32(0x55, 0x40, 0x2D, 0xFF),
+            new Color32(0x3E, 0x32, 0x26, 0xFF)
+        };
+
+        private static readonly Color32[] TunnelColors =
+        {
+            new Color32(0xC2, 0xB3, 0x93, 0xFF),
+            new Color32(0x9C, 0x91, 0x79, 0xFF),
+            new Color32(0x77, 0x80, 0x8A, 0xFF)
+        };
+
+        // Fichiers de la phase 2 remplaces en phase 3.
+        private static readonly string[] ObsoleteAssets =
+        {
+            TilesFolder + "/tile_earth.png",
+            TilesFolder + "/tile_tunnel.png",
+            TilesFolder + "/Tile_Earth.asset",
+            TilesFolder + "/Tile_Tunnel.asset",
+            SpritesFolder + "/player.png"
+        };
+
+        /// <summary>Asset Tile du sol de galerie d'une profondeur, 1 a 3.</summary>
+        public static string TileTunnel(int depth)
+        {
+            return $"{TilesFolder}/Tile_Tunnel_{Mathf.Clamp(depth, 1, DepthCount)}.asset";
+        }
+
+        /// <summary>Asset Tile de la terre pleine d'une profondeur, 1 a 3.</summary>
+        public static string TileEarth(int depth)
+        {
+            return $"{TilesFolder}/Tile_Earth_{Mathf.Clamp(depth, 1, DepthCount)}.asset";
+        }
+
+        /// <summary>Asset Tile de canalisation pour un masque de raccords, 0 a 15.</summary>
+        public static string TilePipe(int mask)
+        {
+            return $"{TilesFolder}/Tile_Pipe_{Mathf.Clamp(mask, 0, PipeMaskCount - 1):00}.asset";
+        }
+
+        private static string TunnelTexture(int depth)
+        {
+            return $"{TilesFolder}/tile_tunnel_{depth}.png";
+        }
+
+        private static string EarthTexture(int depth)
+        {
+            return $"{TilesFolder}/tile_earth_{depth}.png";
+        }
+
+        private static string PipeTexture(int mask)
+        {
+            return $"{TilesFolder}/pipe_{mask:00}.png";
+        }
+
         [MenuItem("Sous La Ville/Générer l'art placeholder")]
         public static void Generate()
         {
             EnsureFolder(TilesFolder);
             EnsureFolder(SpritesFolder);
             EnsureFolder(PictosFolder);
+
+            foreach (string obsolete in ObsoleteAssets)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Object>(obsolete) != null)
+                {
+                    AssetDatabase.DeleteAsset(obsolete);
+                }
+            }
 
             AssetDatabase.StartAssetEditing();
             try
@@ -71,16 +147,34 @@ namespace SousLaVille.EditorTools
                 WriteTileTexture("tile_plant_floor", new Color32(0x6E, 0x7B, 0x8B, 0xFF));
                 WriteTileTexture("tile_hedge", new Color32(0x1F, 0x5C, 0x2E, 0xFF));
                 WriteTileTexture("tile_plant_wall", new Color32(0x3A, 0x6E, 0xA5, 0xFF));
-                WriteTileTexture("tile_earth", new Color32(0x4A, 0x37, 0x28, 0xFF));
-                WriteTileTexture("tile_tunnel", new Color32(0x8A, 0x7A, 0x66, 0xFF));
+
+                for (int depth = 1; depth <= DepthCount; depth++)
+                {
+                    WriteTexture(EarthTexture(depth), BuildTile(EarthColors[depth - 1]));
+                    WriteTexture(TunnelTexture(depth), BuildTile(TunnelColors[depth - 1]));
+                }
+
+                for (int mask = 0; mask < PipeMaskCount; mask++)
+                {
+                    WriteTexture(PipeTexture(mask), BuildPipe(mask));
+                }
 
                 WriteTexture(ManholeTexture, BuildManhole());
-                WriteTexture(PlayerTexture, BuildPlayer(), PlayerWidth);
                 WriteTexture(LadderTexture, BuildLadder());
+
+                WriteTexture(PlayerDown, BuildPlayer(Vector2Int.down), PlayerWidth);
+                WriteTexture(PlayerUp, BuildPlayer(Vector2Int.up), PlayerWidth);
+                WriteTexture(PlayerLeft, BuildPlayer(Vector2Int.left), PlayerWidth);
+                WriteTexture(PlayerRight, BuildPlayer(Vector2Int.right), PlayerWidth);
+
                 WriteTexture(PictoSurface, BuildSunPicto(), PictoSize);
                 WriteTexture(PictoUnderground, BuildLadderPicto(), PictoSize);
                 WriteTexture(PictoDown, BuildArrow(pointingDown: true));
                 WriteTexture(PictoUp, BuildArrow(pointingDown: false));
+                WriteTexture(PictoDig, BuildDigPicto());
+                WriteTexture(PictoPipe, BuildPipePicto());
+                WriteTexture(PictoRemove, BuildRemovePicto());
+                WriteTexture(CursorTarget, BuildCursor());
             }
             finally
             {
@@ -89,19 +183,35 @@ namespace SousLaVille.EditorTools
 
             // Les importeurs se reglent apres l'ecriture : ils ont besoin de l'asset importe.
             foreach (string name in new[] { "tile_grass", "tile_path", "tile_park",
-                         "tile_plant_floor", "tile_hedge", "tile_plant_wall", "tile_earth",
-                         "tile_tunnel" })
+                         "tile_plant_floor", "tile_hedge", "tile_plant_wall" })
             {
                 ConfigureImporter($"{TilesFolder}/{name}.png", null);
             }
 
+            for (int depth = 1; depth <= DepthCount; depth++)
+            {
+                ConfigureImporter(EarthTexture(depth), null);
+                ConfigureImporter(TunnelTexture(depth), null);
+            }
+
+            for (int mask = 0; mask < PipeMaskCount; mask++)
+            {
+                ConfigureImporter(PipeTexture(mask), null);
+            }
+
             ConfigureImporter(ManholeTexture, null);
-            ConfigureImporter(PlayerTexture, PlayerPivot);
             ConfigureImporter(LadderTexture, null);
-            ConfigureImporter(PictoSurface, null);
-            ConfigureImporter(PictoUnderground, null);
-            ConfigureImporter(PictoDown, null);
-            ConfigureImporter(PictoUp, null);
+
+            foreach (string path in new[] { PlayerDown, PlayerUp, PlayerLeft, PlayerRight })
+            {
+                ConfigureImporter(path, PlayerPivot);
+            }
+
+            foreach (string path in new[] { PictoSurface, PictoUnderground, PictoDown, PictoUp,
+                         PictoDig, PictoPipe, PictoRemove, CursorTarget })
+            {
+                ConfigureImporter(path, null);
+            }
 
             CreateTileAsset(TileGrass, $"{TilesFolder}/tile_grass.png");
             CreateTileAsset(TilePath, $"{TilesFolder}/tile_path.png");
@@ -109,21 +219,29 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TilePlantFloor, $"{TilesFolder}/tile_plant_floor.png");
             CreateTileAsset(TileHedge, $"{TilesFolder}/tile_hedge.png");
             CreateTileAsset(TilePlantWall, PlantWallTexture);
-            CreateTileAsset(TileEarth, $"{TilesFolder}/tile_earth.png");
-            CreateTileAsset(TileTunnel, $"{TilesFolder}/tile_tunnel.png");
+
+            for (int depth = 1; depth <= DepthCount; depth++)
+            {
+                CreateTileAsset(TileEarth(depth), EarthTexture(depth));
+                CreateTileAsset(TileTunnel(depth), TunnelTexture(depth));
+            }
+
+            for (int mask = 0; mask < PipeMaskCount; mask++)
+            {
+                CreateTileAsset(TilePipe(mask), PipeTexture(mask));
+            }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 15 textures, 8 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 37 textures, 28 tuiles.");
         }
 
-        /// <summary>Vrai si les huit assets Tile et les six sprites sont sur le disque.</summary>
+        /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
         public static bool AreAssetsPresent()
         {
             string[] tiles =
             {
-                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall,
-                TileEarth, TileTunnel
+                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall
             };
 
             foreach (string path in tiles)
@@ -134,10 +252,28 @@ namespace SousLaVille.EditorTools
                 }
             }
 
+            for (int depth = 1; depth <= DepthCount; depth++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Tile>(TileEarth(depth)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileTunnel(depth)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int mask = 0; mask < PipeMaskCount; mask++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Tile>(TilePipe(mask)) == null)
+                {
+                    return false;
+                }
+            }
+
             string[] sprites =
             {
-                ManholeTexture, PlayerTexture, LadderTexture, PictoSurface, PictoUnderground,
-                PictoDown, PictoUp
+                ManholeTexture, LadderTexture, PlayerDown, PlayerUp, PlayerLeft, PlayerRight,
+                PictoSurface, PictoUnderground, PictoDown, PictoUp, PictoDig, PictoPipe,
+                PictoRemove, CursorTarget
             };
 
             foreach (string path in sprites)
@@ -154,7 +290,7 @@ namespace SousLaVille.EditorTools
         // ---------------------------------------------------------------- dessin
 
         /// <summary>Carre plein borde d'un lisere 1 px assombri.</summary>
-        private static void WriteTileTexture(string fileName, Color32 fill)
+        private static Color32[] BuildTile(Color32 fill)
         {
             Color32 border = Darken(fill, 0.72f);
             Color32[] pixels = new Color32[TileSize * TileSize];
@@ -168,7 +304,55 @@ namespace SousLaVille.EditorTools
                 }
             }
 
-            WriteTexture($"{TilesFolder}/{fileName}.png", pixels);
+            return pixels;
+        }
+
+        private static void WriteTileTexture(string fileName, Color32 fill)
+        {
+            WriteTexture($"{TilesFolder}/{fileName}.png", BuildTile(fill));
+        }
+
+        /// <summary>
+        /// Une canalisation vue de dessus : un corps central et un bras par raccord.
+        /// Le masque suit PipeNetwork : bit 0 nord, 1 est, 2 sud, 3 ouest. Seize images
+        /// dessinees par une seule fonction, pas seize dessins a la main.
+        /// </summary>
+        private static Color32[] BuildPipe(int mask)
+        {
+            Color32 body = new Color32(0x9F, 0xB3, 0xC2, 0xFF);
+            Color32 outline = new Color32(0x46, 0x58, 0x6A, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            DrawPipe(pixels, mask, grow: 1, color: outline);
+            DrawPipe(pixels, mask, grow: 0, color: body);
+
+            return pixels;
+        }
+
+        private static void DrawPipe(Color32[] pixels, int mask, int grow, Color32 color)
+        {
+            Fill(pixels, TileSize, 5 - grow, 10 + grow, 5 - grow, 10 + grow, color);
+
+            if ((mask & 1) != 0)
+            {
+                Fill(pixels, TileSize, 6 - grow, 9 + grow, 10, 15, color);
+            }
+
+            if ((mask & 2) != 0)
+            {
+                Fill(pixels, TileSize, 10, 15, 6 - grow, 9 + grow, color);
+            }
+
+            if ((mask & 4) != 0)
+            {
+                Fill(pixels, TileSize, 6 - grow, 9 + grow, 0, 5, color);
+            }
+
+            if ((mask & 8) != 0)
+            {
+                Fill(pixels, TileSize, 0, 5, 6 - grow, 9 + grow, color);
+            }
         }
 
         /// <summary>
@@ -219,10 +403,10 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Personnage 16x24, vu de trois quarts. Le repere de direction de 2 px marque
-        /// l'avant : la phase 3 fait agir Espace sur la case regardee.
+        /// Personnage 16x24, un sprite par direction. Le corps ne change pas ; c'est le
+        /// visage qui dit ou l'on regarde, et le dos de la tete qui dit qu'on s'eloigne.
         /// </summary>
-        private static Color32[] BuildPlayer()
+        private static Color32[] BuildPlayer(Vector2Int facing)
         {
             const int width = PlayerWidth;
             const int height = PlayerHeight;
@@ -230,14 +414,10 @@ namespace SousLaVille.EditorTools
             Color32 body = new Color32(0xE0, 0x5A, 0x2B, 0xFF);
             Color32 head = new Color32(0xF2, 0xA0, 0x7B, 0xFF);
             Color32 legs = Darken(body, 0.65f);
-            Color32 marker = new Color32(0x2B, 0x1B, 0x14, 0xFF);
-            Color32 clear = new Color32(0, 0, 0, 0);
+            Color32 hair = new Color32(0x4A, 0x2E, 0x1E, 0xFF);
+            Color32 eye = new Color32(0x2B, 0x1B, 0x14, 0xFF);
 
-            Color32[] pixels = new Color32[width * height];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = clear;
-            }
+            Color32[] pixels = NewTransparent(width * height);
 
             // Origine en bas a gauche : y = 0 est la ligne des pieds.
             Fill(pixels, width, 4, 6, 0, 3, legs);      // jambe gauche
@@ -245,7 +425,28 @@ namespace SousLaVille.EditorTools
             Fill(pixels, width, 3, 12, 4, 14, body);    // torse
             Fill(pixels, width, 3, 12, 15, 22, head);   // tete
             Fill(pixels, width, 4, 11, 23, 23, head);   // sommet du crane, coins ronges
-            Fill(pixels, width, 7, 8, 15, 16, marker);  // repere de direction, 2 px
+
+            if (facing == Vector2Int.up)
+            {
+                // De dos : pas de visage, une nuque de cheveux.
+                Fill(pixels, width, 3, 12, 18, 23, hair);
+            }
+            else if (facing == Vector2Int.left)
+            {
+                Fill(pixels, width, 3, 12, 21, 23, hair);
+                Fill(pixels, width, 4, 5, 18, 19, eye);
+            }
+            else if (facing == Vector2Int.right)
+            {
+                Fill(pixels, width, 3, 12, 21, 23, hair);
+                Fill(pixels, width, 10, 11, 18, 19, eye);
+            }
+            else
+            {
+                Fill(pixels, width, 3, 12, 21, 23, hair);
+                Fill(pixels, width, 5, 6, 18, 19, eye);
+                Fill(pixels, width, 9, 10, 18, 19, eye);
+            }
 
             return pixels;
         }
@@ -255,13 +456,8 @@ namespace SousLaVille.EditorTools
         {
             Color32 rail = new Color32(0xC9, 0xA2, 0x27, 0xFF);
             Color32 rung = Darken(rail, 0.6f);
-            Color32 clear = new Color32(0, 0, 0, 0);
 
-            Color32[] pixels = new Color32[TileSize * TileSize];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = clear;
-            }
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
 
             Fill(pixels, TileSize, 3, 4, 1, 14, rail);
             Fill(pixels, TileSize, 11, 12, 1, 14, rail);
@@ -335,13 +531,8 @@ namespace SousLaVille.EditorTools
         {
             Color32 fill = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
             Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
-            Color32 clear = new Color32(0, 0, 0, 0);
 
-            Color32[] pixels = new Color32[TileSize * TileSize];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = clear;
-            }
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
 
             DrawArrow(pixels, pointingDown, grow: 1, color: outline);
             DrawArrow(pixels, pointingDown, grow: 0, color: fill);
@@ -373,6 +564,110 @@ namespace SousLaVille.EditorTools
                 int row = pointingDown ? step : TileSize - 1 - step;
                 Fill(pixels, TileSize, 6 - grow, 9 + grow, row, row, color);
             }
+        }
+
+        /// <summary>« Ici on creuse » : une pelle, manche et fer.</summary>
+        private static Color32[] BuildDigPicto()
+        {
+            Color32 handle = new Color32(0x9A, 0x6E, 0x3A, 0xFF);
+            Color32 blade = new Color32(0xC8, 0xCE, 0xD4, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Contour d'abord, motif ensuite : le picto reste lisible sur la terre comme sur
+            // la galerie.
+            Fill(pixels, TileSize, 5, 10, 7, 15, outline);
+            Fill(pixels, TileSize, 3, 12, 1, 7, outline);
+
+            Fill(pixels, TileSize, 6, 9, 8, 14, handle);
+            Fill(pixels, TileSize, 4, 11, 2, 6, blade);
+
+            return pixels;
+        }
+
+        /// <summary>« Ici on pose » : un tronçon de canalisation avec ses deux collerettes.</summary>
+        private static Color32[] BuildPipePicto()
+        {
+            Color32 body = new Color32(0x9F, 0xB3, 0xC2, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            Fill(pixels, TileSize, 1, 14, 4, 11, outline);
+            Fill(pixels, TileSize, 2, 13, 6, 9, body);
+            Fill(pixels, TileSize, 2, 3, 5, 10, body);
+            Fill(pixels, TileSize, 12, 13, 5, 10, body);
+
+            return pixels;
+        }
+
+        /// <summary>« Ici on enleve » : un disque barre, comme un panneau.</summary>
+        private static Color32[] BuildRemovePicto()
+        {
+            Color32 disc = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+            Color32 bar = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+            const float center = (TileSize - 1) * 0.5f;
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float distance = Mathf.Sqrt(dx * dx + dy * dy);
+
+                    if (distance <= 7f)
+                    {
+                        pixels[y * TileSize + x] = distance > 5.5f ? bar : disc;
+                    }
+                }
+            }
+
+            Fill(pixels, TileSize, 4, 11, 7, 8, bar);
+
+            return pixels;
+        }
+
+        /// <summary>Le cadre de la case regardee : quatre equerres, centre libre.</summary>
+        private static Color32[] BuildCursor()
+        {
+            Color32 mark = new Color32(0xFF, 0xF4, 0xC2, 0xFF);
+            const int arm = 4;
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            for (int i = 0; i < arm; i++)
+            {
+                int far = TileSize - 1 - i;
+
+                // Quatre coins, deux traits chacun.
+                Fill(pixels, TileSize, i, i, 0, 0, mark);
+                Fill(pixels, TileSize, 0, 0, i, i, mark);
+                Fill(pixels, TileSize, far, far, 0, 0, mark);
+                Fill(pixels, TileSize, TileSize - 1, TileSize - 1, i, i, mark);
+                Fill(pixels, TileSize, i, i, TileSize - 1, TileSize - 1, mark);
+                Fill(pixels, TileSize, 0, 0, far, far, mark);
+                Fill(pixels, TileSize, far, far, TileSize - 1, TileSize - 1, mark);
+                Fill(pixels, TileSize, TileSize - 1, TileSize - 1, far, far, mark);
+            }
+
+            return pixels;
+        }
+
+        private static Color32[] NewTransparent(int length)
+        {
+            Color32 clear = new Color32(0, 0, 0, 0);
+            Color32[] pixels = new Color32[length];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = clear;
+            }
+
+            return pixels;
         }
 
         private static void Fill(Color32[] pixels, int width, int x0, int x1, int y0, int y1,
@@ -473,7 +768,7 @@ namespace SousLaVille.EditorTools
             tile.sprite = sprite;
             tile.color = Color.white;
 
-            // Les collisions sont logiques, pas physiques : aucun collider sur les tuiles.
+            // Les collisions sont logiques, pas physiques : aucune tuile ne porte de collider.
             tile.colliderType = Tile.ColliderType.None;
 
             if (isNew)
@@ -495,6 +790,7 @@ namespace SousLaVille.EditorTools
 
             string parent = Path.GetDirectoryName(folder).Replace('\\', '/');
             string leaf = Path.GetFileName(folder);
+
             EnsureFolder(parent);
             AssetDatabase.CreateFolder(parent, leaf);
         }

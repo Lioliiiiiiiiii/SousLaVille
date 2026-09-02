@@ -10,7 +10,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 0 | Fondations | Terminée |
 | 1 | Le personnage et la surface | Terminée |
 | 2 | Le portail | Terminée |
-| 3 | Creuser et poser | À faire |
+| 3 | Creuser et poser | Terminée |
 | 4 | L'eau coule | À faire |
 | 5 | Les saisons et le gel | À faire |
 | 6 | Sauvegarde | À faire |
@@ -173,19 +173,119 @@ pont MCP il faut donc l'éditeur au premier plan, ou `Application.runInBackgroun
 - Rendu vérifié par capture d'écran des deux couches : le personnage est éclairé sous terre,
   la terre pleine se distingue des galeries, les deux pictos du HUD sont lisibles.
 
-## Prochaine étape, phase 3
+## Phase 3, ce qui est fait
 
-Creuser et poser. Trois points déjà en place pour l'accueillir :
+- `Assets/Scripts/Network/PipeNode.cs`, `PipeSegment.cs`, `PipeType.cs` : le modèle de
+  données de CLAUDE.md, à la lettre. `condition`, `isFrozen` et `isClogged` sont posés dès
+  maintenant bien qu'inutilisés avant la phase 5 : les ajouter après coup casserait les
+  sauvegardes de la phase 6.
+- `Assets/Scripts/Network/PipeNetwork.cs` : le graphe. Poser un tuyau crée le nœud à la
+  profondeur lue sur la carte **et le raccorde automatiquement à ses voisins**. Retirer défait
+  le nœud et ses segments, sauf sur un nœud permanent. Un seul événement, `Changed`, sur
+  lequel la phase 4 branchera le `FlowSolver`.
+- `Assets/Scripts/Network/PipeNetworkView.cs` : le rendu, une tuile par masque de raccords.
+- `Assets/Scripts/Player/TargetCursor.cs` : le cadre sur la case regardée, visible sous terre
+  seulement.
+- `UndergroundMap` gagne `DepthAt(cell)`, alimenté par un tableau de 1200 entiers cuit par le
+  builder, et `Dig(cell)` qui retire la terre et repeint la galerie à la bonne nuance.
+- `PlayerInteractor` : Espace devient contextuel, quatre actions dans un ordre fixe. Passage
+  sur la case occupée, puis creuser, poser ou enlever sur la case regardée. Le picto
+  au-dessus de la tête annonce toujours laquelle.
+- `PlayerController` : les quatre sprites de direction, décidés le 2 septembre 2026, et
+  `Map` exposée pour l'interacteur et le curseur.
+- `UndergroundLayout` : un second plan de trente lignes de quarante chiffres donne la
+  profondeur de chaque case. La carte de la phase 2 n'a pas bougé d'un caractère.
+- `Assets/Editor/ProjectSetup/ScriptableObjectSetup.cs` : menu « Créer les ScriptableObjects »,
+  qui produit `PipeType_Standard`. `BuildAllScenes` refuse de construire sans lui.
+- `PlaceholderArtGenerator` produit 37 textures et 28 tuiles, dont les seize canalisations
+  dessinées par une seule fonction lisant un masque de quatre bits, et supprime les trois
+  fichiers de la phase 2 qu'il remplace.
 
-- **`PlayerInteractor` est le seul endroit où Espace agit.** Le creusement s'y ajoutera sur
-  `FacingCell`, sans toucher au passage par les bouches, qui agit sur la case occupée.
-- **`UndergroundMap.Ground` et `.Blocking` sont publics.** Creuser sera retirer une tuile
-  bloquante et peindre `Tile_Tunnel` sur le sol. Aucune donnée de collision à tenir à jour :
-  la carte de collision, c'est la tilemap.
-- **Les quatre sprites de direction du personnage**, décidés le 2 septembre 2026, restent à
-  produire. `Facing` est déjà correct côté code.
+## Phase 3, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**.
+- `Créer les ScriptableObjects`, `Générer l'art placeholder`, `Construire toutes les scènes` :
+  console propre, quatre scènes régénérées.
+- Scène relue par script : **1200 profondeurs cuites**, réparties en 766 / 374 / 60 pour les
+  profondeurs 1, 2 et 3 ; station à la profondeur 3, bouches à 2 et 1 ; trois tuiles de
+  galerie câblées ; nœud permanent `PlantInlet` en (6, 25) ; seize tuiles de canalisation, une
+  seule tilemap `Tilemap_Pipes` ; quatre sprites de personnage et cinq pictos d'action câblés ;
+  aucun renderer hors de la famille `Underground_*`.
+- Play depuis `Boot`, par injection clavier :
+  - le personnage regarde dans les quatre directions, sprite à l'appui (`player_right`,
+    `player_up`) ;
+  - le curseur est **éteint en surface**, allumé sous terre, et se pose sur la case regardée ;
+  - face à un mur : picto `picto_dig`, Espace, la case devient praticable, la terre disparaît
+    de la couche bloquante et le sol se peint en `Tile_Tunnel_1`, la nuance de sa profondeur ;
+  - le picto bascule aussitôt sur `picto_pipe` : Espace pose un tuyau, nœud de profondeur 1,
+    type `Junction`, tuile `Tile_Pipe_00` puisqu'il est isolé ;
+  - le picto bascule sur `picto_remove` : Espace l'enlève, la tuile s'efface, le picto revient
+    à `picto_pipe`. **Le même geste fait et défait.**
+  - trois tuyaux en ligne : 2 segments, masques 2 / 10 / 8, tuiles `#02 #10 #08` ;
+  - pose refusée dans la terre pleine, sans message ;
+  - une case creusée puis un quatrième tuyau : 3 segments, le nœud du milieu passe au masque
+    11, tuile `#11`, un vrai T ;
+  - retrait du milieu : 0 segment, les trois voisins restent, leurs masques retombent à 0 ;
+  - **la station ne s'enlève pas** : `RemovePipe` rend faux et, face à elle, le picto ne
+    s'affiche même pas. Aucun message, aucune sanction, il ne se passe rien.
+  - console **entièrement vide** sur une session de play complète.
+- Rendu vérifié par capture d'écran : réseau en ligne, coude et T lisibles, tuyaux distincts
+  du sol, et les trois nuances de profondeur visibles le long de la galerie qui monte de la
+  station.
+
+### Note d'atelier : recompiler pendant le play
+
+Recompiler pendant que le jeu tourne provoque un rechargement de domaine. Unity rappelle alors
+`OnEnable` **sans repasser par `Awake`** : les champs non sérialisés sont perdus et
+`input.Gameplay.Enable()` levait une `NullReferenceException`. Fragilité héritée de la phase 1,
+révélée ici. `PlayerController` et `PlayerInteractor` créent désormais leur input dans un
+`EnsureInput()` appelé aux deux endroits.
+
+## Prochaine étape, phase 4
+
+L'eau coule, et les maisons arrivent avec elle. Le terrain est prêt :
+
+- **`PipeNetwork.Changed`** est le seul signal dont le `FlowSolver` a besoin. Il ne tournera
+  que là-dessus et aux ticks de saison, jamais par frame.
+- **`PipeNode.Depth`** est déjà rempli à la pose, et la station est le seul point à la
+  profondeur 3 : la règle de profondeur croissante se vérifie telle quelle.
+- **`HouseSpawner` et le type `HouseConnection`** restent à écrire. Les maisons se poseront en
+  surface et déclareront un nœud permanent sous elles, comme la station le fait déjà via
+  `fixedNodes`.
+- **La phase 6, la sauvegarde, devient prioritaire juste après.** C'est depuis la phase 3 le
+  premier moment où le joueur perd du travail en relançant.
 
 ## Décisions prises
+
+### Phase 3
+
+- **La profondeur est peinte dans la carte, pas choisie en creusant.** Trois zones
+  concentriques autour de la station, qui seule est au fond. Le puzzle devient un problème de
+  chemin : ne jamais remonter en allant vers la station. Laisser le joueur creuser plus
+  profond en insistant a été écarté, faute de coût : creuser au maximum partout aurait tout
+  résolu. Validé le 2 septembre 2026.
+- **Le même Espace pose et retire.** Réversible, sans punition.
+- **Espace est contextuel, dans un ordre fixe** : passage sur la case occupée, puis creuser,
+  poser ou enlever sur la case regardée. Une seule touche, aucun mode.
+- **Le raccordement est automatique.** Deux tuyaux voisins sont reliés. Un geste de
+  raccordement séparé aurait demandé une deuxième touche.
+- **Le tuyau ne bloque pas le passage.** Un enfant coincé derrière sa propre construction,
+  c'est un échec puni déguisé.
+- **Seule la station est un nœud permanent.** Les échelles restent des cases ordinaires : le
+  type `Manhole` du modèle attendra d'avoir un usage réel.
+- **Le rendu du réseau est redessiné en entier à chaque changement.** Quelques centaines de
+  cases, et seulement sur action du joueur.
+- **La profondeur est cuite dans un tableau sérialisé**, pas relue dans une tilemap : donnée
+  de carte statique, dont la tuile n'est que l'affichage.
+- **Deux plans superposés pour le sous-sol**, l'état et la profondeur, plutôt qu'un alphabet à
+  neuf lettres. Chacun reste lisible.
+- **Les maisons restent en phase 4**, comparaison de charge faite : huit fichiers runtime et
+  trente fichiers d'art en phase 3, contre cinq fichiers en phase 4 sur un graphe déjà
+  construit. Validé le 2 septembre 2026.
+- **`TargetCursor` rangé dans `Player/`** plutôt que dans `World/` : il suit le regard du
+  personnage, il n'appartient pas à la carte.
+- **`PipeNetworkView` séparé de `PipeNetwork`.** Le graphe ne connaît pas ses tuiles ; la
+  phase 4 pourra teinter le rendu selon l'écoulement sans toucher au modèle.
 
 ### Phase 2
 
@@ -281,6 +381,10 @@ Creuser et poser. Trois points déjà en place pour l'accueillir :
 
 ## Placeholders à remplacer
 
+- **Les trente PNG de la phase 3** : les six nuances de terre et de galerie, les seize
+  canalisations, les quatre personnages, les pictos et le curseur.
+- **Le picto « enlever »** est un disque barré, vocabulaire d'interdiction plutôt que de
+  retrait. À redessiner avec le vocabulaire des panneaux, que Victorien aime.
 - **Les sept PNG de la phase 2** : terre, galerie, échelle, et les quatre pictogrammes. Mêmes
   carrés de couleur que le reste.
 - **L'échelle disparaît sous le personnage** quand il se tient dessus, les deux occupant la
@@ -298,6 +402,10 @@ Creuser et poser. Trois points déjà en place pour l'accueillir :
 - Couleur de fond de la caméra : `#181425`, provisoire.
 
 ## Questions ouvertes
+
+- **Lisibilité des trois nuances de profondeur.** Le brun s'assombrit et la galerie vire au
+  gris froid au plus profond. Distinct sur les captures, mais l'écart entre profondeur 1 et 2
+  est le plus faible des deux : à juger plein écran avant de figer.
 
 - **Intensité de la lumière du sous-sol et contraste terre / galerie.** 0,8 et deux bruns
   distincts sur les captures ; à juger en vrai, plein écran, avant de figer.

@@ -70,7 +70,7 @@ namespace SousLaVille.EditorTools
                 VillageLayout.FindSingle(VillageLayout.PlayerStart));
 
             SpriteRenderer renderer = player.AddComponent<SpriteRenderer>();
-            renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlayerTexture);
+            renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlayerDown);
 
             // Le personnage vit dans Persistent alors que son Sorting Layer appartient a la
             // famille Surface. C'est le layer de depart : PlayerController le bascule sur
@@ -78,8 +78,25 @@ namespace SousLaVille.EditorTools
             // noir sous terre.
             SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.SurfaceEntities, 10);
 
-            player.AddComponent<PlayerController>();
+            PlayerController controller = player.AddComponent<PlayerController>();
+
+            // Quatre sprites, un par direction. Le corps est cable explicitement : le
+            // personnage porte aussi le picto et le curseur, GetComponent prendrait le
+            // premier venu.
+            SerializedObject serialized = new SerializedObject(controller);
+            serialized.FindProperty("body").objectReferenceValue = renderer;
+            serialized.FindProperty("spriteDown").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PlayerDown);
+            serialized.FindProperty("spriteUp").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PlayerUp);
+            serialized.FindProperty("spriteLeft").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PlayerLeft);
+            serialized.FindProperty("spriteRight").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PlayerRight);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
             CreateInteractor(player);
+            CreateCursor(player, controller);
 
             return player;
         }
@@ -103,6 +120,34 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoDown);
             serialized.FindProperty("promptUp").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoUp);
+            serialized.FindProperty("promptDig").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoDig);
+            serialized.FindProperty("promptPipe").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoPipe);
+            serialized.FindProperty("promptRemove").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoRemove);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Le cadre pose sur la case regardee. Sous le personnage dans l'ordre de tri : c'est
+        /// une marque au sol, pas un objet.
+        /// </summary>
+        private static void CreateCursor(GameObject player, PlayerController controller)
+        {
+            GameObject cursorObject = new GameObject("Cursor");
+            cursorObject.transform.SetParent(player.transform, false);
+
+            SpriteRenderer view = cursorObject.AddComponent<SpriteRenderer>();
+            view.sprite = LoadSprite(PlaceholderArtGenerator.CursorTarget);
+            view.enabled = false;
+            SceneBuilderUtility.ApplySortingLayer(view, GameSortingLayers.SurfaceEntities, 9);
+
+            TargetCursor cursor = cursorObject.AddComponent<TargetCursor>();
+
+            SerializedObject serialized = new SerializedObject(cursor);
+            serialized.FindProperty("player").objectReferenceValue = controller;
+            serialized.FindProperty("view").objectReferenceValue = view;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

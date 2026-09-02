@@ -12,6 +12,13 @@ namespace SousLaVille.EditorTools
     /// station, et les galeries qui les relient. Soixante-quatorze cases praticables sur mille
     /// deux cents : de quoi marcher des la phase 2, et tout le reste a ouvrir en phase 3.
     ///
+    /// Un second plan, superpose au premier, donne la profondeur de chaque case : 1 peu
+    /// profond, 2 moyen, 3 profond. Trois zones concentriques autour de la station, qui seule
+    /// est au fond. C'est cette carte qui porte tout le puzzle, la regle de CLAUDE.md etant
+    /// qu'un segment ne transporte que si la profondeur ne diminue pas vers la station.
+    ///
+    /// Deux plans superposes plutot qu'un alphabet a neuf lettres : chacun reste lisible.
+    ///
     /// Legende
     ///   #  terre pleine (bloquant)   .  galerie creusee
     ///   E  echelle vers la surface   T  arrivee sous la station
@@ -28,6 +35,9 @@ namespace SousLaVille.EditorTools
         public const char Tunnel = '.';
         public const char Ladder = 'E';
         public const char PlantOutlet = 'T';
+
+        /// <summary>Profondeur maximale de la carte. La station y est, et elle seule.</summary>
+        public const int MaxDepth = 3;
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
@@ -65,6 +75,44 @@ namespace SousLaVille.EditorTools
         };
 
         /// <summary>
+        /// Profondeur de chaque case, meme orientation que Rows. Zones concentriques autour
+        /// de la station : 3 jusqu'a cinq cases de distance, 2 jusqu'a vingt, 1 au-dela.
+        /// </summary>
+        private static readonly string[] DepthRows =
+        {
+            "2222233322222222222222211111111111111111",
+            "2222333332222222222222221111111111111111",
+            "2223333333222222222222222111111111111111",
+            "2233333333322222222222222211111111111111",
+            "2333333333332222222222222221111111111111",
+            "2233333333322222222222222211111111111111",
+            "2223333333222222222222222111111111111111",
+            "2222333332222222222222221111111111111111",
+            "2222233322222222222222211111111111111111",
+            "2222223222222222222222111111111111111111",
+            "2222222222222222222221111111111111111111",
+            "2222222222222222222211111111111111111111",
+            "2222222222222222222111111111111111111111",
+            "2222222222222222221111111111111111111111",
+            "2222222222222222211111111111111111111111",
+            "2222222222222222111111111111111111111111",
+            "2222222222222221111111111111111111111111",
+            "2222222222222211111111111111111111111111",
+            "2222222222222111111111111111111111111111",
+            "1222222222221111111111111111111111111111",
+            "1122222222211111111111111111111111111111",
+            "1112222222111111111111111111111111111111",
+            "1111222221111111111111111111111111111111",
+            "1111122211111111111111111111111111111111",
+            "1111112111111111111111111111111111111111",
+            "1111111111111111111111111111111111111111",
+            "1111111111111111111111111111111111111111",
+            "1111111111111111111111111111111111111111",
+            "1111111111111111111111111111111111111111",
+            "1111111111111111111111111111111111111111",
+        };
+
+        /// <summary>
         /// Caractere de la case (x, y). y compte du bas vers le haut, comme les tilemaps
         /// d'Unity, alors que la carte se lit du haut vers le bas.
         /// </summary>
@@ -76,6 +124,17 @@ namespace SousLaVille.EditorTools
             }
 
             return Rows[Height - 1 - y][x];
+        }
+
+        /// <summary>Profondeur de la case (x, y) : 1, 2 ou 3. Hors carte, la plus faible.</summary>
+        public static int DepthAt(int x, int y)
+        {
+            if (x < 0 || x >= Width || y < 0 || y >= Height)
+            {
+                return 1;
+            }
+
+            return DepthRows[Height - 1 - y][x] - '0';
         }
 
         /// <summary>Vrai si la case se parcourt au depart. Les marqueurs sont creuses.</summary>
@@ -120,6 +179,33 @@ namespace SousLaVille.EditorTools
                     Debug.LogError($"[Sous la Ville] Ligne {row} du plan du sous-sol : " +
                                    $"{Rows[row].Length} caractères au lieu de {Width}.");
                     return false;
+                }
+            }
+
+            if (DepthRows.Length != Height)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan des profondeurs fait {DepthRows.Length} " +
+                               $"lignes, il en faut {Height}.");
+                return false;
+            }
+
+            for (int row = 0; row < DepthRows.Length; row++)
+            {
+                if (DepthRows[row].Length != Width)
+                {
+                    Debug.LogError($"[Sous la Ville] Ligne {row} des profondeurs : " +
+                                   $"{DepthRows[row].Length} caractères au lieu de {Width}.");
+                    return false;
+                }
+
+                foreach (char c in DepthRows[row])
+                {
+                    if (c < '1' || c > '0' + MaxDepth)
+                    {
+                        Debug.LogError($"[Sous la Ville] Profondeur « {c} » ligne {row} : " +
+                                       $"attendu 1 à {MaxDepth}.");
+                        return false;
+                    }
                 }
             }
 
@@ -168,6 +254,15 @@ namespace SousLaVille.EditorTools
             if (At(plant.x, plant.y) != PlantOutlet)
             {
                 Debug.LogError($"[Sous la Ville] Aucune arrivée de station sous {plant}.");
+                ok = false;
+            }
+
+            // L'eau doit pouvoir descendre jusqu'a la station : elle est le point le plus
+            // profond de la carte, sinon aucun reseau ne peut aboutir.
+            if (DepthAt(plant.x, plant.y) != MaxDepth)
+            {
+                Debug.LogError($"[Sous la Ville] La station en {plant} est à la profondeur " +
+                               $"{DepthAt(plant.x, plant.y)}, il lui faut {MaxDepth}.");
                 ok = false;
             }
 

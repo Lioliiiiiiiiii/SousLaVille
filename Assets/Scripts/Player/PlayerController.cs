@@ -17,6 +17,15 @@ namespace SousLaVille.Player
         [Tooltip("Cases parcourues par seconde. Vitesse constante, aucune acceleration.")]
         [SerializeField] private float tilesPerSecond = 5f;
 
+        [Tooltip("Le sprite du corps. Change avec la direction regardee.")]
+        [SerializeField] private SpriteRenderer body;
+
+        [Tooltip("Un sprite par direction, dans l'ordre bas, haut, gauche, droite.")]
+        [SerializeField] private Sprite spriteDown;
+        [SerializeField] private Sprite spriteUp;
+        [SerializeField] private Sprite spriteLeft;
+        [SerializeField] private Sprite spriteRight;
+
         private SousLaVilleInputActions input;
         private GridMap map;
         private SpriteRenderer[] renderers;
@@ -39,23 +48,40 @@ namespace SousLaVille.Player
         /// <summary>Vrai si la carte de la couche active a ete trouvee.</summary>
         public bool HasMap => map != null;
 
+        /// <summary>Carte de la couche courante. Nulle tant qu'aucune couche n'est allumee.</summary>
+        public GridMap Map => map;
+
         private void Awake()
         {
-            input = new SousLaVilleInputActions();
+            EnsureInput();
 
             // Le corps et le picto d'action : tous deux doivent suivre la famille de
             // Sorting Layers de la couche courante.
             renderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+            ApplyFacingSprite();
         }
 
         private void OnEnable()
         {
+            // Recompiler pendant le play recharge le domaine : Unity rappelle OnEnable sans
+            // repasser par Awake, et les champs non serialises sont perdus. On recree donc
+            // l'input ici plutot que de laisser une NullReferenceException.
+            EnsureInput();
             input.Gameplay.Enable();
+        }
+
+        private void EnsureInput()
+        {
+            if (input == null)
+            {
+                input = new SousLaVilleInputActions();
+            }
         }
 
         private void OnDisable()
         {
-            input.Gameplay.Disable();
+            input?.Gameplay.Disable();
         }
 
         private void OnDestroy()
@@ -191,7 +217,11 @@ namespace SousLaVille.Player
             }
 
             // On tourne meme si la case est bloquee : le regard suit toujours la fleche.
-            facing = direction;
+            if (facing != direction)
+            {
+                facing = direction;
+                ApplyFacingSprite();
+            }
 
             Vector2Int next = currentCell + direction;
             if (!map.IsWalkable(next))
@@ -201,6 +231,41 @@ namespace SousLaVille.Player
 
             targetCell = next;
             isMoving = true;
+        }
+
+        /// <summary>
+        /// Quatre sprites, un par direction. Decide le 2 septembre 2026 : un repere dessine
+        /// sur un sprite unique ne sait montrer que le bas.
+        /// </summary>
+        private void ApplyFacingSprite()
+        {
+            if (body == null)
+            {
+                return;
+            }
+
+            Sprite sprite;
+            if (facing == Vector2Int.up)
+            {
+                sprite = spriteUp;
+            }
+            else if (facing == Vector2Int.left)
+            {
+                sprite = spriteLeft;
+            }
+            else if (facing == Vector2Int.right)
+            {
+                sprite = spriteRight;
+            }
+            else
+            {
+                sprite = spriteDown;
+            }
+
+            if (sprite != null)
+            {
+                body.sprite = sprite;
+            }
         }
 
         private void ApplyStepPosition()
