@@ -168,6 +168,12 @@ Deux points à traiter en phase 2, déjà repérés :
   sous les murs. La couche bloquante se pose par-dessus, en ordre 1.
 - **`_ = SceneManager.UnloadSceneAsync(...)` dans `Bootstrapper`.** Warning CS4014 hérité de
   la phase 0 : ne pas attendre est voulu, le discard le dit au compilateur.
+- **Quatre sprites de personnage, un par direction. Validé le 2 septembre 2026.** Le repère
+  de 2 px dessiné sur l'unique `player.png` ne sait montrer que la direction du bas. À la
+  place : `player_down`, `player_up`, `player_left` et `player_right`, produits par
+  `PlaceholderArtGenerator`, et `PlayerController` choisit le sprite d'après `Facing`. Pas de
+  pictogramme de case visée. **À faire en phase 3**, quand Espace agira pour la première fois
+  sur `FacingCell` ; rien à changer côté logique, `Facing` est déjà correct.
 
 ## Placeholders à remplacer
 
@@ -177,9 +183,9 @@ Deux points à traiter en phase 2, déjà repérés :
   huit fichiers et aucun sprite dédié à la station. Le carré bleu est bien visible sur le sol
   gris, mais il est identique aux murs de l'enceinte. Un sprite propre à la station est à
   prévoir.
-- **Le repère de direction du personnage est dessiné en dur** sur l'unique `player.png` : il
-  ne dit « je regarde par là » que vers le bas. `Facing` est correct côté code, seul l'affichage
-  ne suit pas. Voir la question ouverte ci-dessous.
+- **`player.png` est un sprite unique** dont le repère de direction ne vaut que vers le bas.
+  Il sera remplacé en phase 3 par quatre sprites, un par direction, décision validée le
+  2 septembre 2026. `Facing` est déjà correct côté code, seul l'affichage ne suit pas.
 - Couleur de fond de la caméra : `#181425`, provisoire.
 
 ## Questions ouvertes
@@ -192,9 +198,3 @@ Deux points à traiter en phase 2, déjà repérés :
   Il n'est pas utilisé par le jeu. Ménage possible plus tard.
 - **Manette.** Des bindings `<Gamepad>/dpad` et `<Gamepad>/buttonSouth` sont posés. Support
   optionnel, jamais requis, conformément à CLAUDE.md. À retirer si tu préfères le clavier seul.
-- **Comment montrer la direction regardée ?** Le plan demandait un repère de 2 px sur le
-  sprite, il y est. Mais un sprite unique ne peut pas montrer quatre directions. Trois
-  options pour la phase 3, où Espace agira sur la case regardée : quatre sprites de
-  personnage, ou un pictogramme de case visée sur `Surface_Overlay`, ou les deux. Je penche
-  pour le pictogramme : il montre la case, pas seulement la direction, et c'est plus lisible
-  pour un enfant de six ans. À trancher.
