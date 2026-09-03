@@ -19,7 +19,11 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 9 | L'usine à tuyaux | À faire |
 | 10 | Les fuites | À faire |
 | 11 | Le parc | À faire |
-| 12 | Habillage | À faire |
+| 12 | L'usine à panneaux | À faire |
+| 13 | Le Stock, le memory | À faire |
+| 14 | La Fabrique | À faire |
+| 15 | Le Plan | À faire |
+| 16 | Habillage | À faire |
 
 ## Phase 0, ce qui est fait
 
@@ -421,6 +425,35 @@ Ce qui est prêt pour la sauvegarde :
   voir les questions ouvertes.
 
 ## Décisions prises
+
+### L'usine à panneaux, phases 12 à 15
+
+Ajoutée le 3 septembre 2026, à la demande de Lio. Victorien est passionné de panneaux de
+signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route français.
+
+- **Quatre phases, pas une.** Le bâtiment et le catalogue d'abord, puis un mini-jeu par phase.
+- **Elle passe avant l'habillage, jamais après.** Sinon ses panneaux seraient dessinés en
+  placeholder puis redessinés une seconde fois, alors que la règle 4 de CLAUDE.md veut un
+  seul passage d'art à la fin. L'habillage devient la phase 16.
+- **Elle passe après l'arc du réseau.** Aucune phase de 7 à 11 n'en dépend, et le squelette de
+  mini-jeu profitera des schémas stabilisés par six phases.
+- **L'ordre des trois mini-jeux va du plus simple au plus lourd** : Le Stock valide le
+  squelette, La Fabrique s'appuie dessus, Le Plan vient en dernier.
+- **Les panneaux sont un placeholder idéal.** Triangle bordé de rouge, disque bleu, octogone :
+  leur géométrie est déjà presque leur forme finale, contrairement au personnage. Dessinés par
+  code dans `PlaceholderArtGenerator`, jamais récupérés en fichiers. Les panneaux du Code de
+  la route sont des dessins officiels de l'État, sans rapport avec l'interdiction d'assets
+  Nintendo ou Pokémon de CLAUDE.md.
+- **La Fabrique demande le nom parmi trois noms écrits.** Validé le 3 septembre 2026 :
+  Victorien sait lire, et les noms de panneaux sont courts et en majuscules. Le pictogramme
+  reste le premier choix partout ailleurs.
+- **Le Plan repose sur quinze plans écrits à la main**, dans le style ASCII de
+  `VillageLayout` et `UndergroundLayout`, et non sur un générateur aléatoire. Chacun est relu
+  et vérifié solvable avant d'être écrit, et la difficulté progresse dans un ordre choisi.
+  C'est la méthode qui avait permis de vérifier les crêtes de la phase 4 par le calcul.
+- **L'usine est une pure récréation, sans lien avec le réseau.** Rien de ce qui s'y fabrique
+  ne sort du bâtiment. Aucun mini-jeu ne peut donc bloquer la progression du réseau, ce qui
+  garde intact le « aucun échec puni » de CLAUDE.md.
 
 ### Phase 5
 
