@@ -38,6 +38,7 @@ namespace SousLaVille.Core
         private PipeNetwork network;
         private UndergroundMap map;
         private ManholeFactory factory;
+        private WaterReserve reserve;
 
         private bool loaded;
         private bool restoring;
@@ -131,6 +132,9 @@ namespace SousLaVille.Core
             // LoadGameplayScenesAsync : si le reseau repond, l'atelier existe deja.
             factory = FindAnyObjectByType<ManholeFactory>(FindObjectsInactive.Include);
 
+            // Le bassin vit dans la meme scene que le reseau : s'il repond, le bassin est la.
+            reserve = FindAnyObjectByType<WaterReserve>(FindObjectsInactive.Include);
+
             // Marque pose avant la lecture : rien ne doit s'ecrire tant que la partie n'est
             // pas chargee, sinon un monde vide ecraserait un bon fichier.
             loaded = true;
@@ -152,6 +156,11 @@ namespace SousLaVille.Core
             if (factory != null)
             {
                 factory.Changed += MarkDirty;
+            }
+
+            if (reserve != null)
+            {
+                reserve.Changed += MarkDirty;
             }
         }
 
@@ -175,6 +184,11 @@ namespace SousLaVille.Core
             if (factory != null)
             {
                 factory.Changed -= MarkDirty;
+            }
+
+            if (reserve != null)
+            {
+                reserve.Changed -= MarkDirty;
             }
         }
 
@@ -304,6 +318,13 @@ namespace SousLaVille.Core
                     factory.Restore(assignments);
                 }
 
+                // Un fichier d'avant la phase 8 n'a pas le champ : Newtonsoft laisse zero,
+                // et le bassin repart vide. Aucune erreur, aucune version a monter.
+                if (reserve != null)
+                {
+                    reserve.Restore(data.reserveLevel);
+                }
+
                 if (seasons != null)
                 {
                     seasons.Restore(data.seasonIndex);
@@ -396,6 +417,7 @@ namespace SousLaVille.Core
 
             data.seasonIndex = seasons != null ? seasons.CurrentIndex : 0;
             data.seasonProgress = clock != null ? clock.SeasonProgress : 0f;
+            data.reserveLevel = reserve != null ? reserve.Level : 0;
 
             foreach (Vector2Int cell in map.DugCells)
             {

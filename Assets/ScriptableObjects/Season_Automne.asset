@@ -19,3 +19,4 @@ MonoBehaviour:
   clogChance: 0.25
   wearMultiplier: 1
   thaws: 0
+  rainVolume: 8

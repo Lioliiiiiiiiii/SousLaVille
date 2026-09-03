@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Network;
 using SousLaVille.World;
@@ -23,6 +24,12 @@ namespace SousLaVille.EditorTools
 
         // Le sous-sol est plus sombre que le village, sans gener la lecture des couleurs.
         private const float GlobalLightIntensity = 0.8f;
+
+        // Les nombres du bilan de l'eau, phase 8. Cinq maisons et huit de pluie font treize
+        // a l'automne : la station en traite huit, le bassin encaisse cinq, et l'ete le
+        // ramene a zero. Le cycle est stable.
+        private const int PlantCapacityPerSeason = 8;
+        private const int ReserveCapacity = 10;
 
         [MenuItem("Sous La Ville/Construire la scène Underground")]
         public static void Build()
@@ -70,6 +77,7 @@ namespace SousLaVille.EditorTools
             PaintUnderground(ground, blocking);
             CreateLadders(root);
             CreateHouseInlets(root);
+            CreateReserve(root);
 
             UndergroundMap map = AttachUndergroundMap(root, grid, ground, blocking);
             AttachNetwork(root, map, pipes);
@@ -183,8 +191,53 @@ namespace SousLaVille.EditorTools
 
             foreach (Vector2Int cell in UndergroundLayout.FindAll(UndergroundLayout.PlantOutlet))
             {
-                CreateExit(root, "PlantOutlet", cell, sprite);
+                GameObject outlet = CreateExit(root, "PlantOutlet", cell, sprite);
+
+                // La station devient un objet, phase 8 : elle porte ce qu'elle traite par
+                // saison. Sur l'arrivee, a cote de son noeud.
+                TreatmentPlant plant = outlet.AddComponent<TreatmentPlant>();
+                SerializedObject serialized = new SerializedObject(plant);
+                serialized.FindProperty("capacityPerSeason").intValue = PlantCapacityPerSeason;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
             }
+        }
+
+        /// <summary>
+        /// Le bassin d'orage, dans sa chambre deja creusee. La cuve porte son niveau : cinq
+        /// images, de vide a pleine, et rien au HUD.
+        /// </summary>
+        private static void CreateReserve(GameObject root)
+        {
+            List<Vector2Int> cells = UndergroundLayout.FindAll(UndergroundLayout.Reserve);
+            if (cells.Count == 0)
+            {
+                return;
+            }
+
+            GameObject reserveObject = new GameObject("WaterReserve");
+            reserveObject.transform.SetParent(root.transform, false);
+            reserveObject.transform.position = SurfaceSceneBuilder.CellCenter(cells[0]);
+
+            SpriteRenderer renderer = reserveObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = LoadSprite(PlaceholderArtGenerator.ReserveTexture(0));
+            SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 0);
+
+            WaterReserve reserve = reserveObject.AddComponent<WaterReserve>();
+
+            SerializedObject serialized = new SerializedObject(reserve);
+            serialized.FindProperty("cell").vector2IntValue = cells[0];
+            serialized.FindProperty("capacity").intValue = ReserveCapacity;
+            serialized.FindProperty("view").objectReferenceValue = renderer;
+
+            SerializedProperty sprites = serialized.FindProperty("levelSprites");
+            sprites.arraySize = PlaceholderArtGenerator.ReserveLevelCount;
+            for (int level = 0; level < PlaceholderArtGenerator.ReserveLevelCount; level++)
+            {
+                sprites.GetArrayElementAtIndex(level).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.ReserveTexture(level));
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>
@@ -217,7 +270,8 @@ namespace SousLaVille.EditorTools
             }
         }
 
-        private static void CreateExit(GameObject parent, string name, Vector2Int cell, Sprite sprite)
+        private static GameObject CreateExit(GameObject parent, string name, Vector2Int cell,
+            Sprite sprite)
         {
             GameObject exit = new GameObject(name);
             exit.transform.SetParent(parent.transform, false);
@@ -228,6 +282,8 @@ namespace SousLaVille.EditorTools
             SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 0);
 
             PortalBuilder.Attach(exit, cell, GameLayer.Underground, GameLayer.Surface);
+
+            return exit;
         }
 
         private static UndergroundMap AttachUndergroundMap(GameObject root, Grid grid,
@@ -269,8 +325,9 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Le graphe et son rendu. Le seul noeud impose par le monde est la station : les
-        /// echelles restent des cases ordinaires tant que le type Manhole n'a pas d'usage.
+        /// Le graphe et son rendu. Les noeuds imposes par le monde sont la station, les
+        /// maisons et le bassin : les echelles restent des cases ordinaires tant que le type
+        /// Manhole n'a pas d'usage.
         /// </summary>
         private static void AttachNetwork(GameObject root, UndergroundMap map, Tilemap pipes)
         {
@@ -283,9 +340,10 @@ namespace SousLaVille.EditorTools
 
             List<Vector2Int> outlets = UndergroundLayout.FindAll(UndergroundLayout.PlantOutlet);
             List<Vector2Int> houses = UndergroundLayout.FindAll(UndergroundLayout.HouseOutlet);
+            List<Vector2Int> reserves = UndergroundLayout.FindAll(UndergroundLayout.Reserve);
 
             SerializedProperty fixedNodes = serializedNetwork.FindProperty("fixedNodes");
-            fixedNodes.arraySize = outlets.Count + houses.Count;
+            fixedNodes.arraySize = outlets.Count + houses.Count + reserves.Count;
 
             int index = 0;
             foreach (Vector2Int cell in outlets)
@@ -299,6 +357,13 @@ namespace SousLaVille.EditorTools
             {
                 SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell,
                     NodeType.HouseConnection);
+            }
+
+            // Le bassin, phase 8 : un noeud comme un autre pour le solveur, permanent comme
+            // les maisons. Le joueur vient s'y raccorder.
+            foreach (Vector2Int cell in reserves)
+            {
+                SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell, NodeType.ReserveInlet);
             }
 
             serializedNetwork.ApplyModifiedPropertiesWithoutUndo();

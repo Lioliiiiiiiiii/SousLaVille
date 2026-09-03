@@ -15,7 +15,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 5 | Les saisons et le gel | Terminée |
 | 6 | Sauvegarde | Terminée |
 | 7 | La plaque gravable | Terminée |
-| 8 | La réserve d'eau | À faire |
+| 8 | La réserve d'eau | Terminée |
 | 9 | L'usine à tuyaux | À faire |
 | 10 | Les fuites | À faire |
 | 11 | Le parc | À faire |
@@ -577,24 +577,144 @@ Une autre application peut reprendre le focus entre deux appels du pont.
 Conséquence de conception, et elle est bonne : `VillageMapScreen` sépare désormais la lecture
 du clavier (`ReadDirection`) du choix lui-même (`Select`), qui se vérifie sans clavier.
 
-## Prochaine étape, phase 8
+## Phase 8, ce qui est fait
 
-La réserve d'eau, `WaterReserve`. Un tampon en amont du réseau, de quoi rendre l'écoulement
-visible dans le temps et non plus seulement vrai ou faux.
+- `Assets/Scripts/Buildings/WaterReserve.cs` : le bassin d'orage. Niveau entier, capacité,
+  `Absorb`, `Release`, `Restore`, et sa propre vue : cinq images pour une cuve, sur la case du
+  bassin. Vit dans la scène Underground, réapplique son image dans `OnEnable`.
+- `Assets/Scripts/Buildings/TreatmentPlant.cs` : la station devient un objet, posé sur
+  `PlantOutlet` dans l'Underground, à côté de son nœud. Elle porte `capacityPerSeason`, 8.
+- `PipeNode` : sixième `NodeType`, **`ReserveInlet`, ajouté à la fin**. Écart accepté le
+  3 septembre 2026. Permanent comme la station et les maisons.
+- `FlowSolver` : le bassin est tracé exactement comme une maison, sur un nœud de plus.
+  `IsReserveConnected`, `IsReserveConnectedAt(cell)`, `ReserveCount`. Sa route porte la
+  teinte de l'eau quand elle est valide.
+- `SeasonDefinition.rainVolume` et `SeasonSystem` : le bilan de l'eau, quatre additions au
+  tick, juste après la résolution. `WaterBudget` (arrivant, traité, absorbé, relâché, perdu),
+  `LastBudget`, `BudgetCount`, `HouseVolumePerSeason = 1`. Résolution paresseuse du bassin et
+  de la station, comme celle du réseau.
+- `SaveData.reserveLevel` et `SaveSystem` : lu, écrit, et `reserve.Changed` marque la partie
+  à sauver. **`CurrentVersion` reste à 1.**
+- `ScriptableObjectSetup` : pluie 2 / 0 / 8 / 1.
+- `UndergroundLayout` : le marqueur `R` en (10, 13), la chambre de trois sur trois creusée
+  de (9, 12) à (11, 14), et `ValidateReserve` : un seul bassin, chambre ouverte, herbe
+  au-dessus, pas déjà au fond. **Le plan des profondeurs n'a pas bougé d'un caractère.**
+- `UndergroundSceneBuilder` : l'objet `WaterReserve` câblé (case, capacité 10, cinq images),
+  le nœud permanent `ReserveInlet`, et `TreatmentPlant` sur l'arrivée de la station.
+- `PlaceholderArtGenerator` : cinq images de cuve, `reserve_00` à `reserve_04`. 70 textures
+  et 30 tuiles au total.
+- **Règle 9 vérifiée** : aucun type URP touché, aucune référence d'assembly à ajouter.
 
-Ce que les phases 6 et 7 laissent en place pour la suite :
+### Les nombres
 
-- **Tout nouvel état se sauvegarde en ajoutant un champ à `SaveData`.** Vérifié pour de bon en
-  phase 7 : une partie écrite avant le champ `covers` se relit sans une erreur.
-- **`PipeNetwork.BeginBatch` / `EndBatch`** est disponible pour toute opération de masse.
-- **`UndergroundMap.Dug`** dit à qui veut l'entendre qu'une case vient de s'ouvrir.
-- **`PixelFont`** écrit n'importe quel mot en majuscules. Les accents s'ajouteront quand
-  `ÉCOLE` en aura besoin, en phase 14.
-- **Le patron du catalogue** : un ScriptableObject par entrée, un menu qui les réécrit toutes,
-  un tableau sérialisé côté scène.
-- **`NodeType.Manhole` attend toujours** : la phase 7 est restée décorative, comme décidé.
+Maison desservie 1 par saison, pluie 2 / 0 / 8 / 1, station 8 par saison, bassin 10. Le
+tableau du plan, 0 / 0 / 5 / 3 / 2 / 0, est reproduit au chiffre près, voir ci-dessous.
+
+## Phase 8, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du
+  package MCP émis depuis `Library/PackageCache`.
+- `Générer l'art placeholder`, `Créer les ScriptableObjects`, `Construire toutes les scènes`,
+  éditeur hors play : console propre, quatre scènes régénérées.
+- Sous-sol relu par script : **les neuf cases de la chambre sont ouvertes**, nœud
+  `ReserveInlet` en (10, 13) à la profondeur 2, sept nœuds permanents, **station en (6, 25)
+  profondeur 3 et cinq alcôves exactement où elles étaient**, et les cinq maisons gardent
+  leur chemin : 57 / 46 / 31 / 45 / 6 cases, les nombres de la phase 4. 87 cases praticables.
+  Aucun renderer hors de la famille `Underground_*`.
+- **Chemin du bassin recalculé** : 24 pas jusqu'à la station, **dont 13 cases à creuser**.
+  Le plan annonçait un creusement minime le long de la galerie x = 8 ; c'est faux, voir la
+  question ouverte. Constat inverse et utile : **les plus courts chemins de quatre maisons
+  sur cinq passent par la chambre**, via (11, 13), (10, 13), (9, 13).
+- Les cinq cuves comparées à taille réelle, planche à l'appui : 0 / 34 / 68 / 102 / 138
+  pixels d'eau, les niveaux se distinguent sans agrandissement.
+- Play depuis `Boot`, partie neuve, **par injection clavier réelle**, éditeur au premier plan
+  et `Application.isFocused` vérifié à chaque image : descente par la bouche (20, 10), marche
+  jusqu'à (8, 12), **Espace pose un tuyau en (8, 13)**, traversée de la chambre et du bassin
+  lui-même, demi-tour, **Espace pose en (9, 13)** : 9 nœuds, 2 segments, le bassin est
+  raccordé à deux tuyaux. Face au bassin, **le picto reste éteint** : il ne s'enlève pas,
+  `RemovePipe` et `PlacePipe` rendent faux dessus.
+- Réseau des cinq maisons construit par code en contournant la chambre, 79 nœuds, 5/5
+  desservies, **bassin non relié sur deux années** : niveau à zéro quoi qu'il arrive, rien ne
+  casse, une résolution et un bilan par saison.
+- **Bassin relié d'un seul tuyau**, (9, 13), avec des copies des saisons sans gel ni bouchon
+  et le réseau remis à neuf avant chaque tick : **0 / 0 / 5 / 3 / 2 / 0, puis 5 / 3 / 2 / 0
+  sur trois années**, au chiffre près. Automne 13 arrivant, 8 traité, 5 absorbé ; hiver 6,
+  2 relâché ; printemps 7, 1 relâché ; été 5, 2 relâché. **La cuve change d'image** : 00, 02,
+  01, 01, 00.
+- **Route du bassin gelée à la main** en été : `IsReserveConnected` faux, rien ne se relâche,
+  niveau bloqué à 5 ; **réparée d'un geste**, l'automne suivant le remplit à 10, image 04, et
+  l'hiver relâche 2.
+- **Bassin plein à l'automne** : 13 arrivant, 0 absorbé, **5 perdus**, aucune erreur, aucun
+  message. `Restore(99)` donne 10, `Restore(-3)` donne 0.
+- **Aux vraies règles**, bassin relié, réseau entretenu avant chaque tick : automne 2/5
+  desservies (8 bouchons), 10 arrivant, +2 ; hiver 2/5 (37 gelés), 3 arrivant, relâche 2.
+  Voir la question ouverte : le tableau du plan suppose cinq maisons au tick, ce que les
+  effets de saison rendent impossible.
+- **Horloge accélérée à 0,4 s** : 643 ticks, **643 bilans, 643 résolutions**, niveau et
+  image d'accord. Les 643 viennent de l'avancement accumulé depuis le début de la session,
+  rattrapé en une seule image par la boucle « aucune saison sautée », plus une cinquantaine de
+  vrais ticks.
+- **Niveau posé à 10 pendant que la couche est éteinte** : au retour sous terre, la cuve
+  montre l'image 04. C'est `OnEnable` qui la sauve, et `Apply` dans `SetLevel` d'abord.
+- Sauvegarde : 21 100 octets, `reserveLevel` écrit, aucun `.tmp`. **Sortie puis relance** :
+  niveau 7 retrouvé, image 03, automne, 80 nœuds, 80 segments, 54 creusées, bassin relié,
+  **une seule résolution, aucune écriture**.
+- **Une partie de forme phase 7**, même contenu sans le champ `reserveLevel` : se relit sans
+  une erreur, **bassin à zéro**, réseau intact, rien mis de côté.
+- Console **entièrement vide, tous types confondus**, sur la session complète : clavier,
+  quarante saisons, deux voyages de couche, sauvegarde. Seules les deux lignes connues de
+  `ScreenCapture` apparaissent après les captures.
+- Captures : la cuve pleine avec la chambre reliée en bleu, à moitié, vide.
+- `git status` : **aucune modification des ProjectSettings**. `runInBackground` et la durée
+  de saison n'ont existé qu'à chaud.
+
+### Note d'atelier : la seconde session de play ne tournait pas
+
+Relancer le play mode depuis le pont alors qu'une autre application avait le focus laisse le
+jeu figé à l'image 1 : Boot ne charge même pas Persistent, et un script qui cherche le réseau
+répond « pas encore ». `Application.runInBackground = true` posé à chaud suffit, mais il faut
+le reposer à chaque nouvelle session de play, il ne survit pas à l'arrêt.
+
+## Prochaine étape, phase 9
+
+L'usine à tuyaux, `PipeFactory`. Ce que la phase 8 laisse en place :
+
+- **`PipeType.FrostResistance` a enfin un enjeu** : la route du bassin ne gèle jamais, mais
+  celles des trois maisons peu profondes gèlent chaque hiver au tick. Un tuyau isolant change
+  le bilan de l'hiver.
+- **`SeasonSystem.LastBudget.Lost`** dit combien d'eau disparaît par saison : c'est l'entrée
+  de la phase 10, le débordement visible.
+- **`TreatmentPlant` est un objet**, sur `PlantOutlet`, prêt à porter d'autres propriétés.
+- **Le patron du nœud permanent** sert trois fois : station, maisons, bassin.
 
 ## Décisions prises
+
+### Phase 8
+
+- **La route du bassin porte la teinte de l'eau** quand elle est valide, comme celle d'une
+  maison. C'est le même parcours, et c'est le seul retour qui dise « relié » avant que le
+  niveau ne bouge.
+- **`TreatmentPlant` vit sur `PlantOutlet`, dans l'Underground**, à côté du nœud `PlantInlet`.
+  Le plan ne le disait pas ; c'est la seule scène qu'il liste comme modifiée.
+- **`HouseVolumePerSeason` est une constante de `SeasonSystem`**, pas une donnée de maison ni
+  de saison : le plan la fixe à 1 sans réglage.
+- **`WaterBudget` est une struct publique**, cinq entiers exposés par `LastBudget`. La phase 10
+  lira `Lost` ; les vérifications lisent le reste.
+- **Le bilan lit `IsReserveConnectedAt(reserve.Cell)`** plutôt que le booléen global : un seul
+  bassin aujourd'hui, mais le solveur en accepte plusieurs.
+- **La cuve est un sprite de 16 par 16 sur la case du bassin**, pas une image de trois cases.
+  Un sprite de 48 px sur `Underground_Entities` cacherait les tuyaux posés dans la chambre.
+- **Les cinq images sont dessinées par une seule fonction** : douze pixels d'intérieur, trois
+  par palier, et trois graduations claires qui passent par-dessus l'eau.
+- **`SpriteIndexFor` est publique et statique** : vide et pleine exactes, trois paliers égaux
+  entre les deux, 1 à 3, 4 à 6, 7 à 9. Se vérifie sans scène.
+- **`reserve.Changed` marque la partie à sauver**, en plus de `SeasonChanged` qui suffirait :
+  explicite plutôt que dépendant de l'ordre des événements dans `Advance`.
+- **`ValidateReserve` refuse** deux bassins, une chambre non creusée, autre chose que de
+  l'herbe au-dessus, et un bassin déjà au fond.
+- **Le test du tableau utilise des copies des saisons** sans gel ni bouchon, créées à chaud et
+  détruites après, jamais les assets. Le tableau est une propriété de la formule, pas du
+  monde, voir la question ouverte.
 
 ### Phase 7
 
@@ -897,6 +1017,8 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
+- **Les cinq PNG de la phase 8**, la cuve du bassin : cadre gris, intérieur sombre, eau qui
+  monte. Lisible, mais c'est une boîte ; un vrai bassin d'orage vu de dessus reste à dessiner.
 - **Les dix-huit PNG de la phase 7** : les huit plaques, les huit noms, le plan du village et
   le pavé de l'atelier.
 - **La police de 5 sur 7 pixels** se lit, mais quelques lettres sont grasses à cette taille,
@@ -938,6 +1060,28 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Questions ouvertes
 
+- **Le bilan de l'eau est calculé au tick, après les effets de la saison qui commence.** Le
+  plan le demande ainsi, et c'est fait ainsi. Conséquence vue en jeu : l'hiver gèle les trois
+  maisons peu profondes **avant** le bilan, l'automne en bouche autant, et aucun entretien ne
+  peut s'intercaler, puisque effets et bilan partagent le même tick. Aux vraies règles, avec
+  le réseau remis à neuf avant chaque saison, l'automne voit 2/5 desservies, 10 arrivant,
+  +2 au bassin ; l'hiver voit 3 arrivant et vide le bassin. **Le tableau du plan, 13 / 8 / +5
+  puis 6 / 6 / 3, n'apparaît jamais en jeu** : il ne vaut que pour cinq maisons desservies au
+  tick. Deux issues possibles, à trancher : garder, la pointe d'automne est alors surtout
+  perdue dans les bouchons ; ou calculer au tick le bilan de la saison **qui se termine**,
+  avant d'appliquer les effets de la nouvelle, ce qui rendrait l'entretien de l'hiver visible
+  dans le bilan. Non tranché, plan respecté.
+- **La route du bassin ne peut ni geler ni se boucher.** À profondeur 2, un chemin à
+  profondeur non décroissante ne repasse jamais par la profondeur 1 : seule l'usure la coupe.
+  « Un hiver qui gèle la route du bassin » ne peut pas arriver à cet emplacement ; le cas a
+  été vérifié avec un segment gelé à la main.
+- **Relier le bassin n'est pas un petit chantier.** 24 pas dont 13 à creuser : la galerie
+  x = 8 est coupée pour l'eau par la crête qui passe sous l'échelle (8, 19), et il faut
+  contourner par (9, 19), (10, 19) puis descendre par x = 12. En revanche les plus courts
+  chemins de quatre maisons traversent la chambre : relier les maisons lointaines relie le
+  bassin presque gratuitement. À décider si c'est voulu.
+- **L'incitation perverse** ne mord pas : en jeu, ce sont les bouchons et le gel qui font
+  baisser l'arrivant au tick, jamais un choix du joueur.
 - **`GameManager.Instance` ne survit pas à un rechargement de domaine.** L'instance est posée
   dans `Awake`, qu'Unity ne rappelle pas après un rechargement en plein play ; tout ce qui en
   dépend devient muet jusqu'au prochain lancement. Cela n'arrive que dans l'éditeur, jamais

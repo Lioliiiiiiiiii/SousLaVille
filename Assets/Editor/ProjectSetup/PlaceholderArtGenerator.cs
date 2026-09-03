@@ -88,6 +88,16 @@ namespace SousLaVille.EditorTools
             return $"{PictosFolder}/cover_name_{index:00}.png";
         }
 
+        // Le bassin d'orage, phase 8. Cinq images pour une cuve : vide, un quart, la moitie,
+        // trois quarts, pleine. Le niveau se lit dessus, dans le sous-sol, pas au HUD.
+        public const int ReserveLevelCount = 5;
+
+        /// <summary>Image 16x16 de la cuve a un niveau donne, 0 vide a 4 pleine.</summary>
+        public static string ReserveTexture(int level)
+        {
+            return $"{SpritesFolder}/reserve_{Mathf.Clamp(level, 0, ReserveLevelCount - 1):00}.png";
+        }
+
         /// <summary>Nombre de nuances de profondeur : 1 peu profond, 3 profond.</summary>
         public const int DepthCount = 3;
 
@@ -237,6 +247,11 @@ namespace SousLaVille.EditorTools
                 }
 
                 WriteTexture(VillageMapTexture, BuildVillageMap(), VillageLayout.Width);
+
+                for (int level = 0; level < ReserveLevelCount; level++)
+                {
+                    WriteTexture(ReserveTexture(level), BuildReserve(level));
+                }
             }
             finally
             {
@@ -273,6 +288,11 @@ namespace SousLaVille.EditorTools
             ConfigureImporter(ManholeTexture, null);
             ConfigureImporter(LadderTexture, null);
             ConfigureImporter(HouseInletTexture, null);
+
+            for (int level = 0; level < ReserveLevelCount; level++)
+            {
+                ConfigureImporter(ReserveTexture(level), null);
+            }
 
             // Meme pivot que le personnage : la maison se pose sur sa case et son toit deborde.
             ConfigureImporter(HouseTexture, PlayerPivot);
@@ -312,7 +332,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 65 textures, 30 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 70 textures, 30 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -369,6 +389,14 @@ namespace SousLaVille.EditorTools
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(CoverTexture(index)) == null
                     || AssetDatabase.LoadAssetAtPath<Sprite>(CoverNameTexture(index)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int level = 0; level < ReserveLevelCount; level++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(ReserveTexture(level)) == null)
                 {
                     return false;
                 }
@@ -585,6 +613,49 @@ namespace SousLaVille.EditorTools
 
             Fill(pixels, TileSize, 2, 13, 2, 13, flange);
             Fill(pixels, TileSize, 5, 10, 5, 10, mouth);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// La cuve du bassin d'orage, vue de dessus : un cadre de beton, un interieur
+        /// sombre, et l'eau qui monte du bas. Douze pixels d'interieur, trois par palier :
+        /// les cinq niveaux se distinguent a leur taille reelle. Trois traits clairs sur le
+        /// bord gauche marquent les quarts, comme les graduations d'un verre doseur.
+        /// </summary>
+        private static Color32[] BuildReserve(int level)
+        {
+            Color32 outline = new Color32(0x2E, 0x36, 0x3E, 0xFF);
+            Color32 rim = new Color32(0x7A, 0x88, 0x96, 0xFF);
+            Color32 inside = new Color32(0x1C, 0x21, 0x28, 0xFF);
+            Color32 water = new Color32(0x4F, 0xA9, 0xEF, 0xFF);
+            Color32 waterTop = new Color32(0xA8, 0xDA, 0xFB, 0xFF);
+            Color32 tick = new Color32(0xB0, 0xB8, 0xC0, 0xFF);
+
+            const int innerBottom = 2;
+            const int innerTop = 13;
+            const int pixelsPerLevel = 3;
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            Fill(pixels, TileSize, 0, 15, 0, 15, outline);
+            Fill(pixels, TileSize, 1, 14, 1, 14, rim);
+            Fill(pixels, TileSize, innerBottom, innerTop, innerBottom, innerTop, inside);
+
+            int height = Mathf.Clamp(level, 0, ReserveLevelCount - 1) * pixelsPerLevel;
+            if (height > 0)
+            {
+                int top = innerBottom + height - 1;
+                Fill(pixels, TileSize, innerBottom, innerTop, innerBottom, top, water);
+                Fill(pixels, TileSize, innerBottom, innerTop, top, top, waterTop);
+            }
+
+            // Les graduations passent par-dessus l'eau : elles se lisent cuve vide ou pleine.
+            for (int mark = 1; mark < ReserveLevelCount - 1; mark++)
+            {
+                int y = innerBottom + mark * pixelsPerLevel - 1;
+                Fill(pixels, TileSize, innerBottom, innerBottom + 1, y, y, tick);
+            }
 
             return pixels;
         }

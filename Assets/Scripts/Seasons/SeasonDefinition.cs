@@ -36,6 +36,10 @@ namespace SousLaVille.Seasons
         [Tooltip("Cette saison degele tout ce qui etait gele.")]
         [SerializeField] private bool thaws;
 
+        [Tooltip("Eau de pluie apportee au reseau par la saison, en unites. L'automne en apporte le plus.")]
+        [Min(0)]
+        [SerializeField] private int rainVolume;
+
         public string DisplayName => displayName;
         public Sprite Picto => picto;
         public Color LightColor => lightColor;
@@ -48,5 +52,11 @@ namespace SousLaVille.Seasons
 
         /// <summary>Le printemps degele : rien n'est jamais perdu pour de bon.</summary>
         public bool Thaws => thaws;
+
+        /// <summary>
+        /// La pluie de la saison, en unites d'eau. Une donnee de saison comme le gel et
+        /// l'usure : changer l'equilibre ne demande pas de recompiler.
+        /// </summary>
+        public int RainVolume => rainVolume;
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Network;
 using UnityEngine;
@@ -7,8 +8,13 @@ namespace SousLaVille.Seasons
 {
     /// <summary>
     /// La boucle de l'annee. A chaque Tick de l'horloge : on avance d'une saison, on
-    /// applique ses effets aux segments, puis on resout l'ecoulement. Dans cet ordre, une
-    /// seule fois par saison, jamais par frame.
+    /// applique ses effets aux segments, on resout l'ecoulement, puis on fait le bilan de
+    /// l'eau. Dans cet ordre, une seule fois par saison, jamais par frame.
+    ///
+    /// Le bilan de l'eau est quatre additions par saison, pas une simulation de fluide :
+    /// ce qui arrive, ce que la station traite, ce que le bassin encaisse ou relache, ce
+    /// qui se perd. Il s'accroche juste apres la resolution, parce qu'il a besoin de
+    /// savoir quelles maisons sont desservies et si le bassin a une route.
     ///
     /// C'est le coeur de la rejouabilite : l'hiver gele les tuyaux peu profonds, donc
     /// l'hiver recompense ceux qui ont creuse profond. La regle de profondeur cesse d'etre
@@ -28,6 +34,32 @@ namespace SousLaVille.Seasons
         /// </summary>
         private const int ShallowDepth = 1;
 
+        /// <summary>Ce qu'une maison desservie envoie au reseau par saison : ses eaux usees.</summary>
+        public const int HouseVolumePerSeason = 1;
+
+        /// <summary>
+        /// Le bilan d'une saison, en unites d'eau. Cinq entiers, poses une fois par tick.
+        /// Surplus et marge ne sont jamais tous les deux non nuls : une saison remplit ou
+        /// vide le bassin, jamais les deux.
+        /// </summary>
+        public struct WaterBudget
+        {
+            /// <summary>Maisons desservies plus pluie de la saison.</summary>
+            public int Inflow;
+
+            /// <summary>Ce que la station a traite : au plus sa capacite.</summary>
+            public int Treated;
+
+            /// <summary>Ce que le bassin a encaisse du surplus.</summary>
+            public int Absorbed;
+
+            /// <summary>Ce que le bassin a relache dans la marge de la station.</summary>
+            public int Released;
+
+            /// <summary>Le surplus que rien n'a retenu. Il disparait sans un mot : phase 10.</summary>
+            public int Lost;
+        }
+
         [Tooltip("Les saisons, dans l'ordre du cycle. La premiere est celle du demarrage.")]
         [SerializeField] private SeasonDefinition[] seasons;
 
@@ -38,7 +70,15 @@ namespace SousLaVille.Seasons
         [SerializeField] private FlowSolver flow;
 
         private PipeNetwork network;
+        private WaterReserve reserve;
+        private TreatmentPlant plant;
         private int index;
+
+        /// <summary>Le dernier bilan de l'eau. Sert aux verifications et, en phase 10, au debordement.</summary>
+        public WaterBudget LastBudget { get; private set; }
+
+        /// <summary>Nombre de bilans depuis le demarrage. Doit suivre exactement le nombre de saisons.</summary>
+        public int BudgetCount { get; private set; }
 
         /// <summary>Leve a chaque changement de saison, et une fois au demarrage.</summary>
         public event Action<SeasonDefinition> SeasonChanged;
@@ -113,9 +153,25 @@ namespace SousLaVille.Seasons
         /// </summary>
         private void Update()
         {
+            ResolveSceneObjects();
+        }
+
+        /// <summary>Retente tant que ca manque, puis plus jamais. Le bassin et la station vivent avec le reseau.</summary>
+        private void ResolveSceneObjects()
+        {
             if (network == null)
             {
                 network = FindAnyObjectByType<PipeNetwork>(FindObjectsInactive.Include);
+            }
+
+            if (reserve == null)
+            {
+                reserve = FindAnyObjectByType<WaterReserve>(FindObjectsInactive.Include);
+            }
+
+            if (plant == null)
+            {
+                plant = FindAnyObjectByType<TreatmentPlant>(FindObjectsInactive.Include);
             }
         }
 
@@ -154,15 +210,13 @@ namespace SousLaVille.Seasons
         }
 
         /// <summary>
-        /// Les effets de la saison sur les segments, puis une resolution. Le solveur tourne
-        /// donc quatre fois par cycle, plus une fois par action du joueur.
+        /// Les effets de la saison sur les segments, une resolution, puis le bilan de
+        /// l'eau. Le solveur tourne donc quatre fois par cycle, plus une fois par action du
+        /// joueur ; le bilan, lui, ne tourne qu'ici.
         /// </summary>
         private void ApplySeason(SeasonDefinition season)
         {
-            if (network == null)
-            {
-                network = FindAnyObjectByType<PipeNetwork>(FindObjectsInactive.Include);
-            }
+            ResolveSceneObjects();
 
             if (network != null && season != null)
             {
@@ -176,6 +230,49 @@ namespace SousLaVille.Seasons
             {
                 flow.Solve();
             }
+
+            ApplyWaterBudget(season);
+        }
+
+        /// <summary>
+        /// Quatre additions, une fois par saison, juste apres la resolution :
+        ///
+        ///   arrivant = maisons desservies + pluie
+        ///   traite   = min(arrivant, capacite de la station)
+        ///   surplus  = arrivant - traite
+        ///   marge    = capacite - traite
+        ///
+        /// Si le bassin a une route valide jusqu'a la station, il absorbe le surplus dans
+        /// la limite de sa place, puis relache dans la marge ce qu'il retient. Sinon, ou
+        /// s'il est plein, le surplus est perdu, sans un mot : le rendre visible est le
+        /// sujet entier de la phase 10.
+        /// </summary>
+        private void ApplyWaterBudget(SeasonDefinition season)
+        {
+            WaterBudget budget = new WaterBudget();
+
+            int served = flow != null ? flow.ServedCount : 0;
+            int rain = season != null ? season.RainVolume : 0;
+            int capacity = plant != null ? plant.CapacityPerSeason : 0;
+
+            budget.Inflow = served * HouseVolumePerSeason + rain;
+            budget.Treated = Mathf.Min(budget.Inflow, capacity);
+
+            int surplus = budget.Inflow - budget.Treated;
+            int margin = capacity - budget.Treated;
+
+            // Le bassin obeit exactement a la regle du puzzle : il ne sert que si le solveur
+            // lui a trouve une route, avec les memes exigences que pour une maison.
+            if (reserve != null && flow != null && flow.IsReserveConnectedAt(reserve.Cell))
+            {
+                budget.Absorbed = reserve.Absorb(surplus);
+                budget.Released = reserve.Release(margin);
+            }
+
+            budget.Lost = surplus - budget.Absorbed;
+
+            LastBudget = budget;
+            BudgetCount++;
         }
 
         private static void ApplyToSegment(SeasonDefinition season, PipeSegment segment)

@@ -87,6 +87,9 @@ namespace SousLaVille.EditorTools
         ///
         /// L'ete ne fait rien : une saison de repit dans le cycle, pour construire tranquille.
         ///
+        /// La pluie, phase 8 : 2 / 0 / 8 / 1. L'automne apporte plus que la station ne traite,
+        /// c'est la saison qui met le reseau a l'epreuve et fait exister le bassin d'orage.
+        ///
         /// Les couleurs de lumiere restent claires : une saison ne doit jamais rendre l'ecran
         /// sombre ou illisible.
         /// </summary>
@@ -94,24 +97,24 @@ namespace SousLaVille.EditorTools
         {
             WriteSeason(SeasonSpring, "Printemps", PlaceholderArtGenerator.PictoSpring,
                 new Color(0.82f, 1f, 0.80f), freezeMaxDepth: 0, clogChance: 0f,
-                wearMultiplier: 1f, thaws: true);
+                wearMultiplier: 1f, thaws: true, rainVolume: 2);
 
             WriteSeason(SeasonSummer, "Été", PlaceholderArtGenerator.PictoSummer,
                 new Color(1f, 0.95f, 0.72f), freezeMaxDepth: 0, clogChance: 0f,
-                wearMultiplier: 0.5f, thaws: false);
+                wearMultiplier: 0.5f, thaws: false, rainVolume: 0);
 
             WriteSeason(SeasonAutumn, "Automne", PlaceholderArtGenerator.PictoAutumn,
                 new Color(1f, 0.82f, 0.60f), freezeMaxDepth: 0, clogChance: 0.25f,
-                wearMultiplier: 1f, thaws: false);
+                wearMultiplier: 1f, thaws: false, rainVolume: 8);
 
             WriteSeason(SeasonWinter, "Hiver", PlaceholderArtGenerator.PictoWinter,
                 new Color(0.78f, 0.88f, 1f), freezeMaxDepth: 1, clogChance: 0f,
-                wearMultiplier: 1.5f, thaws: false);
+                wearMultiplier: 1.5f, thaws: false, rainVolume: 1);
         }
 
         private static void WriteSeason(string assetPath, string displayName, string pictoPath,
             Color lightColor, int freezeMaxDepth, float clogChance, float wearMultiplier,
-            bool thaws)
+            bool thaws, int rainVolume)
         {
             SerializedObject serialized =
                 new SerializedObject(LoadOrCreate<SeasonDefinition>(assetPath));
@@ -124,6 +127,7 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("clogChance").floatValue = clogChance;
             serialized.FindProperty("wearMultiplier").floatValue = wearMultiplier;
             serialized.FindProperty("thaws").boolValue = thaws;
+            serialized.FindProperty("rainVolume").intValue = rainVolume;
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }

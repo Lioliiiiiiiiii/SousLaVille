@@ -8,6 +8,10 @@ namespace SousLaVille.Network
     /// Le parcours de l'eau, tel que CLAUDE.md le decrit : pour chaque maison, un parcours en
     /// largeur jusqu'a la station. Aucune simulation de fluide, un graphe et une regle.
     ///
+    /// Depuis la phase 8, le bassin d'orage est trace de la meme facon, sur un noeud de
+    /// plus : il obeit a la regle de profondeur, au gel, aux bouchons et a l'usure sans une
+    /// ligne de code particuliere. C'est le meme parcours.
+    ///
     /// Une arete n'est franchissable que si la profondeur ne diminue pas dans le sens de
     /// l'ecoulement, si le segment tient encore, s'il n'est pas gele et s'il n'est pas bouche.
     /// La regle de profondeur croissante remplace toute gravite.
@@ -32,6 +36,8 @@ namespace SousLaVille.Network
         private readonly HashSet<PipeSegment> carrying = new HashSet<PipeSegment>();
         private readonly HashSet<Vector2Int> served = new HashSet<Vector2Int>();
         private readonly List<PipeNode> houses = new List<PipeNode>();
+        private readonly List<PipeNode> reserves = new List<PipeNode>();
+        private readonly HashSet<Vector2Int> connectedReserves = new HashSet<Vector2Int>();
 
         /// <summary>Leve apres chaque resolution. Les vues s'y accrochent.</summary>
         public event Action Solved;
@@ -45,6 +51,15 @@ namespace SousLaVille.Network
         public int HouseCount => houses.Count;
 
         public bool IsServed(Vector2Int houseCell) => served.Contains(houseCell);
+
+        /// <summary>Nombre de bassins que le plan du monde impose. Un seul pour l'instant.</summary>
+        public int ReserveCount => reserves.Count;
+
+        /// <summary>Vrai si au moins un bassin a une route valide jusqu'a la station.</summary>
+        public bool IsReserveConnected => connectedReserves.Count > 0;
+
+        /// <summary>Vrai si le bassin de cette case a une route valide jusqu'a la station.</summary>
+        public bool IsReserveConnectedAt(Vector2Int reserveCell) => connectedReserves.Contains(reserveCell);
 
         public bool IsCarrying(PipeSegment segment) => carrying.Contains(segment);
 
@@ -108,6 +123,8 @@ namespace SousLaVille.Network
             carrying.Clear();
             served.Clear();
             houses.Clear();
+            reserves.Clear();
+            connectedReserves.Clear();
 
             if (network == null)
             {
@@ -120,6 +137,10 @@ namespace SousLaVille.Network
                 {
                     houses.Add(node);
                 }
+                else if (node.Type == NodeType.ReserveInlet)
+                {
+                    reserves.Add(node);
+                }
             }
 
             foreach (PipeNode house in houses)
@@ -130,20 +151,31 @@ namespace SousLaVille.Network
                 }
             }
 
+            // Le bassin est une source comme une autre : meme parcours, memes regles. Sa
+            // route porte la teinte de l'eau comme celle d'une maison, c'est ce qui dit au
+            // joueur qu'il est relie.
+            foreach (PipeNode reserve in reserves)
+            {
+                if (TraceToPlant(reserve))
+                {
+                    connectedReserves.Add(reserve.GridPos);
+                }
+            }
+
             SolveCount++;
             Solved?.Invoke();
         }
 
         /// <summary>
-        /// Parcours en largeur depuis une maison. Si la station est atteinte, on remonte le
-        /// chemin et on marque ses segments comme porteurs.
+        /// Parcours en largeur depuis une source, maison ou bassin. Si la station est
+        /// atteinte, on remonte le chemin et on marque ses segments comme porteurs.
         /// </summary>
-        private bool TraceToPlant(PipeNode house)
+        private bool TraceToPlant(PipeNode source)
         {
             Dictionary<Vector2Int, PipeSegment> cameFrom = new Dictionary<Vector2Int, PipeSegment>();
-            HashSet<Vector2Int> visited = new HashSet<Vector2Int> { house.GridPos };
+            HashSet<Vector2Int> visited = new HashSet<Vector2Int> { source.GridPos };
             Queue<PipeNode> queue = new Queue<PipeNode>();
-            queue.Enqueue(house);
+            queue.Enqueue(source);
 
             while (queue.Count > 0)
             {
@@ -151,7 +183,7 @@ namespace SousLaVille.Network
 
                 if (current.Type == NodeType.PlantInlet)
                 {
-                    MarkPath(cameFrom, current, house);
+                    MarkPath(cameFrom, current, source);
                     return true;
                 }
 
@@ -184,11 +216,11 @@ namespace SousLaVille.Network
         }
 
         private void MarkPath(Dictionary<Vector2Int, PipeSegment> cameFrom, PipeNode plant,
-            PipeNode house)
+            PipeNode source)
         {
             PipeNode current = plant;
 
-            while (current != house)
+            while (current != source)
             {
                 PipeSegment segment;
                 if (!cameFrom.TryGetValue(current.GridPos, out segment))

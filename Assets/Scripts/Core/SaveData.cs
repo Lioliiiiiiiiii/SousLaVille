@@ -100,5 +100,12 @@ namespace SousLaVille.Core
         /// CurrentVersion reste a 1.
         /// </summary>
         public List<SaveCover> covers = new List<SaveCover>();
+
+        /// <summary>
+        /// Le niveau du bassin d'orage, en unites. Champ ajoute en phase 8, meme regle que
+        /// covers : une partie ecrite avant lui se relit avec un bassin vide, et
+        /// CurrentVersion reste a 1.
+        /// </summary>
+        public int reserveLevel;
     }
 }

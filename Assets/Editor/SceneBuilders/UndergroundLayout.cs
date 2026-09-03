@@ -23,8 +23,9 @@ namespace SousLaVille.EditorTools
     ///   #  terre pleine (bloquant)   .  galerie creusee
     ///   E  echelle vers la surface   T  arrivee sous la station
     ///   A  alcove d'une maison, deja creusee
+    ///   R  le bassin d'orage, au centre d'une chambre de trois sur trois deja creusee
     ///
-    /// E et T sont des marqueurs : le builder peint du sol de galerie dessous et pose un
+    /// E, T et R sont des marqueurs : le builder peint du sol de galerie dessous et pose un
     /// GameObject par-dessus.
     /// </summary>
     public static class UndergroundLayout
@@ -37,6 +38,10 @@ namespace SousLaVille.EditorTools
         public const char Ladder = 'E';
         public const char PlantOutlet = 'T';
         public const char HouseOutlet = 'A';
+        public const char Reserve = 'R';
+
+        /// <summary>La chambre du bassin : trois cases sur trois autour du marqueur.</summary>
+        public const int ReserveChamberRadius = 1;
 
         /// <summary>Profondeur maximale de la carte. La station y est, et elle seule.</summary>
         public const int MaxDepth = 3;
@@ -59,9 +64,9 @@ namespace SousLaVille.EditorTools
             "########.####A#############A############",
             "########.###############################",
             "########.###############################",
-            "########.###############################",
-            "########.###############################",
-            "########.###############################",
+            "########....############################",
+            "########..R.############################",
+            "########....############################",
             "########.##########...##################",
             "########............E.#######A##########",
             "###################...##################",
@@ -291,6 +296,8 @@ namespace SousLaVille.EditorTools
                 }
             }
 
+            ok &= ValidateReserve();
+
             Vector2Int plant = VillageLayout.FindSingle(VillageLayout.PlantInlet);
             if (At(plant.x, plant.y) != PlantOutlet)
             {
@@ -304,6 +311,58 @@ namespace SousLaVille.EditorTools
             {
                 Debug.LogError($"[Sous la Ville] La station en {plant} est à la profondeur " +
                                $"{DepthAt(plant.x, plant.y)}, il lui faut {MaxDepth}.");
+                ok = false;
+            }
+
+            return ok;
+        }
+
+        /// <summary>
+        /// Le bassin d'orage, phase 8 : un seul, au centre d'une chambre deja creusee,
+        /// entierement sous de l'herbe, ni maison, ni atelier, ni station au-dessus. Il
+        /// doit aussi pouvoir descendre vers la station, donc ne pas etre deja au fond.
+        /// </summary>
+        private static bool ValidateReserve()
+        {
+            List<Vector2Int> reserves = FindAll(Reserve);
+
+            if (reserves.Count != 1)
+            {
+                Debug.LogError($"[Sous la Ville] {reserves.Count} bassin(s) au sous-sol, il en faut " +
+                               "exactement un.");
+                return false;
+            }
+
+            Vector2Int reserve = reserves[0];
+            bool ok = true;
+
+            for (int dy = -ReserveChamberRadius; dy <= ReserveChamberRadius; dy++)
+            {
+                for (int dx = -ReserveChamberRadius; dx <= ReserveChamberRadius; dx++)
+                {
+                    int x = reserve.x + dx;
+                    int y = reserve.y + dy;
+
+                    if (!IsOpen(x, y))
+                    {
+                        Debug.LogError($"[Sous la Ville] La chambre du bassin n'est pas creusée en " +
+                                       $"({x}, {y}).");
+                        ok = false;
+                    }
+
+                    if (VillageLayout.At(x, y) != VillageLayout.Grass)
+                    {
+                        Debug.LogError($"[Sous la Ville] Le bassin en {reserve} n'est pas sous de " +
+                                       $"l'herbe : « {VillageLayout.At(x, y)} » en ({x}, {y}).");
+                        ok = false;
+                    }
+                }
+            }
+
+            if (DepthAt(reserve.x, reserve.y) >= MaxDepth)
+            {
+                Debug.LogError($"[Sous la Ville] Le bassin en {reserve} est déjà au fond : il ne " +
+                               "pourrait plus descendre vers la station.");
                 ok = false;
             }
 

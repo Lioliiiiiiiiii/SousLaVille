@@ -4,13 +4,19 @@ using UnityEngine;
 namespace SousLaVille.Network
 {
     /// <summary>Ce qu'un noeud represente dans le reseau.</summary>
+    /// <remarks>
+    /// ReserveInlet est ajoute A LA FIN, jamais insere : les scenes serialisent l'enum par
+    /// son rang, et inserer decalerait les noeuds existants. Seul ecart au modele de
+    /// CLAUDE.md, accepte explicitement le 3 septembre 2026.
+    /// </remarks>
     public enum NodeType
     {
         Junction,
         HouseConnection,
         Manhole,
         PlantInlet,
-        FountainInlet
+        FountainInlet,
+        ReserveInlet
     }
 
     /// <summary>
@@ -45,8 +51,8 @@ namespace SousLaVille.Network
         public NodeType Type => type;
 
         /// <summary>
-        /// Un noeud pose par le monde, station ou maison, ne s'enleve pas. Seules les
-        /// jonctions posees par le joueur se defont.
+        /// Un noeud pose par le monde, station, maison ou bassin, ne s'enleve pas. Seules
+        /// les jonctions posees par le joueur se defont.
         /// </summary>
         public bool IsPermanent => type != NodeType.Junction;
     }
