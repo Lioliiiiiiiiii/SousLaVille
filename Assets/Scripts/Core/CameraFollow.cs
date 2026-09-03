@@ -33,7 +33,10 @@ namespace SousLaVille.Core
                 return;
             }
 
-            Bounds bounds = map.WorldBounds;
+            // Les bornes autour de la cible, et non celles de la carte : une carte decoupee
+            // en pieces closes, comme celle des interieurs, borne la vue a la piece ou se
+            // tient le personnage. Sur la surface et sous terre, c'est la carte entiere.
+            Bounds bounds = map.WorldBoundsAround(map.WorldToCell(target.position));
 
             transform.position = new Vector3(
                 ClampAxis(target.position.x, bounds.min.x, bounds.max.x, halfView.x),

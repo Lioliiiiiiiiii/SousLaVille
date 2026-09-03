@@ -123,14 +123,21 @@ namespace SousLaVille.Core
                 network = FindAnyObjectByType<PipeNetwork>(FindObjectsInactive.Include);
             }
 
-            if (map == null || network == null)
+            // PHASE 9A : l'atelier a demenage de la scene Surface a la scene Interiors, que
+            // LoadGameplayScenesAsync charge APRES l'Underground. Le raisonnement d'avant,
+            // « si le reseau repond, l'atelier existe deja », etait vrai et ne l'est plus :
+            // il laissait factory a null, donc aucune plaque sauvegardee ni relue, en
+            // silence. Une garde qui repose sur l'ordre de chargement est une garde qui
+            // ment des qu'une scene change de rang. On retente donc, comme pour les autres.
+            if (factory == null)
+            {
+                factory = FindAnyObjectByType<ManholeFactory>(FindObjectsInactive.Include);
+            }
+
+            if (map == null || network == null || factory == null)
             {
                 return;
             }
-
-            // L'atelier vit dans la scene Surface, chargee AVANT l'Underground par
-            // LoadGameplayScenesAsync : si le reseau repond, l'atelier existe deja.
-            factory = FindAnyObjectByType<ManholeFactory>(FindObjectsInactive.Include);
 
             // Le bassin vit dans la meme scene que le reseau : s'il repond, le bassin est la.
             reserve = FindAnyObjectByType<WaterReserve>(FindObjectsInactive.Include);

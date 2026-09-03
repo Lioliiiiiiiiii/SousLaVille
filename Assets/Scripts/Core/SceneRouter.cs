@@ -6,15 +6,27 @@ using UnityEngine.SceneManagement;
 namespace SousLaVille.Core
 {
     /// <summary>
-    /// Charge les scenes de jeu en additif et bascule entre la surface et le sous-sol.
-    /// Les deux couches restent chargees en memoire : la bascule est instantanee et
-    /// l'etat du reseau souterrain n'est jamais recharge.
+    /// Charge les scenes de jeu en additif et bascule d'une couche a l'autre : la surface,
+    /// le sous-sol, et depuis la phase 9a les interieurs des batiments.
+    ///
+    /// Les trois couches restent chargees en memoire : la bascule est instantanee et l'etat
+    /// du reseau souterrain n'est jamais recharge. Aucune couche n'est citee en dur ici :
+    /// ajouter une couche, c'est ajouter une valeur a GameLayer et une scene.
     /// </summary>
     public class SceneRouter : MonoBehaviour
     {
         public const string PersistentSceneName = "Persistent";
         public const string SurfaceSceneName = "Surface";
         public const string UndergroundSceneName = "Underground";
+        public const string InteriorsSceneName = "Interiors";
+
+        /// <summary>Les couches de jeu, dans l'ordre de chargement.</summary>
+        public static readonly GameLayer[] GameLayers =
+        {
+            GameLayer.Surface,
+            GameLayer.Underground,
+            GameLayer.Interior
+        };
 
         [Tooltip("Fondu au noir des transitions. Cable par PersistentSceneBuilder.")]
         [SerializeField] private ScreenFader fader;
@@ -31,11 +43,16 @@ namespace SousLaVille.Core
         /// <summary>Nom de la scene qui porte une couche donnee.</summary>
         public static string SceneNameFor(GameLayer layer)
         {
-            return layer == GameLayer.Underground ? UndergroundSceneName : SurfaceSceneName;
+            switch (layer)
+            {
+                case GameLayer.Underground: return UndergroundSceneName;
+                case GameLayer.Interior: return InteriorsSceneName;
+                default: return SurfaceSceneName;
+            }
         }
 
         /// <summary>
-        /// Charge Surface puis Underground en additif, et active la surface.
+        /// Charge les trois couches en additif, et active la surface.
         /// Appele une seule fois, au demarrage, par le Bootstrapper.
         /// </summary>
         public async Awaitable LoadGameplayScenesAsync()
@@ -48,8 +65,11 @@ namespace SousLaVille.Core
             IsBusy = true;
             try
             {
-                await LoadSceneIfNeededAsync(SurfaceSceneName);
-                await LoadSceneIfNeededAsync(UndergroundSceneName);
+                foreach (GameLayer layer in GameLayers)
+                {
+                    await LoadSceneIfNeededAsync(SceneNameFor(layer));
+                }
+
                 SetActiveLayer(GameLayer.Surface);
             }
             finally
@@ -99,8 +119,10 @@ namespace SousLaVille.Core
         /// </summary>
         public void SetActiveLayer(GameLayer layer)
         {
-            SetLayerEnabled(GameLayer.Surface, layer == GameLayer.Surface);
-            SetLayerEnabled(GameLayer.Underground, layer == GameLayer.Underground);
+            foreach (GameLayer candidate in GameLayers)
+            {
+                SetLayerEnabled(candidate, candidate == layer);
+            }
 
             Scene scene = SceneManager.GetSceneByName(SceneNameFor(layer));
             if (scene.isLoaded)
@@ -153,7 +175,9 @@ namespace SousLaVille.Core
 
         /// <summary>
         /// Allume ou eteint tous les objets racines d'une couche.
-        /// Indispensable : deux Light2D globales allumees en meme temps cumuleraient leur eclairage.
+        /// Indispensable : deux Light2D globales allumees en meme temps cumuleraient leur
+        /// eclairage. C'est aussi ce qui garde les interieurs a l'abri des saisons : la
+        /// SeasonAmbience de la surface est eteinte pendant qu'on est dans un batiment.
         /// </summary>
         private static void SetLayerEnabled(GameLayer layer, bool isEnabled)
         {

@@ -16,7 +16,8 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 6 | Sauvegarde | Terminée |
 | 7 | La plaque gravable | Terminée |
 | 8 | La réserve d'eau | Terminée |
-| 9 | Les bâtiments et l'usine à tuyaux | Plan validé sur le design |
+| 9a | Les bâtiments | Terminée |
+| 9b | L'usine à tuyaux | À faire |
 | 10 | Les fuites | À faire |
 | 11 | Le parc | À faire |
 | 12 | L'usine à panneaux | À faire |
@@ -675,24 +676,239 @@ jeu figé à l'image 1 : Boot ne charge même pas Persistent, et un script qui c
 répond « pas encore ». `Application.runInBackground = true` posé à chaud suffit, mais il faut
 le reposer à chaque nouvelle session de play, il ne survit pas à l'arrêt.
 
-## Prochaine étape, phase 9
+## Phase 9a, ce qui est fait
 
-L'usine à tuyaux, `PipeFactory`. Ce que la phase 8 laisse en place :
+Le patron des bâtiments : une façade et une porte dans le village, une pièce close derrière,
+un personnage qui dit ce qu'on peut y faire. L'atelier des plaques de la phase 7 est refait
+dessus. **L'usine à tuyaux n'est pas touchée** : ni type, ni motif, ni tuyau en main.
 
-- **`PipeType.FrostResistance` a enfin un enjeu** : la route du bassin ne gèle jamais, mais
-  celles des trois maisons peu profondes gèlent chaque hiver au tick. Un tuyau isolant change
-  le bilan de l'hiver.
-- **`SeasonSystem.LastBudget.Lost`** dit combien d'eau disparaît par saison : c'est l'entrée
-  de la phase 10, le débordement visible.
-- **`TreatmentPlant` est un objet**, sur `PlantOutlet`, prêt à porter d'autres propriétés.
-- **Le patron du nœud permanent** sert trois fois : station, maisons, bassin.
+- **Une troisième couche, `GameLayer.Interior`, et une cinquième scène, `Interiors`.** Écart
+  explicite aux quatre scènes de CLAUDE.md, accepté le 3 septembre 2026. `Interior` est ajouté
+  **à la fin** de l'enum : `ManholePortal.destinationLayer` est sérialisé par son rang, et
+  insérer aurait décalé les huit portails de la phase 2.
+- `SceneRouter` ne cite plus aucune couche en dur : `SceneNameFor`, `SetActiveLayer` et le
+  chargement initial balaient `GameLayers`. Ajouter une couche, c'est ajouter une valeur et
+  une scène.
+- **Une famille `Interior_*` de cinq Sorting Layers**, dix deviennent quinze, avec sa propre
+  `Light2D` globale cantonnée à eux. `GameSortingLayers.Families` remplace les deux tableaux
+  cités un à un ; `SortingLayerSetup` les balaie.
+- `Assets/Scripts/World/InteriorMap.cs` : la carte des intérieurs. Une seule carte porte
+  toutes les pièces, chacune close par ses murs. **Hors des pièces, rien n'est peint et rien
+  n'est praticable** : peindre six cents murs qu'on ne verra jamais aurait été du décor pour
+  personne.
+- **La caméra se borne à la pièce, pas à la carte.** `GridMap.WorldBoundsAround(cell)` est
+  virtuelle et rend `WorldBounds` par défaut ; `InteriorMap` la surcharge. `CameraFollow`
+  demande les bornes autour de sa cible : deux lignes, et la notion de pièce ne sort pas
+  d'`InteriorMap`.
+- `Assets/Scripts/Buildings/Villager.cs` : le personnage. Registre statique comme
+  `ManholePortal`, parce que l'interacteur le cherche à chaque image.
+- `Assets/Scripts/UI/SpeechBox.cs` : ce qu'il dit, une phrase à la fois. Vit dans le HUD,
+  **éteint tant que personne ne parle**, comme le voile du fondu depuis la phase 2.
+- `PlayerInteractor` : trois actions de plus, `Enter`, `Exit`, `Talk`. Le passage et la plaque
+  se prennent sur la case **occupée**, le personnage sur la case **regardée** : on ne se tient
+  pas sur quelqu'un.
+- `PixelFont` gagne **É, È, À, Ê et l'apostrophe**. `Height` devient `HeightOf(word)` et ne
+  réserve les deux rangées d'accent **que si le mot en porte un**.
+- `PortalBuilder` accepte une case d'arrivée : la carte des intérieurs n'a aucune raison
+  d'être alignée sur le village.
+- `VillageLayout` : la cour pavée de seize cases sur six disparaît. À sa place la façade de
+  l'atelier, `F`, en `x ∈ [22, 25]`, `y ∈ [26, 27]`, et sa porte, `D`, en **(23, 25)**, sur un
+  seuil de chemin.
+- `InteriorsLayout` et `InteriorsSceneBuilder` : le plan des pièces et son générateur.
+- **`ManholeFactory` déménage** de la scène Surface à la scène Interiors, sans changer une
+  ligne de son contenu ni la sauvegarde des plaques.
+- `PlaceholderArtGenerator` : façade, mur, porte, artisan, `picto_enter`, `picto_exit`,
+  `picto_talk`, et les trois phrases. **81 textures, 32 tuiles.**
+- **Règle 9 vérifiée, pas supposée** : `SousLaVille.Editor.asmdef` portait déjà
+  `Unity.RenderPipelines.Universal.2D.Runtime`, dont `InteriorsSceneBuilder` a besoin pour la
+  `Light2D`. Aucun ajout.
+
+### Le plan des intérieurs
+
+Une différence de forme avec les deux autres plans, et une seule : ce n'est pas une grande
+grille de trente lignes, mais **une grille par pièce**, posée dans un créneau. Ajouter un
+bâtiment, c'est ajouter un bloc et un créneau, sans rouvrir les lignes des voisins.
+
+La carte fait 40x30 comme les autres couches, découpée en six créneaux de 20 sur 10. **Un
+créneau est exactement la vue de la caméra**, 320x180 à PPU 16 : la pièce tient à l'écran d'un
+seul tenant, rien ne défile. L'atelier prend le créneau en haut à gauche ; l'usine à tuyaux
+prendra celui de droite en 9b, l'usine à panneaux un autre en phase 12.
+
+### Ce que dit l'artisan
+
+Trois phrases, cinq mots ou moins, relues à voix haute pour six ans. En majuscules, la seule
+casse que `PixelFont` connaisse.
+
+« CHOISIS UNE PLAQUE » — « PUIS CHOISIS UNE BOUCHE » — « TU PEUX EN CHANGER »
+
+Les deux premières sont les deux gestes, dans l'ordre. La troisième dit que le choix se refait,
+ce qui est la promesse du jeu.
+
+## Phase 9a, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP émis depuis `Library/PackageCache`.
+- Menus dans l'ordre, éditeur hors play : Sorting Layers, art placeholder, ScriptableObjects,
+  scènes. Console propre, **cinq scènes** régénérées.
+- **Les huit noms de villes de la phase 7 sont inchangés octet pour octet**, `git status` à
+  l'appui : `HeightOf` ne réserve les rangées d'accent que pour les mots accentués. Le seul PNG
+  existant modifié est `village_map.png`, et il devait l'être.
+- Police relue sur planche à taille réelle : É, È, À, Ê et l'apostrophe se lisent. Les trois
+  phrases sortent à 109, 139 et 109 pixels de large, **non tronquées** : `maxTextureSize` passe
+  à 256 pour elles, le plafond de 64 de la phase 7 les aurait réduites en silence.
+- **Plan du village relu par script** : façade aux huit cases attendues, porte en (23, 25), et
+  **la station en (6, 25), les cinq maisons, les trois bouches en (33, 5), (20, 10), (8, 19) et
+  le départ en (14, 15) exactement où ils étaient**. Cour de l'atelier disparue. Bornes du
+  village inchangées, centre (20, 15) d'extension (20, 15). 192 cases bloquantes, les 184 de la
+  phase 4 plus les huit de la façade.
+- Sous-sol relu par script : **87 cases praticables**, le compte de la phase 8, aucun renderer
+  hors de la famille `Underground_*`.
+- Scène Interiors relue par script : une pièce en (0, 20, 20, 10), 200 tuiles de sol, 55 murs,
+  **145 cases praticables**, huit plaques exposées et leurs huit noms, portail apparié
+  `Interior(9, 20) ↔ Surface(23, 25)`, **aucun renderer hors de la famille `Interior_*`**, une
+  seule lumière globale sur cinq layers, et **aucune `SeasonAmbience`**.
+- Cinq scènes au build dans l'ordre, seize Sorting Layers avec `Default`.
+- Play depuis Boot, **par injection clavier réelle**, `Application.isFocused` vérifié :
+  - marche réelle de (23, 21) à (23, 25), **arrêt net devant la façade**, picto `picto_enter` ;
+  - **Espace : fondu, intérieur**, joueur en (9, 20), carte `InteriorMap`, sprite passé sur
+    `Interior_Entities`, **caméra bornée à la pièce en (10, 25)** : la pièce voisine ne se voit
+    pas ;
+  - marche vers l'artisan, **arrêt net contre lui**, picto `picto_talk`. Il bloque **des deux
+    côtés**, et on lui parle aussi bien par le haut que par le bas ;
+  - **Espace : il parle.** Ligne 0, puis 1, puis 2, chacune à sa taille exacte en pixels,
+    109x9, 139x9, 109x9. Le personnage joueur s'éteint le temps du dialogue ;
+  - **le quatrième Espace referme, et ne rouvre pas** alors qu'on regarde toujours l'artisan.
+    La double garde tient ;
+  - **une plaque se choisit depuis l'intérieur exactement comme en phase 7** : le plan s'ouvre
+    avec NEW YORK en main, Espace pose, le plan se referme **et ne rouvre pas** ;
+  - **Espace sur la porte ramène en (23, 25), devant la façade**, sprite revenu sur
+    `Surface_Entities`, caméra rebornée au village. **La bouche (33, 5) affiche la plaque posée
+    depuis l'intérieur** : c'est `OnEnable` et `FindObjectsInactive.Include` qui la sauvent ;
+  - **les saisons passent pendant qu'on est dans le bâtiment** — printemps, été, automne — et
+    **la lumière de l'intérieur reste blanche pure**. Aucune ligne de code : c'est l'extinction
+    de la couche Surface qui suffit. Le picto de saison du HUD suit ;
+  - en ressortant, **le village reprend exactement la couleur de la saison en cours**,
+    `(0,82 ; 1,00 ; 0,80)` au printemps ;
+  - **la marche, la descente, le creusement et la pose sont inchangés** : Espace sur la bouche
+    (20, 10) descend, curseur allumé sous terre, `picto_dig` puis `picto_pipe` puis
+    `picto_remove`, 80 nœuds deviennent 81, jonction à la profondeur 1 ;
+  - **sauvegarde** : les trois plaques écrites, 428 octets, `CurrentVersion` toujours à 1,
+    aucun `.tmp` ;
+  - **quitter et relancer** : les trois plaques retrouvées et affichées, et **le joueur repart
+    au départ du village**, jamais dans un bâtiment ;
+  - **une partie de la phase 8 se relit sans une erreur** : 80 nœuds, 80 segments, automne,
+    bassin à 7, 5/5 desservies. Les chiffres exacts du journal de la phase 8 ;
+  - console **entièrement vide, tous types confondus**, sur la session complète.
+- Captures : l'intérieur avec l'artisan qui parle, l'artisan seul, la façade et sa porte vues
+  du village. Comme aux phases précédentes, elles ne sont pas versionnées.
+- `git diff ProjectSettings/` : **deux fichiers, et ce sont les deux mécanismes voulus**.
+  `TagManager` gagne les cinq Sorting Layers `Interior_*`, tous à identifiant positif ;
+  `EditorBuildSettings` gagne la scène Interiors. **Aucun `runInBackground`, aucun réglage
+  d'input, aucune durée de saison** : ils n'ont existé qu'à chaud.
+
+### Le bug trouvé au test : la phrase deux fois trop large
+
+`Image.SetNativeSize` divise la largeur du sprite par ses pixels par unité, 16 ici, puis la
+multiplie par les 100 pixels par unité du Canvas. Une phrase de 109 pixels sortait à **681**,
+soit deux fois la largeur de l'écran, et débordait de toutes parts.
+
+Le reste du HUD pose ses tailles en pixels explicites depuis la phase 2, 32x32 pour les pictos,
+16x16 pour les gouttes. La boîte de dialogue fait pareil : elle lit le rectangle du sprite.
+**`SetNativeSize` n'a rien à faire dans un HUD dont les sprites sont à PPU 16.**
+
+### Le bug trouvé au test : la sauvegarde des plaques, muette
+
+`SaveSystem.TryLoad` résolvait l'atelier juste après le réseau, sur ce raisonnement écrit en
+phase 7 : « l'atelier vit dans la scène Surface, chargée AVANT l'Underground : si le réseau
+répond, l'atelier existe déjà. » C'était vrai. Le déménagement de l'atelier dans `Interiors`,
+que `LoadGameplayScenesAsync` charge **après** l'Underground, l'a rendu faux : `factory` restait
+à `null`, et **aucune plaque n'était ni écrite ni relue, sans un message**. Le fichier sortait
+avec `"covers": []` alors que les bouches portaient bien leurs plaques à l'écran.
+
+L'atelier rejoint donc la garde, et se retente comme les autres. **Une garde qui repose sur
+l'ordre de chargement des scènes est une garde qui ment le jour où une scène change de rang.**
+C'est la troisième fois que la résolution paresseuse entre scènes coûte quelque chose, après la
+phase 1 et la phase 4 ; c'est la première fois qu'elle échoue en silence.
+
+### Le défaut laissé : le picto « parler » couvre l'artisan
+
+Le picto d'action se pose une unité et quart au-dessus de la tête du joueur, depuis la phase 2.
+Quand on parle à quelqu'un **en le regardant par en dessous**, cette place tombe exactement sur
+sa tête : l'artisan disparaît derrière un carré blanc de seize pixels.
+
+Vu par le haut ou de côté, il n'y a aucun recouvrement, et le personnage bloque des quatre
+côtés, donc on peut toujours l'aborder autrement. Le défaut est cosmétique et réversible en dix
+lignes. **Non tranché, voir les questions ouvertes.**
+
+## Prochaine étape, phase 9b
+
+L'usine à tuyaux, sur le patron prouvé par 9a. Ce que 9a laisse en place :
+
+- **Le patron du bâtiment** : façade et porte au plan du village, pièce dans un créneau libre,
+  personnage et phrases. Ajouter l'usine, c'est ajouter un bloc à `InteriorsLayout`, une façade
+  et une porte à `VillageLayout`, et des phrases au générateur d'art.
+- **Le patron accepte trois personnages** dans une pièce : `Villager` est un composant par
+  personnage, avec son registre et ses phrases, ce dont l'usine à panneaux aura besoin en
+  phase 12.
+- **La police a ses accents** : `ISOLÉ`, `GRILLÉ` et `ARRÊTE` sont déjà relus sur planche.
+- Ce que la phase 8 laissait, toujours vrai : **`PipeType.FrostResistance` a enfin un enjeu**,
+  **`SeasonSystem.LastBudget.Lost`** est l'entrée de la phase 10, **`TreatmentPlant` est un
+  objet**, et **le patron du nœud permanent** sert trois fois.
 
 ## Décisions prises
 
-### Phase 9, design validé le 3 septembre 2026
+### Phase 9a, choix techniques tranchés le 3 septembre 2026
 
-Voir PLAN-PHASE-09.md. Les choix techniques des intérieurs restent à fixer en début de
-session.
+Voir PLAN-PHASE-09.md, section « Choix techniques fixés ». Les quatre points laissés ouverts
+par le plan de design ont été tranchés avant d'écrire une ligne, règle 7.
+
+- **Les intérieurs vivent dans une troisième couche et une cinquième scène.** Écart explicite
+  aux quatre scènes de CLAUDE.md. La voie écartée, les pièces peintes dans la Surface, aurait
+  payé le même prix sans obtenir la couche : la carte dépassait la colonne 40, donc les bornes
+  de caméra du village changeaient, et surtout **une `Light2D` globale porte sur des Sorting
+  Layers, pas sur une zone** — les pièces auraient pris la couleur de la saison.
+- **La porte est un `ManholePortal` réutilisé tel quel**, Espace sur la case comme sur une
+  bouche depuis la phase 2. Entrer en marchant aurait demandé une garde « je viens d'arriver »,
+  la famille de bug de l'Espace lu deux fois de la phase 7.
+- **Les phrases sont des images dessinées par `PixelFont` à la génération.** La police reste
+  côté Editor, les images sont versionnées et relisibles à l'œil.
+- **La phase est coupée en deux commits**, 9a puis 9b : tout le risque d'architecture est dans
+  9a, et 9b n'est plus que du travail de tuyaux sur un patron prouvé.
+- **`GameLayer.Interior` est ajouté à la fin**, comme `NodeType.ReserveInlet` en phase 8 :
+  `ManholePortal.destinationLayer` est sérialisé par son rang.
+- **Cinq Sorting Layers pour les intérieurs, pas trois.** `Interior_Pipes` et `Interior_Water`
+  ne servent à rien aujourd'hui ; ils gardent `GameSortingLayers` en table sans exception.
+- **La caméra se borne à la pièce par `WorldBoundsAround`**, virtuelle sur `GridMap`. La notion
+  de pièce ne sort pas d'`InteriorMap`, et `CameraFollow` change de deux lignes.
+- **Hors des pièces, rien n'est peint et rien n'est praticable.** `InteriorMap.IsWalkable`
+  refuse toute case hors pièce plutôt que de peindre six cents murs invisibles.
+- **La case du personnage est bloquante**, avec la tuile de sol dessous, comme l'herbe sous la
+  maison depuis la phase 1. Trouvé en jeu : sans cela on lui marche dessus, et **debout sur lui
+  on ne peut plus lui parler**, puisque l'interacteur cherche un personnage sur la case
+  regardée.
+- **`HeightOf(word)` plutôt qu'une hauteur constante** dans `PixelFont` : les deux rangées
+  d'accent ne sont réservées que si le mot en porte un, sinon les huit noms de villes de la
+  phase 7 auraient grandi de deux pixels sans raison.
+- **La police est à chasse fixe, apostrophe comprise.** Le blanc autour de l'apostrophe de
+  `L'ISOLÉ` est un peu large ; c'est un placeholder de plus.
+- **`maxTextureSize` devient un paramètre**, 256 pour les phrases, 64 pour tout le reste.
+- **La boîte de dialogue est une `Image` éteinte du HUD**, comme le voile du fondu : le HUD ne
+  gagne aucun indicateur permanent.
+- **`SpeechBox` lit Espace lui-même**, comme `VillageMapScreen`, et sépare `Advance` de la
+  lecture du clavier pour se vérifier sans dépendre du focus de l'éditeur.
+- **`Villager` tient un registre statique**, comme `ManholePortal` : l'interacteur cherche un
+  personnage à chaque image, et un `FindObjectsByType` par image allouerait soixante tableaux
+  par seconde.
+- **`PlayerInteractor` ne cite plus aucune couche en dur** pour le choix des plaques. La garde
+  `CurrentLayer == Surface` de la phase 7 aurait bloqué l'atelier le jour de son déménagement ;
+  `ResolveFactory` ne rend l'atelier que si sa couche est allumée, comme `ResolveNetwork` pour
+  le réseau.
+- **`LayerIndicator` ne change pas** : dans un bâtiment il montre le picto de surface, ce qui
+  est vrai, on n'est pas descendu.
+- **Le sol des pièces est le pavé de l'atelier de la phase 7.** Même matière, simplement passée
+  à l'intérieur : une tuile de moins à dessiner.
+
+### Phase 9, design validé le 3 septembre 2026
 
 - **Trois types de canalisation, un par menace de saison** : Standard, Isolé qui ne gèle pas,
   Grillagé que les feuilles ne bouchent pas. Même usure pour les trois.
@@ -1036,6 +1252,18 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
+- **Les onze PNG de la phase 9a** : la façade de l'atelier, le mur de pièce, la porte,
+  l'artisan, `picto_enter`, `picto_exit`, `picto_talk` et les trois phrases. La façade est un
+  aplat ocre de quatre cases sur deux : elle se lit comme un bâtiment sur l'herbe, mais elle
+  n'a ni toit, ni fenêtre, ni enseigne. **Rien ne dit de l'extérieur que c'est l'atelier des
+  plaques** ; l'enseigne est à dessiner à l'habillage, et elle vaudra pour les trois bâtiments.
+- **L'artisan est le personnage joueur repeint en vert.** Même silhouette, même pose, même
+  visage. Il se distingue à la couleur et à rien d'autre.
+- **L'apostrophe de `PixelFont` occupe une cellule entière**, la police étant à chasse fixe :
+  le blanc autour d'elle est trop large dans `L'ISOLÉ`. À reprendre avec le reste de la police.
+- **Le picto « parler » est un carré blanc opaque de seize pixels.** Une vraie bulle, plus
+  petite et à fond transparent, cacherait beaucoup moins l'interlocuteur. Voir la question
+  ouverte.
 - **Les cinq PNG de la phase 8**, la cuve du bassin : cadre gris, intérieur sombre, eau qui
   monte. Lisible, mais c'est une boîte ; un vrai bassin d'orage vu de dessus reste à dessiner.
 - **Les dix-huit PNG de la phase 7** : les huit plaques, les huit noms, le plan du village et
@@ -1083,9 +1311,18 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   3 septembre 2026 : ils parlent en phrases de moins de six mots, en français, et Victorien
   sait lire. Les phrases exactes sont à écrire et à relire à voix haute pour six ans. Les
   accents manquent encore à `PixelFont`.
-- **Une scène de plus pour les intérieurs ?** CLAUDE.md impose quatre scènes. La voie
-  recommandée en phase 9 en ajoute une cinquième, `Interiors`, avec une troisième couche.
-  Écart à accepter explicitement, ou peindre les pièces hors du village dans la scène Surface.
+- **Le picto « parler » couvre la tête de l'artisan** quand on l'aborde par en dessous. Le
+  picto d'action se pose au-dessus de la tête du JOUEUR depuis la phase 2, « toujours au même
+  endroit », et cette place tombe exactement sur le visage de qui se tient une case plus haut.
+  Vu de côté ou par le haut, aucun recouvrement. Deux issues, à trancher : garder la règle et
+  reprendre le picto à l'habillage, plus petit et transparent ; ou **poser la bulle au-dessus
+  de la tête du personnage qui parle**, ce qui est la convention partout ailleurs et ne cache
+  rien, au prix de la règle « toujours au même endroit ». Dix lignes dans les deux cas.
+  Non tranché.
+
+- ~~**Une scène de plus pour les intérieurs ?**~~ **Tranché le 3 septembre 2026** : oui, une
+  cinquième scène `Interiors` et une troisième couche `GameLayer.Interior`. Écart à CLAUDE.md
+  accepté explicitement. Voir les décisions de la phase 9a.
 - **Le bilan de l'eau est calculé au tick, après les effets de la saison qui commence.** Le
   plan le demande ainsi, et c'est fait ainsi. Conséquence vue en jeu : l'hiver gèle les trois
   maisons peu profondes **avant** le bilan, l'automne en bouche autant, et aucun entretien ne

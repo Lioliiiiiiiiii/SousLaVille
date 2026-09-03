@@ -17,5 +17,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Underground.unity
     guid: 1612f3186f1fc4f89b1c04956a5e52da
+  - enabled: 1
+    path: Assets/Scenes/Interiors.unity
+    guid: e700571badf214ac2ae85cd6c32b2ee9
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

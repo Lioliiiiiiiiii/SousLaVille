@@ -13,11 +13,16 @@ namespace SousLaVille.EditorTools
     public static class PortalBuilder
     {
         /// <summary>
-        /// La case d'arrivee est la case de depart : les deux cartes font 40x30 et partagent
-        /// le meme repere. Descendre depose donc le personnage juste sous la bouche.
+        /// Entre la surface et le sous-sol, la case d'arrivee est la case de depart : les
+        /// deux cartes font 40x30 et partagent le meme repere. Descendre depose donc le
+        /// personnage juste sous la bouche.
+        ///
+        /// Les portes de batiment, elles, donnent leur case d'arrivee : la carte des
+        /// interieurs est decoupee en pieces et n'a aucune raison d'etre alignee sur le
+        /// village.
         /// </summary>
         public static void Attach(GameObject target, Vector2Int cell, GameLayer layer,
-            GameLayer destinationLayer)
+            GameLayer destinationLayer, Vector2Int? destinationCell = null)
         {
             ManholePortal portal = target.AddComponent<ManholePortal>();
 
@@ -25,7 +30,8 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("cell").vector2IntValue = cell;
             serialized.FindProperty("layer").enumValueIndex = (int)layer;
             serialized.FindProperty("destinationLayer").enumValueIndex = (int)destinationLayer;
-            serialized.FindProperty("destinationCell").vector2IntValue = cell;
+            serialized.FindProperty("destinationCell").vector2IntValue =
+                destinationCell ?? cell;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
     }

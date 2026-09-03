@@ -179,6 +179,12 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoDown);
             serialized.FindProperty("promptUp").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoUp);
+            serialized.FindProperty("promptEnter").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoEnter);
+            serialized.FindProperty("promptExit").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoExit);
+            serialized.FindProperty("promptTalk").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoTalk);
             serialized.FindProperty("promptDig").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoDig);
             serialized.FindProperty("promptPipe").objectReferenceValue =
@@ -269,6 +275,7 @@ namespace SousLaVille.EditorTools
             Image seasonIcon = CreateSeasonIcon(canvasObject.transform);
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
             CreateVillageMap(canvasObject);
+            CreateSpeechBox(canvasObject);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
             SerializedObject serializedFader = new SerializedObject(fader);
@@ -493,6 +500,60 @@ namespace SousLaVille.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // Eteint au depart : VillageMapScreen le rallume le temps du choix.
+            panel.SetActive(false);
+        }
+
+        /// <summary>
+        /// Ce que dit un personnage, en bas de l'ecran. Eteint tant que personne ne parle,
+        /// comme le voile du fondu depuis la phase 2 : le HUD ne gagne aucun indicateur
+        /// permanent, et un panneau eteint ne se dessine pas.
+        ///
+        /// Les phrases sont des images dessinees par PixelFont a la generation. Le fond est
+        /// une Image sans sprite, simplement teintee, comme le voile : aucune image de plus
+        /// a dessiner.
+        /// </summary>
+        private static void CreateSpeechBox(GameObject canvasObject)
+        {
+            const float boxHeight = 34f;
+            const float margin = 6f;
+
+            GameObject panel = new GameObject("SpeechBox");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            Image background = panel.AddComponent<Image>();
+            background.color = new Color(0f, 0f, 0f, 0.78f);
+            background.raycastTarget = false;
+
+            RectTransform panelRect = background.rectTransform;
+            panelRect.anchorMin = new Vector2(0f, 0f);
+            panelRect.anchorMax = new Vector2(1f, 0f);
+            panelRect.pivot = new Vector2(0.5f, 0f);
+            panelRect.offsetMin = new Vector2(margin, margin);
+            panelRect.offsetMax = new Vector2(-margin, margin + boxHeight);
+
+            GameObject lineObject = new GameObject("Line");
+            lineObject.transform.SetParent(panel.transform, false);
+
+            Image line = lineObject.AddComponent<Image>();
+            line.raycastTarget = false;
+
+            // Une seule phrase a la fois, centree. SpeechBox pose la taille du rectangle en
+            // pixels de la resolution de reference : la phrase s'affiche a sa taille exacte,
+            // jamais etiree.
+            RectTransform lineRect = line.rectTransform;
+            lineRect.anchorMin = new Vector2(0.5f, 0.5f);
+            lineRect.anchorMax = new Vector2(0.5f, 0.5f);
+            lineRect.pivot = new Vector2(0.5f, 0.5f);
+            lineRect.anchoredPosition = Vector2.zero;
+
+            SpeechBox box = canvasObject.AddComponent<SpeechBox>();
+
+            SerializedObject serialized = new SerializedObject(box);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("line").objectReferenceValue = line;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : c'est le personnage qui le rallume, le temps qu'il parle.
             panel.SetActive(false);
         }
 

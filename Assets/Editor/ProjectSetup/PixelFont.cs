@@ -9,9 +9,14 @@ namespace SousLaVille.EditorTools
     /// et jurerait a cote d'un art entierement en pixels a la resolution 320x180. Les mots du
     /// jeu sont donc des images, produites une fois pour toutes par le generateur d'art.
     ///
-    /// Les huit noms de villes de la phase 7 sont les premiers a s'en servir. La Fabrique,
-    /// en phase 14, aura besoin des memes lettres pour ses noms de panneaux ; les accents
-    /// s'ajouteront a ce moment-la, quand ECOLE en aura besoin.
+    /// Les huit noms de villes de la phase 7 sont les premiers a s'en servir. La phase 9a y
+    /// ajoute les accents et l'apostrophe : ISOLE en avait besoin, et les phrases des
+    /// personnages aussi. La Fabrique, en phase 14, reprendra la police telle quelle.
+    ///
+    /// Un accent demande deux rangees de plus au-dessus des sept du glyphe. Elles ne sont
+    /// reservees QUE si le mot porte un accent, d'ou HeightOf(word) plutot qu'une hauteur
+    /// constante : sans cela, les huit noms de villes de la phase 7 grandiraient de deux
+    /// pixels et leurs images changeraient sans raison.
     /// </summary>
     public static class PixelFont
     {
@@ -23,6 +28,9 @@ namespace SousLaVille.EditorTools
 
         /// <summary>Le liseré déborde d'un pixel de chaque côté.</summary>
         public const int Padding = 1;
+
+        /// <summary>Rangées ajoutées au-dessus du glyphe pour porter un accent.</summary>
+        public const int AccentHeight = 2;
 
         // Ligne du haut en premier, comme on ecrit. Le retournement vers le repere des
         // textures, dont l'origine est en bas, se fait au moment du rendu.
@@ -56,6 +64,22 @@ namespace SousLaVille.EditorTools
             new[] { "#####", "....#", "...#.", "..#..", ".#...", "#....", "#####" }, // Z
         };
 
+        /// <summary>
+        /// L'apostrophe. Elle occupe une cellule entiere comme les lettres : la police est a
+        /// chasse fixe, et WidthOf compte les caracteres. Le blanc qu'elle laisse autour
+        /// d'elle est un peu large, c'est un placeholder de plus a reprendre a l'habillage.
+        /// </summary>
+        private static readonly string[] Apostrophe =
+        {
+            "..#..", "..#..", ".....", ".....", ".....", ".....", "....."
+        };
+
+        // Les trois accents, dessines dans les deux rangees au-dessus du glyphe. Ligne du
+        // haut en premier, comme les lettres.
+        private static readonly string[] Acute = { "...#.", "..#.." };
+        private static readonly string[] Grave = { ".#...", "..#.." };
+        private static readonly string[] Circumflex = { "..#..", ".#.#." };
+
         /// <summary>Largeur du dessin d'un mot, liseré compris.</summary>
         public static int WidthOf(string word)
         {
@@ -67,8 +91,34 @@ namespace SousLaVille.EditorTools
             return word.Length * (GlyphWidth + Tracking) - Tracking + Padding * 2;
         }
 
-        /// <summary>Hauteur du dessin d'un mot, liseré compris.</summary>
-        public static int Height => GlyphHeight + Padding * 2;
+        /// <summary>
+        /// Hauteur du dessin d'un mot, liseré compris. Les deux rangées d'accent ne sont
+        /// réservées que si le mot en porte un : un mot sans accent garde exactement la
+        /// hauteur qu'il avait en phase 7.
+        /// </summary>
+        public static int HeightOf(string word)
+        {
+            return GlyphHeight + Padding * 2 + (HasAccent(word) ? AccentHeight : 0);
+        }
+
+        /// <summary>Vrai si le mot porte au moins une lettre accentuée.</summary>
+        public static bool HasAccent(string word)
+        {
+            if (string.IsNullOrEmpty(word))
+            {
+                return false;
+            }
+
+            foreach (char character in word)
+            {
+                if (AccentFor(character) != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Dessine un mot en blanc cerné d'un liseré sombre. Le liseré n'est pas une
@@ -77,32 +127,53 @@ namespace SousLaVille.EditorTools
         public static Color32[] Render(string word, Color32 ink, Color32 outline)
         {
             int width = WidthOf(word);
-            int height = Height;
+            int height = HeightOf(word);
 
             Color32[] pixels = new Color32[width * height];
             bool[] mask = new bool[width * height];
 
             for (int i = 0; i < word.Length; i++)
             {
+                int originX = Padding + i * (GlyphWidth + Tracking);
+
                 string[] glyph = GlyphFor(word[i]);
-                if (glyph == null)
+                if (glyph != null)
+                {
+                    for (int row = 0; row < GlyphHeight; row++)
+                    {
+                        for (int column = 0; column < GlyphWidth; column++)
+                        {
+                            if (glyph[row][column] != '#')
+                            {
+                                continue;
+                            }
+
+                            // La ligne 0 de la lettre est en haut, la ligne 0 de la texture en bas.
+                            int y = Padding + (GlyphHeight - 1 - row);
+                            mask[y * width + originX + column] = true;
+                        }
+                    }
+                }
+
+                // L'accent se pose dans les deux rangees reservees au-dessus des sept du
+                // glyphe. Elles n'existent que si le mot porte un accent, donc la lettre
+                // elle-meme ne bouge pas : c'est le dessin qui grandit vers le haut.
+                string[] accent = AccentFor(word[i]);
+                if (accent == null)
                 {
                     continue;
                 }
 
-                int originX = Padding + i * (GlyphWidth + Tracking);
-
-                for (int row = 0; row < GlyphHeight; row++)
+                for (int row = 0; row < AccentHeight; row++)
                 {
                     for (int column = 0; column < GlyphWidth; column++)
                     {
-                        if (glyph[row][column] != '#')
+                        if (accent[row][column] != '#')
                         {
                             continue;
                         }
 
-                        // La ligne 0 de la lettre est en haut, la ligne 0 de la texture en bas.
-                        int y = Padding + (GlyphHeight - 1 - row);
+                        int y = Padding + GlyphHeight + (AccentHeight - 1 - row);
                         mask[y * width + originX + column] = true;
                     }
                 }
@@ -153,10 +224,19 @@ namespace SousLaVille.EditorTools
             return false;
         }
 
-        /// <summary>L'espace et tout caractere inconnu ne dessinent rien.</summary>
+        /// <summary>
+        /// La lettre a dessiner. Une lettre accentuee rend le glyphe de sa lettre de base :
+        /// l'accent lui-meme est dessine a part, par AccentFor. L'espace et tout caractere
+        /// inconnu ne dessinent rien.
+        /// </summary>
         private static string[] GlyphFor(char character)
         {
-            char upper = char.ToUpperInvariant(character);
+            if (character == '\'')
+            {
+                return Apostrophe;
+            }
+
+            char upper = char.ToUpperInvariant(BaseLetter(character));
 
             if (upper < 'A' || upper > 'Z')
             {
@@ -164,6 +244,47 @@ namespace SousLaVille.EditorTools
             }
 
             return Glyphs[upper - 'A'];
+        }
+
+        /// <summary>La lettre sans son accent, ou le caractere tel quel s'il n'en porte pas.</summary>
+        private static char BaseLetter(char character)
+        {
+            switch (character)
+            {
+                case 'É':
+                case 'È':
+                case 'Ê':
+                case 'é':
+                case 'è':
+                case 'ê':
+                    return 'E';
+                case 'À':
+                case 'à':
+                    return 'A';
+                default:
+                    return character;
+            }
+        }
+
+        /// <summary>Les deux rangees de l'accent d'un caractere, ou null s'il n'en porte pas.</summary>
+        private static string[] AccentFor(char character)
+        {
+            switch (character)
+            {
+                case 'É':
+                case 'é':
+                    return Acute;
+                case 'È':
+                case 'è':
+                case 'À':
+                case 'à':
+                    return Grave;
+                case 'Ê':
+                case 'ê':
+                    return Circumflex;
+                default:
+                    return null;
+            }
         }
     }
 }

@@ -14,16 +14,21 @@ namespace SousLaVille.EditorTools
     ///   .  herbe              #  chemin             P  dalle du parc
     ///   S  sol station        H  haie (bloquant)    B  batiment station (bloquant)
     ///   M  bouche d'egout     X  depart du joueur   T  entree de la station
-    ///   A  maison (bloquant)  W  pave de l'atelier  C  plaque exposee
+    ///   A  maison (bloquant)  F  facade de l'atelier (bloquant)   D  porte de l'atelier
     ///
-    /// M, X, T, A et C sont des marqueurs : le builder peint le sol correspondant dessous et
-    /// pose un GameObject par-dessus. Une maison est en plus bloquante : on passe devant,
-    /// pas dedans. Une plaque exposee ne bloque pas : on marche dessus pour la choisir.
+    /// M, X, T, A, F et D sont des marqueurs : le builder peint le sol correspondant dessous
+    /// et pose un GameObject par-dessus. Une maison et une facade sont en plus bloquantes :
+    /// on passe devant, pas dedans. Une porte ne bloque pas : on marche dessus et Espace
+    /// fait entrer, exactement comme sur une bouche d'egout.
     ///
-    /// La cour de l'atelier occupe seize cases sur six, en haut a droite, dans la zone
-    /// d'herbe restee libre. Ses huit plaques sont espacees de quatre cases : le nom
-    /// AMSTERDAM mesure 3,4 cases de large, et deux cartels voisins se chevaucheraient a
-    /// moins.
+    /// PHASE 9A. La cour pavee de l'atelier, seize cases sur six a ciel ouvert, a disparu :
+    /// l'atelier est devenu un batiment dans lequel on entre, et ses huit plaques sont
+    /// passees a l'interieur, dans la scene Interiors. Il ne reste ici que sa facade et sa
+    /// porte. La place laissee libre a sa droite attend la facade de l'usine a tuyaux, en
+    /// phase 9b.
+    ///
+    /// Ni la station, ni les bosquets, ni les maisons, ni les bouches, ni le depart n'ont
+    /// bouge d'un caractere depuis la phase 1.
     /// </summary>
     public static class VillageLayout
     {
@@ -40,20 +45,20 @@ namespace SousLaVille.EditorTools
         public const char PlayerStart = 'X';
         public const char PlantInlet = 'T';
         public const char House = 'A';
-        public const char Workshop = 'W';
-        public const char Cover = 'C';
+        public const char Facade = 'F';
+        public const char Door = 'D';
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
             "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
             "H......................................H",
-            "H.BBBBBBBBB..........WWWWWWWWWWWWWWWW..H",
-            "H.BSSSSSSSB..........WCWWWCWWWCWWWCWW..H",
-            "H.BSSSTSSSB....HHH...WWWWWWWWWWWWWWWW..H",
-            "H.BSSSSSSSB....HHH...WWWWWWWWWWWWWWWW..H",
-            "H.BSSSSSSSB..........WCWWWCWWWCWWWCWW..H",
-            "H.BBBBSBBBB..........WWWWWWWWWWWWWWWW..H",
+            "H.BBBBBBBBB...........FFFF.............H",
+            "H.BSSSSSSSB...........FFFF.............H",
+            "H.BSSSTSSSB....HHH.....D...............H",
+            "H.BSSSSSSSB....HHH.....................H",
+            "H.BSSSSSSSB............................H",
+            "H.BBBBSBBBB............................H",
             "H.....#................................H",
             "H....A#................................H",
             "H.....##M######################........H",
@@ -102,9 +107,12 @@ namespace SousLaVille.EditorTools
                 case Manhole:
                 case PlayerStart:
                     return Road;
-                case Cover:
-                    // Une plaque exposee est un marqueur : le pave de l'atelier passe dessous.
-                    return Workshop;
+                case Door:
+                    // Un seuil de chemin sous la porte : on voit ou l'on entre.
+                    return Road;
+                case Facade:
+                    // De l'herbe sous la facade : la tuile bloquante se pose par-dessus.
+                    return Grass;
                 case House:
                     // De l'herbe sous la maison : la tuile bloquante se pose par-dessus.
                     return Grass;

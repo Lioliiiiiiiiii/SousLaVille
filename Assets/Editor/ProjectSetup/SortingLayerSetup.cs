@@ -8,8 +8,8 @@ namespace SousLaVille.EditorTools
     /// <summary>
     /// Cree les Sorting Layers du jeu, du plus lointain au plus proche.
     ///
-    /// Une famille par couche. Les deux couches restent chargees en meme temps, donc leurs
-    /// deux Light2D globales coexistent : si elles couvraient les memes Sorting Layers,
+    /// Une famille par couche. Les trois couches restent chargees en meme temps, donc leurs
+    /// trois Light2D globales coexistent : si elles couvraient les memes Sorting Layers,
     /// URP signalerait un doublon de lumiere globale a chaque chargement. Chaque famille
     /// est eclairee par sa seule lumiere.
     /// </summary>
@@ -17,8 +17,7 @@ namespace SousLaVille.EditorTools
     {
         // Les noms vivent cote runtime : le personnage en a besoin pour changer de famille
         // en descendant. Une seule liste, aucune derive possible entre l'editeur et le jeu.
-        public static readonly string[] SurfaceLayers = GameSortingLayers.Surface;
-        public static readonly string[] UndergroundLayers = GameSortingLayers.Underground;
+        public static readonly string[][] Families = GameSortingLayers.Families;
 
         /// <summary>Noms non prefixes de la phase 0, remplaces par les deux familles.</summary>
         private static readonly string[] LegacyLayers =
@@ -43,14 +42,12 @@ namespace SousLaVille.EditorTools
             int created = 0;
             int repaired = 0;
 
-            foreach (string layerName in SurfaceLayers)
+            foreach (string[] family in Families)
             {
-                EnsureLayer(sortingLayers, layerName, ref created, ref repaired);
-            }
-
-            foreach (string layerName in UndergroundLayers)
-            {
-                EnsureLayer(sortingLayers, layerName, ref created, ref repaired);
+                foreach (string layerName in family)
+                {
+                    EnsureLayer(sortingLayers, layerName, ref created, ref repaired);
+                }
             }
 
             tagManager.ApplyModifiedProperties();
@@ -60,22 +57,17 @@ namespace SousLaVille.EditorTools
                       $"{removed} ancien(s) supprimé(s).");
         }
 
-        /// <summary>Vrai si les dix layers existent et portent un identifiant exploitable.</summary>
+        /// <summary>Vrai si les quinze layers existent et portent un identifiant exploitable.</summary>
         public static bool AreLayersRegistered()
         {
-            foreach (string layerName in SurfaceLayers)
+            foreach (string[] family in Families)
             {
-                if (!IsRegistered(layerName))
+                foreach (string layerName in family)
                 {
-                    return false;
-                }
-            }
-
-            foreach (string layerName in UndergroundLayers)
-            {
-                if (!IsRegistered(layerName))
-                {
-                    return false;
+                    if (!IsRegistered(layerName))
+                    {
+                        return false;
+                    }
                 }
             }
 

@@ -76,6 +76,36 @@ namespace SousLaVille.EditorTools
         public const string TileWorkshop = TilesFolder + "/Tile_Workshop.asset";
         public const string VillageMapTexture = SpritesFolder + "/village_map.png";
 
+        // Phase 9a, les batiments. Le pave de l'atelier de la phase 7 sert desormais de sol
+        // aux pieces : c'est la meme matiere, elle est simplement passee a l'interieur.
+        public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
+        public const string TileWall = TilesFolder + "/Tile_Wall.asset";
+        public const string DoorTexture = SpritesFolder + "/door.png";
+        public const string VillagerCraftsman = SpritesFolder + "/villager_craftsman.png";
+        public const string PictoEnter = PictosFolder + "/picto_enter.png";
+        public const string PictoExit = PictosFolder + "/picto_exit.png";
+        public const string PictoTalk = PictosFolder + "/picto_talk.png";
+
+        /// <summary>
+        /// Ce que dit l'artisan des plaques. Trois phrases de cinq mots ou moins, en
+        /// francais, relues a voix haute pour six ans, conformement a CLAUDE.md.
+        ///
+        /// Majuscules : c'est la seule casse que PixelFont connaisse. La troisieme phrase
+        /// dit que le choix se refait, ce qui est la promesse du jeu.
+        /// </summary>
+        public static readonly string[] CraftsmanLines =
+        {
+            "CHOISIS UNE PLAQUE",
+            "PUIS CHOISIS UNE BOUCHE",
+            "TU PEUX EN CHANGER"
+        };
+
+        /// <summary>Image d'une phrase de l'artisan.</summary>
+        public static string CraftsmanLineTexture(int index)
+        {
+            return $"{SpritesFolder}/line_craftsman_{index:00}.png";
+        }
+
         /// <summary>Image 16x16 d'une plaque, celle-la meme qui se pose sur la bouche.</summary>
         public static string CoverTexture(int index)
         {
@@ -238,6 +268,21 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
 
                 WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
+                WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
+                WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
+
+                WriteTexture(DoorTexture, BuildDoor());
+                WriteTexture(VillagerCraftsman, BuildVillager(), PlayerWidth);
+                WriteTexture(PictoEnter, BuildDoorPicto(entering: true));
+                WriteTexture(PictoExit, BuildDoorPicto(entering: false));
+                WriteTexture(PictoTalk, BuildTalkPicto());
+
+                for (int index = 0; index < CraftsmanLines.Length; index++)
+                {
+                    WriteTexture(CraftsmanLineTexture(index),
+                        BuildSentence(CraftsmanLines[index]),
+                        PixelFont.WidthOf(CraftsmanLines[index]));
+                }
 
                 for (int index = 0; index < CoverCount; index++)
                 {
@@ -277,7 +322,25 @@ namespace SousLaVille.EditorTools
             }
 
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
+            ConfigureImporter($"{TilesFolder}/tile_facade.png", null);
+            ConfigureImporter($"{TilesFolder}/tile_wall.png", null);
             ConfigureImporter(VillageMapTexture, null);
+            ConfigureImporter(DoorTexture, null);
+            ConfigureImporter(PictoEnter, null);
+            ConfigureImporter(PictoExit, null);
+            ConfigureImporter(PictoTalk, null);
+
+            // Meme pivot que le personnage joueur : l'artisan se pose sur sa case et sa tete
+            // deborde vers le haut.
+            ConfigureImporter(VillagerCraftsman, PlayerPivot);
+
+            // Une phrase fait environ 170 pixels de large. Le plafond de 64 pose en phase 7
+            // la reduirait EN SILENCE, exactement le piege que cette phase-la avait evite de
+            // justesse sur le nom AMSTERDAM.
+            for (int index = 0; index < CraftsmanLines.Length; index++)
+            {
+                ConfigureImporter(CraftsmanLineTexture(index), null, maxSize: 256);
+            }
 
             for (int index = 0; index < CoverCount; index++)
             {
@@ -318,6 +381,8 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TilePlantWall, PlantWallTexture);
             CreateTileAsset(TileHouse, $"{TilesFolder}/tile_house.png");
             CreateTileAsset(TileWorkshop, $"{TilesFolder}/tile_workshop.png");
+            CreateTileAsset(TileFacade, $"{TilesFolder}/tile_facade.png");
+            CreateTileAsset(TileWall, $"{TilesFolder}/tile_wall.png");
 
             for (int depth = 1; depth <= DepthCount; depth++)
             {
@@ -332,7 +397,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 70 textures, 30 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 81 textures, 32 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -341,7 +406,7 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop
+                TileWorkshop, TileFacade, TileWall
             };
 
             foreach (string path in tiles)
@@ -374,7 +439,8 @@ namespace SousLaVille.EditorTools
                 ManholeTexture, LadderTexture, HouseTexture, HouseInletTexture, PlayerDown,
                 PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
                 PictoUp, PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
-                PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter
+                PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
+                DoorTexture, VillagerCraftsman, PictoEnter, PictoExit, PictoTalk
             };
 
             foreach (string path in sprites)
@@ -397,6 +463,14 @@ namespace SousLaVille.EditorTools
             for (int level = 0; level < ReserveLevelCount; level++)
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(ReserveTexture(level)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < CraftsmanLines.Length; index++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(CraftsmanLineTexture(index)) == null)
                 {
                     return false;
                 }
@@ -1164,6 +1238,131 @@ namespace SousLaVille.EditorTools
             return false;
         }
 
+        /// <summary>
+        /// La porte d'un batiment, posee sur le seuil devant sa facade. Un encadrement clair,
+        /// une ouverture sombre, une poignee : on la reconnait de loin, et Espace dessus fait
+        /// entrer comme sur une bouche d'egout.
+        /// </summary>
+        private static Color32[] BuildDoor()
+        {
+            Color32 frame = new Color32(0x6A, 0x4A, 0x2A, 0xFF);
+            Color32 opening = new Color32(0x24, 0x1C, 0x18, 0xFF);
+            Color32 handle = new Color32(0xE8, 0xC8, 0x60, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            Fill(pixels, TileSize, 2, 13, 0, 14, frame);
+            Fill(pixels, TileSize, 4, 11, 0, 12, opening);
+            Fill(pixels, TileSize, 9, 10, 6, 7, handle);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// L'artisan des plaques. Meme silhouette que le personnage joueur, 16x24 et meme
+        /// pivot, dans une autre couleur : on voit du premier coup d'oeil que c'est quelqu'un
+        /// d'autre, sans avoir a le comparer.
+        ///
+        /// Il regarde vers le bas, donc vers la porte : il fait face a qui entre.
+        /// </summary>
+        private static Color32[] BuildVillager()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 body = new Color32(0x3E, 0x8E, 0x7A, 0xFF);
+            Color32 head = new Color32(0xE8, 0xC0, 0x96, 0xFF);
+            Color32 legs = Darken(body, 0.65f);
+            Color32 hair = new Color32(0x33, 0x33, 0x38, 0xFF);
+            Color32 eye = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            Fill(pixels, width, 4, 6, 0, 3, legs);
+            Fill(pixels, width, 9, 11, 0, 3, legs);
+            Fill(pixels, width, 3, 12, 4, 14, body);
+            Fill(pixels, width, 3, 12, 15, 22, head);
+            Fill(pixels, width, 4, 11, 23, 23, head);
+            Fill(pixels, width, 3, 12, 21, 23, hair);
+            Fill(pixels, width, 5, 6, 18, 19, eye);
+            Fill(pixels, width, 9, 10, 18, 19, eye);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// « Ici on entre » et « ici on sort » : un chambranle, et une fleche qui va dedans ou
+        /// qui en vient. Le vocabulaire des panneaux, que Victorien aime, plutot que deux
+        /// fleches nues qui se confondraient avec descendre et remonter.
+        /// </summary>
+        private static Color32[] BuildDoorPicto(bool entering)
+        {
+            Color32 frame = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+            Color32 opening = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 arrow = new Color32(0xF2, 0xC0, 0x40, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Le chambranle occupe la moitie droite : il reste de la place a gauche pour la
+            // fleche, dans les deux sens.
+            Fill(pixels, TileSize, 8, 15, 1, 14, frame);
+            Fill(pixels, TileSize, 10, 15, 1, 12, opening);
+
+            // Hampe de la fleche, puis sa pointe. Vers la droite on entre, vers la gauche on
+            // sort : le chambranle ne bouge pas, seule la fleche se retourne.
+            Fill(pixels, TileSize, 1, 8, 6, 8, arrow);
+
+            for (int step = 0; step < 4; step++)
+            {
+                int x = entering ? 9 + step : 4 - step;
+                int half = 3 - step;
+                Fill(pixels, TileSize, x, x, 7 - half, 7 + half, arrow);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// « On peut lui parler » : une bulle et ses trois points. Aucun mot a lire pour
+        /// savoir qu'il y a quelque chose a lire.
+        /// </summary>
+        private static Color32[] BuildTalkPicto()
+        {
+            Color32 bubble = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Contour d'abord, bulle ensuite : lisible sur le sol clair d'une piece comme sur
+            // la terre du sous-sol.
+            Fill(pixels, TileSize, 1, 14, 4, 15, outline);
+            Fill(pixels, TileSize, 4, 7, 1, 4, outline);
+
+            Fill(pixels, TileSize, 2, 13, 5, 14, bubble);
+            Fill(pixels, TileSize, 5, 6, 2, 5, bubble);
+
+            // Les trois points, dans le creux de la bulle.
+            Fill(pixels, TileSize, 4, 5, 9, 10, outline);
+            Fill(pixels, TileSize, 7, 8, 9, 10, outline);
+            Fill(pixels, TileSize, 10, 11, 9, 10, outline);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Une phrase de personnage, dessinee par PixelFont comme les noms de villes.
+        ///
+        /// Les phrases sont fixes et connues ici : les dessiner a la generation garde la
+        /// police cote Editor, et donne des images versionnees, relisibles a l'oeil, et
+        /// nettes a la grille du pixel, ce qu'une TTF ne serait pas.
+        /// </summary>
+        private static Color32[] BuildSentence(string sentence)
+        {
+            return PixelFont.Render(sentence,
+                new Color32(0xFF, 0xFF, 0xFF, 0xFF),
+                new Color32(0x2B, 0x1B, 0x14, 0xFF));
+        }
+
         /// <summary>Le nom d'une ville, en blanc cerne de sombre pour tenir sur le pave.</summary>
         private static Color32[] BuildCoverName(int index)
         {
@@ -1186,7 +1385,7 @@ namespace SousLaVille.EditorTools
             Color32 hedge = new Color32(0x1F, 0x5C, 0x2E, 0xFF);
             Color32 plantWall = new Color32(0x3A, 0x6E, 0xA5, 0xFF);
             Color32 house = new Color32(0xA0, 0x44, 0x2B, 0xFF);
-            Color32 workshop = new Color32(0x8E, 0x87, 0x78, 0xFF);
+            Color32 facade = new Color32(0xB0, 0x7A, 0x3C, 0xFF);
 
             Color32[] pixels = new Color32[VillageLayout.Width * VillageLayout.Height];
 
@@ -1200,6 +1399,7 @@ namespace SousLaVille.EditorTools
                     switch (cell)
                     {
                         case VillageLayout.House: pixel = house; break;
+                        case VillageLayout.Facade: pixel = facade; break;
                         case VillageLayout.Hedge: pixel = hedge; break;
                         case VillageLayout.PlantWall: pixel = plantWall; break;
                         default:
@@ -1208,7 +1408,6 @@ namespace SousLaVille.EditorTools
                                 case VillageLayout.Road: pixel = road; break;
                                 case VillageLayout.Park: pixel = park; break;
                                 case VillageLayout.PlantFloor: pixel = plantFloor; break;
-                                case VillageLayout.Workshop: pixel = workshop; break;
                                 default: pixel = grass; break;
                             }
                             break;
@@ -1295,7 +1494,8 @@ namespace SousLaVille.EditorTools
             Object.DestroyImmediate(texture);
         }
 
-        private static void ConfigureImporter(string assetPath, Vector2? customPivot)
+        private static void ConfigureImporter(string assetPath, Vector2? customPivot,
+            int maxSize = 64)
         {
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
 
@@ -1318,7 +1518,10 @@ namespace SousLaVille.EditorTools
             // Le plan du village fait 40 px de large et le nom AMSTERDAM 55 : un plafond a
             // 32 les reduirait en silence et detruirait la police. Ce plafond ne fait que
             // tronquer, il n'agrandit rien : aucune image existante ne change.
-            importer.maxTextureSize = 64;
+            //
+            // Les phrases des personnages font environ 170 px et demandent 256, d'ou le
+            // parametre. Tout le reste garde 64.
+            importer.maxTextureSize = maxSize;
 
             TextureImporterSettings settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);

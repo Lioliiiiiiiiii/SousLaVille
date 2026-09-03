@@ -71,6 +71,21 @@ TagManager:
   - name: Underground_Overlay
     uniqueID: 1568683993
     locked: 0
+  - name: Interior_Ground
+    uniqueID: 1422373305
+    locked: 0
+  - name: Interior_Pipes
+    uniqueID: 195924867
+    locked: 0
+  - name: Interior_Water
+    uniqueID: 726137281
+    locked: 0
+  - name: Interior_Entities
+    uniqueID: 699238409
+    locked: 0
+  - name: Interior_Overlay
+    uniqueID: 1052810766
+    locked: 0
   m_RenderingLayers:
   - Default
   m_MigratedRenderPipelines: []

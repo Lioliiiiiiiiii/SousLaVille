@@ -48,6 +48,19 @@ namespace SousLaVille.World
         /// </summary>
         public abstract GameLayer Layer { get; }
 
+        /// <summary>
+        /// Bornes auxquelles la camera doit se tenir quand le personnage est sur cette case.
+        /// Par defaut, la carte entiere ; une carte decoupee en pieces closes, comme celle
+        /// des interieurs, rend les bornes de la piece courante.
+        ///
+        /// C'est le seul endroit ou la notion de piece sort d'InteriorMap : la camera demande
+        /// des bornes autour de sa cible et n'a rien a savoir de plus.
+        /// </summary>
+        public virtual Bounds WorldBoundsAround(Vector2Int cell)
+        {
+            return WorldBounds;
+        }
+
         /// <summary>Vrai si le personnage peut se tenir sur cette case.</summary>
         public abstract bool IsWalkable(Vector2Int cell);
 

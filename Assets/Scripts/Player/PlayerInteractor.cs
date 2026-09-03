@@ -18,6 +18,10 @@ namespace SousLaVille.Player
     ///
     /// Depuis les saisons, Espace repare un tuyau abime, gele ou bouche, et n'enleve que
     /// les tuyaux sains. Le picto au-dessus de la tete dit toujours lequel des deux.
+    ///
+    /// Depuis la phase 9a, Espace entre dans un batiment et en ressort : une porte est un
+    /// ManholePortal comme une bouche d'egout, le geste et le fondu sont les memes. Et Espace
+    /// face a un personnage le fait parler.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerInteractor : MonoBehaviour
@@ -29,6 +33,9 @@ namespace SousLaVille.Player
             Descend,
             Ascend,
             ChooseCover,
+            Enter,
+            Exit,
+            Talk,
             Dig,
             PlacePipe,
             RepairPipe,
@@ -40,6 +47,9 @@ namespace SousLaVille.Player
 
         [SerializeField] private Sprite promptDown;
         [SerializeField] private Sprite promptUp;
+        [SerializeField] private Sprite promptEnter;
+        [SerializeField] private Sprite promptExit;
+        [SerializeField] private Sprite promptTalk;
         [SerializeField] private Sprite promptDig;
         [SerializeField] private Sprite promptPipe;
         [SerializeField] private Sprite promptRepair;
@@ -50,19 +60,26 @@ namespace SousLaVille.Player
         private PipeNetwork network;
         private ManholeFactory factory;
         private VillageMapScreen map;
+        private SpeechBox speech;
         private bool isTravelling;
         private bool isChoosing;
+        private bool isTalking;
 
         /// <summary>
-        /// Image ou le plan du village s'est referme. Le meme Espace ne doit pas etre lu deux
-        /// fois : celui qui pose une plaque refermerait le plan puis le rouvrirait aussitot,
-        /// puisque le personnage est encore debout sur la plaque exposee. C'est la garde
-        /// symetrique de celle que VillageMapScreen pose a l'ouverture.
+        /// Image ou un ecran s'est referme, plan du village ou boite de dialogue. Le meme
+        /// Espace ne doit pas etre lu deux fois : celui qui pose une plaque refermerait le
+        /// plan puis le rouvrirait aussitot, puisque le personnage est encore debout sur la
+        /// plaque exposee, et celui qui referme un dialogue relancerait le meme personnage,
+        /// puisqu'on le regarde toujours. C'est la garde symetrique de celle que
+        /// VillageMapScreen et SpeechBox posent a l'ouverture.
         /// </summary>
-        private int mapClosedFrame = -1;
+        private int screenClosedFrame = -1;
 
         /// <summary>Rang de la plaque exposee sous les pieds, ou -1. Pose par Evaluate.</summary>
         private int coverUnderfoot = -1;
+
+        /// <summary>Le personnage regarde, ou null. Pose par Evaluate.</summary>
+        private Villager villagerAhead;
 
         private void Awake()
         {
@@ -122,7 +139,7 @@ namespace SousLaVille.Player
             portal = null;
 
             SceneRouter router = Router;
-            if (isTravelling || isChoosing || Time.frameCount == mapClosedFrame
+            if (isTravelling || isChoosing || isTalking || Time.frameCount == screenClosedFrame
                 || router == null || !controller.HasMap)
             {
                 return InteractionKind.None;
@@ -132,25 +149,33 @@ namespace SousLaVille.Player
             portal = ManholePortal.Find(router.CurrentLayer, controller.Cell);
             if (portal != null)
             {
-                return portal.DestinationLayer == GameLayer.Underground
-                    ? InteractionKind.Descend
-                    : InteractionKind.Ascend;
+                return KindFor(router.CurrentLayer, portal.DestinationLayer);
             }
 
             // 2. Une plaque exposee sous les pieds, dans l'atelier. Meme geste que la bouche :
             // on marche dessus et on appuie.
+            //
+            // Aucune garde de couche ici : depuis la phase 9a l'atelier est un interieur, et
+            // ResolveFactory ne rend l'atelier que si sa couche est allumee, exactement comme
+            // ResolveNetwork ne rend le reseau que sous terre. Une couche citee en dur ici
+            // aurait cesse d'etre vraie le jour ou l'atelier a demenage.
             coverUnderfoot = -1;
-            if (router.CurrentLayer == GameLayer.Surface)
+            ManholeFactory workshop = ResolveFactory();
+            if (workshop != null)
             {
-                ManholeFactory workshop = ResolveFactory();
-                if (workshop != null)
+                coverUnderfoot = workshop.SampleIndexAt(controller.Cell);
+                if (coverUnderfoot >= 0)
                 {
-                    coverUnderfoot = workshop.SampleIndexAt(controller.Cell);
-                    if (coverUnderfoot >= 0)
-                    {
-                        return InteractionKind.ChooseCover;
-                    }
+                    return InteractionKind.ChooseCover;
                 }
+            }
+
+            // 3. Un personnage devant soi : lui parler. Sur la case REGARDEE, contrairement
+            // au passage et a la plaque : on ne se tient pas sur quelqu'un.
+            villagerAhead = Villager.At(controller.FacingCell);
+            if (villagerAhead != null && villagerAhead.CanSpeak)
+            {
+                return InteractionKind.Talk;
             }
 
             // Creuser et poser n'existent que sous terre.
@@ -166,7 +191,7 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 3. De la terre pleine devant soi : creuser.
+            // 4. De la terre pleine devant soi : creuser.
             if (!underground.IsWalkable(target))
             {
                 return InteractionKind.Dig;
@@ -178,14 +203,14 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 4. Une galerie vide devant soi : poser.
+            // 5. Une galerie vide devant soi : poser.
             PipeNode node = pipes.NodeAt(target);
             if (node == null)
             {
                 return InteractionKind.PlacePipe;
             }
 
-            // 5. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
+            // 6. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
             // un noeud pose par le monde : le raccordement d'une maison gele doit pouvoir
             // se degeler a la main, sans attendre le printemps.
             if (pipes.NeedsRepair(target))
@@ -193,7 +218,7 @@ namespace SousLaVille.Player
                 return InteractionKind.RepairPipe;
             }
 
-            // 6. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
+            // 7. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
             // maison, ne s'annonce pas : il ne s'enleve pas.
             return node.IsPermanent ? InteractionKind.None : InteractionKind.RemovePipe;
         }
@@ -204,7 +229,13 @@ namespace SousLaVille.Player
             {
                 case InteractionKind.Descend:
                 case InteractionKind.Ascend:
+                case InteractionKind.Enter:
+                case InteractionKind.Exit:
                     UsePortal(portal);
+                    return;
+
+                case InteractionKind.Talk:
+                    StartTalking();
                     return;
 
                 case InteractionKind.ChooseCover:
@@ -258,7 +289,46 @@ namespace SousLaVille.Player
 
             controller.enabled = true;
             isChoosing = false;
-            mapClosedFrame = Time.frameCount;
+            screenClosedFrame = Time.frameCount;
+        }
+
+        /// <summary>
+        /// Le personnage parle. Le personnage joueur s'eteint le temps du dialogue : une
+        /// fleche ne doit pas le faire marcher pendant qu'on lit, et s'eloigner en plein
+        /// dialogue laisserait une boite ouverte sans interlocuteur.
+        /// </summary>
+        private void StartTalking()
+        {
+            if (villagerAhead == null)
+            {
+                return;
+            }
+
+            SpeechBox box = villagerAhead.Speak();
+            if (box == null)
+            {
+                return;
+            }
+
+            speech = box;
+            isTalking = true;
+            controller.enabled = false;
+            ShowPrompt(InteractionKind.None);
+
+            speech.Closed += OnSpeechClosed;
+        }
+
+        private void OnSpeechClosed()
+        {
+            if (speech != null)
+            {
+                speech.Closed -= OnSpeechClosed;
+                speech = null;
+            }
+
+            controller.enabled = true;
+            isTalking = false;
+            screenClosedFrame = Time.frameCount;
         }
 
         /// <summary>
@@ -292,6 +362,27 @@ namespace SousLaVille.Player
 
             controller.enabled = true;
             isTravelling = false;
+        }
+
+        /// <summary>
+        /// Ce que dit le picto d'un passage. Descendre et remonter entre la surface et le
+        /// sous-sol, entrer et sortir d'un batiment : quatre pictos, un seul mecanisme.
+        /// </summary>
+        private static InteractionKind KindFor(GameLayer from, GameLayer destination)
+        {
+            if (destination == GameLayer.Interior)
+            {
+                return InteractionKind.Enter;
+            }
+
+            if (from == GameLayer.Interior)
+            {
+                return InteractionKind.Exit;
+            }
+
+            return destination == GameLayer.Underground
+                ? InteractionKind.Descend
+                : InteractionKind.Ascend;
         }
 
         private static SceneRouter Router
@@ -365,6 +456,9 @@ namespace SousLaVille.Player
             {
                 case InteractionKind.Descend: return promptDown;
                 case InteractionKind.Ascend: return promptUp;
+                case InteractionKind.Enter: return promptEnter;
+                case InteractionKind.Exit: return promptExit;
+                case InteractionKind.Talk: return promptTalk;
                 case InteractionKind.Dig: return promptDig;
                 case InteractionKind.PlacePipe: return promptPipe;
                 case InteractionKind.RepairPipe: return promptRepair;

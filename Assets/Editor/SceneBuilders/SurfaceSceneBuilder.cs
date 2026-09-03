@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Seasons;
 using SousLaVille.World;
@@ -60,7 +59,7 @@ namespace SousLaVille.EditorTools
             SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
             AttachHouseSpawner(root, map);
             AttachSeasonAmbience(root);
-            CreateWorkshop(root);
+            CreateBuildingDoors(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
@@ -107,7 +106,7 @@ namespace SousLaVille.EditorTools
             Tile hedge = LoadTile(PlaceholderArtGenerator.TileHedge);
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
             Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
-            Tile workshop = LoadTile(PlaceholderArtGenerator.TileWorkshop);
+            Tile facade = LoadTile(PlaceholderArtGenerator.TileFacade);
 
             int width = VillageLayout.Width;
             int height = VillageLayout.Height;
@@ -138,9 +137,6 @@ namespace SousLaVille.EditorTools
                             groundTiles[index] = plantFloor;
                             blockingTiles[index] = plantWall;
                             break;
-                        case VillageLayout.Workshop:
-                            groundTiles[index] = workshop;
-                            break;
                         case VillageLayout.Hedge:
                             groundTiles[index] = grass;
                             blockingTiles[index] = hedge;
@@ -150,11 +146,15 @@ namespace SousLaVille.EditorTools
                             break;
                     }
 
-                    // La maison est un marqueur : GroundAt a deja rendu de l'herbe, la tuile
-                    // bloquante se pose par-dessus et disparait sous le sprite.
+                    // La maison et la facade sont des marqueurs : GroundAt a deja rendu de
+                    // l'herbe, la tuile bloquante se pose par-dessus.
                     if (VillageLayout.At(x, y) == VillageLayout.House)
                     {
                         blockingTiles[index] = house;
+                    }
+                    else if (VillageLayout.At(x, y) == VillageLayout.Facade)
+                    {
+                        blockingTiles[index] = facade;
                     }
                 }
             }
@@ -269,83 +269,46 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// L'atelier des plaques : huit echantillons poses au sol, chacun avec son nom ecrit
-        /// juste en dessous, comme les cartels d'une vitrine.
+        /// Les portes des batiments du village. Une porte est un ManholePortal comme une
+        /// bouche d'egout : meme composant, meme geste, meme fondu au noir. Elle mene a la
+        /// piece de son batiment, dans la scene Interiors.
         ///
-        /// Les plaques ne bloquent pas le passage, comme les tuyaux depuis la phase 3 : on
-        /// marche dessus, et Espace prend celle qu'on foule.
+        /// PHASE 9A : l'atelier des plaques etait une cour a ciel ouvert avec ses huit
+        /// echantillons au sol. Il est devenu un batiment, et tout son contenu est passe dans
+        /// InteriorsSceneBuilder. Il ne reste ici que la porte, devant sa facade.
         /// </summary>
-        private static void CreateWorkshop(GameObject root)
+        private static void CreateBuildingDoors(GameObject root)
         {
-            List<Vector2Int> samples = VillageLayout.FindAll(VillageLayout.Cover);
-            List<Vector2Int> manholes = VillageLayout.FindAll(VillageLayout.Manhole);
-
-            if (samples.Count != PlaceholderArtGenerator.CoverCount)
+            List<Vector2Int> doors = VillageLayout.FindAll(VillageLayout.Door);
+            if (doors.Count != InteriorsLayout.Rooms.Length)
             {
-                Debug.LogError($"[Sous la Ville] Le plan expose {samples.Count} plaque(s), il en " +
-                               $"faut {PlaceholderArtGenerator.CoverCount}.");
+                Debug.LogError($"[Sous la Ville] Le village porte {doors.Count} porte(s) pour " +
+                               $"{InteriorsLayout.Rooms.Length} pièce(s) : il en faut autant.");
                 return;
             }
 
-            GameObject parent = new GameObject("Workshop");
+            Sprite sprite = LoadSprite(PlaceholderArtGenerator.DoorTexture);
+
+            GameObject parent = new GameObject("Doors");
             parent.transform.SetParent(root.transform, false);
 
-            ManholeCoverDefinition[] catalogue =
-                new ManholeCoverDefinition[PlaceholderArtGenerator.CoverCount];
-
-            for (int i = 0; i < samples.Count; i++)
+            for (int i = 0; i < doors.Count; i++)
             {
-                catalogue[i] = AssetDatabase.LoadAssetAtPath<ManholeCoverDefinition>(
-                    ScriptableObjectSetup.CoverAsset(i));
+                InteriorsLayout.Room room = InteriorsLayout.Rooms[i];
+                Vector2Int inside = InteriorsLayout.FindSingle(room, InteriorsLayout.Door);
 
-                if (catalogue[i] == null)
-                {
-                    Debug.LogError("[Sous la Ville] Plaque introuvable : " +
-                                   ScriptableObjectSetup.CoverAsset(i));
-                    continue;
-                }
+                GameObject door = new GameObject($"Door_{i + 1:00}_{room.Name}");
+                door.transform.SetParent(parent.transform, false);
+                door.transform.position = CellCenter(doors[i]);
 
-                GameObject sample = new GameObject($"Cover_{i + 1:00}_{catalogue[i].DisplayName}");
-                sample.transform.SetParent(parent.transform, false);
-                sample.transform.position = CellCenter(samples[i]);
+                SpriteRenderer renderer = door.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
 
-                SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
-                view.sprite = catalogue[i].Cover;
-                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
-
-                // Le cartel, une case sous la plaque. Toujours affiche : aucune logique,
-                // aucun mode, huit images de plus dans le decor.
-                GameObject label = new GameObject($"Name_{i + 1:00}");
-                label.transform.SetParent(sample.transform, false);
-                label.transform.localPosition = new Vector3(0f, -0.9f, 0f);
-
-                SpriteRenderer labelView = label.AddComponent<SpriteRenderer>();
-                labelView.sprite = catalogue[i].NameImage;
-                SceneBuilderUtility.ApplySortingLayer(labelView, EntitiesSortingLayer, 1);
-            }
-
-            ManholeFactory factory = root.AddComponent<ManholeFactory>();
-
-            SerializedObject serialized = new SerializedObject(factory);
-            SetCells(serialized.FindProperty("sampleCells"), samples);
-            SetCells(serialized.FindProperty("manholeCells"), manholes);
-
-            SerializedProperty catalogueProperty = serialized.FindProperty("catalogue");
-            catalogueProperty.arraySize = catalogue.Length;
-            for (int i = 0; i < catalogue.Length; i++)
-            {
-                catalogueProperty.GetArrayElementAtIndex(i).objectReferenceValue = catalogue[i];
-            }
-
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        private static void SetCells(SerializedProperty property, List<Vector2Int> cells)
-        {
-            property.arraySize = cells.Count;
-            for (int i = 0; i < cells.Count; i++)
-            {
-                property.GetArrayElementAtIndex(i).vector2IntValue = cells[i];
+                // Le pendant interieur de ce passage est pose par InteriorsSceneBuilder, sur
+                // la meme paire de cases lue dans les deux plans.
+                PortalBuilder.Attach(door, doors[i], GameLayer.Surface, GameLayer.Interior,
+                    inside);
             }
         }
 

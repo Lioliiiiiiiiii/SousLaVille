@@ -5,7 +5,10 @@ using UnityEngine;
 namespace SousLaVille.EditorTools
 {
     /// <summary>
-    /// Regenere les quatre scenes du jeu et remet les Build Settings dans l'ordre.
+    /// Regenere les cinq scenes du jeu et remet les Build Settings dans l'ordre.
+    ///
+    /// Cinq et non quatre depuis la phase 9a : Interiors porte les pieces des batiments.
+    /// Ecart explicite aux quatre scenes de CLAUDE.md, accepte le 3 septembre 2026.
     /// </summary>
     public static class BuildAllScenes
     {
@@ -44,17 +47,19 @@ namespace SousLaVille.EditorTools
             PersistentSceneBuilder.Build();
             SurfaceSceneBuilder.Build();
             UndergroundSceneBuilder.Build();
+            InteriorsSceneBuilder.Build();
 
             SceneBuilderUtility.SetBuildScenes(
                 BootSceneBuilder.SceneName,
                 PersistentSceneBuilder.SceneName,
                 SurfaceSceneBuilder.SceneName,
-                UndergroundSceneBuilder.SceneName);
+                UndergroundSceneBuilder.SceneName,
+                InteriorsSceneBuilder.SceneName);
 
             // On repart de Boot : c'est la scene par laquelle on lance le jeu.
             EditorSceneManager.OpenScene($"{SceneBuilderUtility.ScenesFolder}/{BootSceneBuilder.SceneName}.unity");
 
-            Debug.Log("[Sous la Ville] Les quatre scènes sont construites et inscrites au build.");
+            Debug.Log("[Sous la Ville] Les cinq scènes sont construites et inscrites au build.");
         }
     }
 }
