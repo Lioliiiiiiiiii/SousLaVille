@@ -374,13 +374,24 @@ namespace SousLaVille.EditorTools
             serializedView.FindProperty("network").objectReferenceValue = network;
             serializedView.FindProperty("pipes").objectReferenceValue = pipes;
 
-            SerializedProperty tiles = serializedView.FindProperty("tilesByMask");
-            tiles.arraySize = PlaceholderArtGenerator.PipeMaskCount;
-            for (int mask = 0; mask < PlaceholderArtGenerator.PipeMaskCount; mask++)
+            // Quarante-huit tuiles : seize masques par motif, les motifs bout a bout. Le
+            // rang vaut motif * 16 + masque, ce que TileFor recalcule cote rendu.
+            int patterns = PlaceholderArtGenerator.PipePatternCount;
+            int masks = PlaceholderArtGenerator.PipeMaskCount;
+
+            SerializedProperty tiles = serializedView.FindProperty("tilesByPatternAndMask");
+            tiles.arraySize = patterns * masks;
+
+            for (int pattern = 0; pattern < patterns; pattern++)
             {
-                tiles.GetArrayElementAtIndex(mask).objectReferenceValue =
-                    LoadTile(PlaceholderArtGenerator.TilePipe(mask));
+                for (int mask = 0; mask < masks; mask++)
+                {
+                    tiles.GetArrayElementAtIndex(pattern * masks + mask).objectReferenceValue =
+                        LoadTile(PlaceholderArtGenerator.TilePipe(pattern, mask));
+                }
             }
+
+            serializedView.FindProperty("patternCount").intValue = patterns;
 
             serializedView.ApplyModifiedPropertiesWithoutUndo();
         }

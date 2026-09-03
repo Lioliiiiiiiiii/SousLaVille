@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -49,7 +50,6 @@ namespace SousLaVille.EditorTools
         public const string PictoDown = PictosFolder + "/picto_down.png";
         public const string PictoUp = PictosFolder + "/picto_up.png";
         public const string PictoDig = PictosFolder + "/picto_dig.png";
-        public const string PictoPipe = PictosFolder + "/picto_pipe.png";
         public const string PictoRemove = PictosFolder + "/picto_remove.png";
         public const string CursorTarget = PictosFolder + "/cursor_target.png";
         public const string PictoDropFull = PictosFolder + "/picto_drop_full.png";
@@ -134,6 +134,50 @@ namespace SousLaVille.EditorTools
         /// <summary>Nombre d'images de canalisation, une par masque de raccords.</summary>
         public const int PipeMaskCount = 16;
 
+        /// <summary>Nombre de motifs de canalisation : un par type de tuyau.</summary>
+        public const int PipePatternCount = 3;
+
+        /// <summary>
+        /// Le masque de l'echantillon expose : est plus ouest, un tuyau bien droit. C'est la
+        /// meme image que celle posee en jeu, donc le picto de pose ne peut pas mentir sur ce
+        /// qu'il va poser.
+        /// </summary>
+        public const int PipeSampleMask = 10;
+
+        /// <summary>Les trois noms de tuyaux, dans l'ordre du catalogue.</summary>
+        public static readonly string[] PipeNames = { "NORMAL", "ISOLÉ", "GRILLÉ" };
+
+        /// <summary>
+        /// Ce que dit l'ouvrier des tuyaux. Quatre phrases de cinq mots ou moins.
+        ///
+        /// Les deux du milieu sont symetriques a dessein : meme verbe, ARRETE, mot que
+        /// Victorien connait et qui est deja sur les panneaux qu'il aime, et la menace qui
+        /// change. Chacune repond au picto affiche au-dessus de son echantillon.
+        ///
+        /// « Le grillage ne se bouche pas » a ete ecartee : six mots.
+        /// </summary>
+        public static readonly string[] WorkerLines =
+        {
+            "CHOISIS UN TUYAU",
+            "L'ISOLÉ ARRÊTE LE FROID",
+            "LE GRILLÉ ARRÊTE LES FEUILLES",
+            "REVIENS QUAND TU VEUX"
+        };
+
+        public const string VillagerWorker = SpritesFolder + "/villager_worker.png";
+
+        /// <summary>Image du nom d'un type de tuyau.</summary>
+        public static string PipeNameTexture(int index)
+        {
+            return $"{SpritesFolder}/pipe_name_{index:00}.png";
+        }
+
+        /// <summary>Image d'une phrase de l'ouvrier.</summary>
+        public static string WorkerLineTexture(int index)
+        {
+            return $"{SpritesFolder}/line_worker_{index:00}.png";
+        }
+
         private const int TileSize = 16;
         private const int PictoSize = 32;
         private const int PixelsPerUnit = 16;
@@ -160,15 +204,31 @@ namespace SousLaVille.EditorTools
             new Color32(0x77, 0x80, 0x8A, 0xFF)
         };
 
-        // Fichiers de la phase 2 remplaces en phase 3.
-        private static readonly string[] ObsoleteAssets =
+        // Fichiers remplaces par une phase ulterieure. La phase 3 avait retire ceux de la
+        // phase 2 ; la phase 9b retire les seize tuyaux d'un seul motif, remplaces par
+        // quarante-huit, et picto_pipe, remplace par l'echantillon du type en main.
+        private static readonly string[] ObsoleteAssets = BuildObsoleteList();
+
+        private static string[] BuildObsoleteList()
         {
-            TilesFolder + "/tile_earth.png",
-            TilesFolder + "/tile_tunnel.png",
-            TilesFolder + "/Tile_Earth.asset",
-            TilesFolder + "/Tile_Tunnel.asset",
-            SpritesFolder + "/player.png"
-        };
+            List<string> obsolete = new List<string>
+            {
+                TilesFolder + "/tile_earth.png",
+                TilesFolder + "/tile_tunnel.png",
+                TilesFolder + "/Tile_Earth.asset",
+                TilesFolder + "/Tile_Tunnel.asset",
+                SpritesFolder + "/player.png",
+                PictosFolder + "/picto_pipe.png"
+            };
+
+            for (int mask = 0; mask < PipeMaskCount; mask++)
+            {
+                obsolete.Add($"{TilesFolder}/pipe_{mask:00}.png");
+                obsolete.Add($"{TilesFolder}/Tile_Pipe_{mask:00}.asset");
+            }
+
+            return obsolete.ToArray();
+        }
 
         /// <summary>Asset Tile du sol de galerie d'une profondeur, 1 a 3.</summary>
         public static string TileTunnel(int depth)
@@ -182,10 +242,24 @@ namespace SousLaVille.EditorTools
             return $"{TilesFolder}/Tile_Earth_{Mathf.Clamp(depth, 1, DepthCount)}.asset";
         }
 
-        /// <summary>Asset Tile de canalisation pour un masque de raccords, 0 a 15.</summary>
-        public static string TilePipe(int mask)
+        /// <summary>
+        /// Asset Tile de canalisation, pour un motif et un masque de raccords.
+        ///
+        /// Les seize tuiles nommees Tile_Pipe_00 a 15 de la phase 3 sont remplacees par
+        /// quarante-huit, motif compris dans le nom : un schema mixte aurait ete une verrue
+        /// dont la phase 12 aurait herite.
+        /// </summary>
+        public static string TilePipe(int pattern, int mask)
         {
-            return $"{TilesFolder}/Tile_Pipe_{Mathf.Clamp(mask, 0, PipeMaskCount - 1):00}.asset";
+            return $"{TilesFolder}/Tile_Pipe_{Mathf.Clamp(pattern, 0, PipePatternCount - 1)}"
+                 + $"_{Mathf.Clamp(mask, 0, PipeMaskCount - 1):00}.asset";
+        }
+
+        /// <summary>Texture de canalisation, pour un motif et un masque. Sert d'echantillon.</summary>
+        public static string PipeTexture(int pattern, int mask)
+        {
+            return $"{TilesFolder}/pipe_{Mathf.Clamp(pattern, 0, PipePatternCount - 1)}"
+                 + $"_{Mathf.Clamp(mask, 0, PipeMaskCount - 1):00}.png";
         }
 
         private static string TunnelTexture(int depth)
@@ -198,10 +272,6 @@ namespace SousLaVille.EditorTools
             return $"{TilesFolder}/tile_earth_{depth}.png";
         }
 
-        private static string PipeTexture(int mask)
-        {
-            return $"{TilesFolder}/pipe_{mask:00}.png";
-        }
 
         [MenuItem("Sous La Ville/Générer l'art placeholder")]
         public static void Generate()
@@ -235,9 +305,12 @@ namespace SousLaVille.EditorTools
                     WriteTexture(TunnelTexture(depth), BuildTile(TunnelColors[depth - 1]));
                 }
 
-                for (int mask = 0; mask < PipeMaskCount; mask++)
+                for (int pattern = 0; pattern < PipePatternCount; pattern++)
                 {
-                    WriteTexture(PipeTexture(mask), BuildPipe(mask));
+                    for (int mask = 0; mask < PipeMaskCount; mask++)
+                    {
+                        WriteTexture(PipeTexture(pattern, mask), BuildPipe(pattern, mask));
+                    }
                 }
 
                 WriteTexture(ManholeTexture, BuildManhole());
@@ -255,7 +328,6 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoDown, BuildArrow(pointingDown: true));
                 WriteTexture(PictoUp, BuildArrow(pointingDown: false));
                 WriteTexture(PictoDig, BuildDigPicto());
-                WriteTexture(PictoPipe, BuildPipePicto());
                 WriteTexture(PictoRemove, BuildRemovePicto());
                 WriteTexture(CursorTarget, BuildCursor());
                 WriteTexture(PictoDropFull, BuildDrop(full: true));
@@ -272,7 +344,10 @@ namespace SousLaVille.EditorTools
                 WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
 
                 WriteTexture(DoorTexture, BuildDoor());
-                WriteTexture(VillagerCraftsman, BuildVillager(), PlayerWidth);
+                WriteTexture(VillagerCraftsman,
+                    BuildVillager(new Color32(0x3E, 0x8E, 0x7A, 0xFF)), PlayerWidth);
+                WriteTexture(VillagerWorker,
+                    BuildVillager(new Color32(0x2E, 0x5F, 0xA8, 0xFF)), PlayerWidth);
                 WriteTexture(PictoEnter, BuildDoorPicto(entering: true));
                 WriteTexture(PictoExit, BuildDoorPicto(entering: false));
                 WriteTexture(PictoTalk, BuildTalkPicto());
@@ -282,6 +357,20 @@ namespace SousLaVille.EditorTools
                     WriteTexture(CraftsmanLineTexture(index),
                         BuildSentence(CraftsmanLines[index]),
                         PixelFont.WidthOf(CraftsmanLines[index]));
+                }
+
+                for (int index = 0; index < WorkerLines.Length; index++)
+                {
+                    WriteTexture(WorkerLineTexture(index),
+                        BuildSentence(WorkerLines[index]),
+                        PixelFont.WidthOf(WorkerLines[index]));
+                }
+
+                for (int index = 0; index < PipeNames.Length; index++)
+                {
+                    WriteTexture(PipeNameTexture(index),
+                        BuildSentence(PipeNames[index]),
+                        PixelFont.WidthOf(PipeNames[index]));
                 }
 
                 for (int index = 0; index < CoverCount; index++)
@@ -316,9 +405,12 @@ namespace SousLaVille.EditorTools
                 ConfigureImporter(TunnelTexture(depth), null);
             }
 
-            for (int mask = 0; mask < PipeMaskCount; mask++)
+            for (int pattern = 0; pattern < PipePatternCount; pattern++)
             {
-                ConfigureImporter(PipeTexture(mask), null);
+                for (int mask = 0; mask < PipeMaskCount; mask++)
+                {
+                    ConfigureImporter(PipeTexture(pattern, mask), null);
+                }
             }
 
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
@@ -333,6 +425,7 @@ namespace SousLaVille.EditorTools
             // Meme pivot que le personnage joueur : l'artisan se pose sur sa case et sa tete
             // deborde vers le haut.
             ConfigureImporter(VillagerCraftsman, PlayerPivot);
+            ConfigureImporter(VillagerWorker, PlayerPivot);
 
             // Une phrase fait environ 170 pixels de large. Le plafond de 64 pose en phase 7
             // la reduirait EN SILENCE, exactement le piege que cette phase-la avait evite de
@@ -340,6 +433,16 @@ namespace SousLaVille.EditorTools
             for (int index = 0; index < CraftsmanLines.Length; index++)
             {
                 ConfigureImporter(CraftsmanLineTexture(index), null, maxSize: 256);
+            }
+
+            for (int index = 0; index < WorkerLines.Length; index++)
+            {
+                ConfigureImporter(WorkerLineTexture(index), null, maxSize: 256);
+            }
+
+            for (int index = 0; index < PipeNames.Length; index++)
+            {
+                ConfigureImporter(PipeNameTexture(index), null);
             }
 
             for (int index = 0; index < CoverCount; index++)
@@ -366,7 +469,7 @@ namespace SousLaVille.EditorTools
             }
 
             foreach (string path in new[] { PictoSurface, PictoUnderground, PictoDown, PictoUp,
-                         PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
+                         PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                          PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn,
                          PictoWinter })
             {
@@ -390,14 +493,17 @@ namespace SousLaVille.EditorTools
                 CreateTileAsset(TileTunnel(depth), TunnelTexture(depth));
             }
 
-            for (int mask = 0; mask < PipeMaskCount; mask++)
+            for (int pattern = 0; pattern < PipePatternCount; pattern++)
             {
-                CreateTileAsset(TilePipe(mask), PipeTexture(mask));
+                for (int mask = 0; mask < PipeMaskCount; mask++)
+                {
+                    CreateTileAsset(TilePipe(pattern, mask), PipeTexture(pattern, mask));
+                }
             }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 81 textures, 32 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 121 textures, 64 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -426,11 +532,14 @@ namespace SousLaVille.EditorTools
                 }
             }
 
-            for (int mask = 0; mask < PipeMaskCount; mask++)
+            for (int pattern = 0; pattern < PipePatternCount; pattern++)
             {
-                if (AssetDatabase.LoadAssetAtPath<Tile>(TilePipe(mask)) == null)
+                for (int mask = 0; mask < PipeMaskCount; mask++)
                 {
-                    return false;
+                    if (AssetDatabase.LoadAssetAtPath<Tile>(TilePipe(pattern, mask)) == null)
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -438,9 +547,9 @@ namespace SousLaVille.EditorTools
             {
                 ManholeTexture, LadderTexture, HouseTexture, HouseInletTexture, PlayerDown,
                 PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
-                PictoUp, PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
+                PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
-                DoorTexture, VillagerCraftsman, PictoEnter, PictoExit, PictoTalk
+                DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk
             };
 
             foreach (string path in sprites)
@@ -471,6 +580,22 @@ namespace SousLaVille.EditorTools
             for (int index = 0; index < CraftsmanLines.Length; index++)
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(CraftsmanLineTexture(index)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < WorkerLines.Length; index++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(WorkerLineTexture(index)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < PipeNames.Length; index++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(PipeNameTexture(index)) == null)
                 {
                     return false;
                 }
@@ -509,17 +634,75 @@ namespace SousLaVille.EditorTools
         /// Le masque suit PipeNetwork : bit 0 nord, 1 est, 2 sud, 3 ouest. Seize images
         /// dessinees par une seule fonction, pas seize dessins a la main.
         /// </summary>
-        private static Color32[] BuildPipe(int mask)
+        /// <summary>
+        /// Une canalisation : la silhouette de la phase 3, plus un motif qui dit son type.
+        ///
+        /// La silhouette est RIGOUREUSEMENT LA MEME pour les trois motifs : seul le
+        /// remplissage change. Deux tuyaux de types differents se raccordent donc a l'oeil
+        /// comme ils se raccordent dans le graphe.
+        ///
+        /// Le motif est une nuance plus sombre du corps, et non une couleur a lui. C'est ce
+        /// qui le fait survivre aux cinq teintes d'etat de la phase 5 : teinter multiplie
+        /// toute la tuile, donc le contraste entre le corps et son motif est preserve, gele
+        /// comme bouche comme porteur d'eau.
+        /// </summary>
+        private static Color32[] BuildPipe(int pattern, int mask)
         {
             Color32 body = new Color32(0x9F, 0xB3, 0xC2, 0xFF);
             Color32 outline = new Color32(0x46, 0x58, 0x6A, 0xFF);
+            Color32 motif = Darken(body, 0.68f);
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
             DrawPipe(pixels, mask, grow: 1, color: outline);
             DrawPipe(pixels, mask, grow: 0, color: body);
 
+            ApplyPipePattern(pixels, pattern, body, motif);
+
             return pixels;
+        }
+
+        /// <summary>
+        /// Le motif, applique sur le seul corps du tuyau : le lisere n'est jamais touche,
+        /// donc la silhouette reste identique d'un type a l'autre.
+        ///
+        /// 0 : corps uni, le tuyau d'aujourd'hui.
+        /// 1 : raye en travers, comme la gaine d'un tuyau isole.
+        /// 2 : pointille, comme la grille qui arrete les feuilles.
+        /// </summary>
+        private static void ApplyPipePattern(Color32[] pixels, int pattern, Color32 body,
+            Color32 motif)
+        {
+            if (pattern == 0)
+            {
+                return;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    int index = y * TileSize + x;
+                    Color32 pixel = pixels[index];
+
+                    // Seul le corps recoit le motif. Comparaison champ par champ : Color32
+                    // n'a pas d'operateur d'egalite.
+                    if (pixel.r != body.r || pixel.g != body.g || pixel.b != body.b
+                        || pixel.a != body.a)
+                    {
+                        continue;
+                    }
+
+                    bool marked = pattern == 1
+                        ? (x + y) % 4 < 2       // bandes en diagonale, larges de deux pixels
+                        : x % 3 == 0 && y % 3 == 0;  // points espaces de trois, une grille
+
+                    if (marked)
+                    {
+                        pixels[index] = motif;
+                    }
+                }
+            }
         }
 
         private static void DrawPipe(Color32[] pixels, int mask, int grow, Color32 color)
@@ -905,22 +1088,6 @@ namespace SousLaVille.EditorTools
             return pixels;
         }
 
-        /// <summary>« Ici on pose » : un tronçon de canalisation avec ses deux collerettes.</summary>
-        private static Color32[] BuildPipePicto()
-        {
-            Color32 body = new Color32(0x9F, 0xB3, 0xC2, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            Fill(pixels, TileSize, 1, 14, 4, 11, outline);
-            Fill(pixels, TileSize, 2, 13, 6, 9, body);
-            Fill(pixels, TileSize, 2, 3, 5, 10, body);
-            Fill(pixels, TileSize, 12, 13, 5, 10, body);
-
-            return pixels;
-        }
-
         /// <summary>« Ici on enleve » : un disque barre, comme un panneau.</summary>
         private static Color32[] BuildRemovePicto()
         {
@@ -1259,18 +1426,20 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// L'artisan des plaques. Meme silhouette que le personnage joueur, 16x24 et meme
+        /// Un personnage de batiment. Meme silhouette que le personnage joueur, 16x24 et meme
         /// pivot, dans une autre couleur : on voit du premier coup d'oeil que c'est quelqu'un
         /// d'autre, sans avoir a le comparer.
         ///
         /// Il regarde vers le bas, donc vers la porte : il fait face a qui entre.
+        ///
+        /// L'artisan est vert, l'ouvrier bleu. Ils ne se distinguent que par la couleur, ce
+        /// qui est un placeholder de plus a reprendre a l'habillage.
         /// </summary>
-        private static Color32[] BuildVillager()
+        private static Color32[] BuildVillager(Color32 body)
         {
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 body = new Color32(0x3E, 0x8E, 0x7A, 0xFF);
             Color32 head = new Color32(0xE8, 0xC0, 0x96, 0xFF);
             Color32 legs = Darken(body, 0.65f);
             Color32 hair = new Color32(0x33, 0x33, 0x38, 0xFF);
@@ -1399,7 +1568,8 @@ namespace SousLaVille.EditorTools
                     switch (cell)
                     {
                         case VillageLayout.House: pixel = house; break;
-                        case VillageLayout.Facade: pixel = facade; break;
+                        case VillageLayout.Facade:
+                        case VillageLayout.PipeFacade: pixel = facade; break;
                         case VillageLayout.Hedge: pixel = hedge; break;
                         case VillageLayout.PlantWall: pixel = plantWall; break;
                         default:

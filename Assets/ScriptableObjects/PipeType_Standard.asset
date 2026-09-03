@@ -15,4 +15,9 @@ MonoBehaviour:
   displayName: Standard
   tint: {r: 1, g: 1, b: 1, a: 1}
   frostResistance: 0
+  leafResistance: 0
   wearPerSeason: 0.1
+  patternIndex: 0
+  sample: {fileID: 21300000, guid: dac207e87a0144f978b78a0a03db5bf1, type: 3}
+  nameImage: {fileID: 21300000, guid: 36ba1b7aa0c9f484d9f02c510d8fc9fe, type: 3}
+  defeatedSeasonIcon: {fileID: 0}

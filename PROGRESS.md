@@ -17,7 +17,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 7 | La plaque gravable | Terminée |
 | 8 | La réserve d'eau | Terminée |
 | 9a | Les bâtiments | Terminée |
-| 9b | L'usine à tuyaux | À faire |
+| 9b | L'usine à tuyaux | Terminée |
 | 10 | Les fuites | À faire |
 | 11 | Le parc | À faire |
 | 12 | L'usine à panneaux | À faire |
@@ -840,22 +840,201 @@ Vu par le haut ou de côté, il n'y a aucun recouvrement, et le personnage bloqu
 côtés, donc on peut toujours l'aborder autrement. Le défaut est cosmétique et réversible en dix
 lignes. **Non tranché, voir les questions ouvertes.**
 
-## Prochaine étape, phase 9b
+## Phase 9b, ce qui est fait
 
-L'usine à tuyaux, sur le patron prouvé par 9a. Ce que 9a laisse en place :
+Les trois types de canalisation, l'usine où on les choisit, et le tuyau en main.
 
+- **La bulle passe au-dessus du personnage qui parle**, décidé après l'avoir vu en jeu en 9a.
+  `Villager` porte son propre `SpriteRenderer` de bulle ; `PlayerInteractor` l'allume et
+  l'éteint selon ce que le joueur regarde, et n'a plus de `promptTalk`. Seule exception à la
+  règle « le picto est au-dessus de la tête du joueur » : un picto qui cache ce qu'il désigne
+  ne désigne rien.
+- `PipeType` gagne `LeafResistance`, jumelle exacte de `FrostResistance`, plus `PatternIndex`,
+  `Sample`, `NameImage` et `DefeatedSeasonIcon`. C'est devenu un catalogue, comme
+  `ManholeCoverDefinition` et `SeasonDefinition`.
+- **Le type vit sur le nœud**, pas sur le segment. `PipeNode` gagne `PipeType` ; les nœuds
+  imposés par le monde, station, maisons et bassin, n'en portent aucun.
+- **Un segment est aussi faible que sa plus faible extrémité.** `PipeSegment` expose
+  `FrostResistance`, `LeafResistance` et `WearPerSeason` calculées depuis ses deux bouts : la
+  plus basse des deux résistances, la plus forte des deux usures. Une extrémité sans type ne
+  compte pas ; si aucun des deux n'en a, le type par défaut du monde tranche.
+- `PipeNetwork.PlacePipe(cell, type)` : la pose porte le type. Changer le type d'une case,
+  c'est l'enlever puis la reposer, le geste de la phase 3. Aucun geste de remplacement.
+- `SeasonSystem` : les feuilles lisent `LeafResistance` exactement comme le gel lit
+  `FrostResistance`, et l'usure vient du segment.
+- `Assets/Scripts/Buildings/PipeFactory.cs` : le catalogue, les cases des échantillons et le
+  type en main, avec son événement `Changed`. Vit dans `Interiors`, comme `ManholeFactory`.
+- `PipeNetworkView` : **quarante-huit tuiles**, seize par motif, indexées `motif * 16 + masque`.
+- `PlayerInteractor` : `ChoosePipe` sur la case occupée, et **le picto de pose devient le tuyau
+  en main**. `picto_pipe` a disparu.
+- `SaveData` : `pipeTypes` et `pipeInHand`. **`CurrentVersion` reste à 1.**
+- `VillageLayout` : la façade `G` de l'usine en `x ∈ [30, 33]`, `y ∈ [26, 27]`, sa porte `E` en
+  **(31, 25)**. Rien d'autre n'a bougé.
+- `InteriorsLayout` : la pièce de l'usine dans le créneau (20, 20), trois échantillons en
+  x = 25, 30 et 35.
+- `PlaceholderArtGenerator` : les quarante-huit tuiles, l'ouvrier, ses quatre phrases, les
+  trois noms. **121 textures, 64 tuiles.** Les seize tuiles d'un seul motif de la phase 3 et
+  `picto_pipe` sont retirées par la liste des obsolètes.
+- **Règle 9 vérifiée** : aucun type nouveau, aucune référence d'assembly à ajouter.
+
+### Les trois types
+
+| Type | Gel | Feuilles | Usure | Motif | Nom écrit |
+|---|---|---|---|---|---|
+| Standard | gèle | se bouche | 0,1 | corps uni | `NORMAL` |
+| Isolé | **ne gèle jamais** | se bouche | 0,1 | rayé en diagonale | `ISOLÉ` |
+| Grillagé | gèle | **ne se bouche jamais** | 0,1 | pointillé | `GRILLÉ` |
+
+**Le motif est une nuance plus sombre du corps, jamais une couleur à lui.** C'est ce qui le
+fait survivre aux cinq teintes d'état : teinter multiplie toute la tuile, donc le contraste
+entre le corps et son motif est préservé, gelé comme bouché comme porteur d'eau. Et la
+silhouette est rigoureusement identique d'un motif à l'autre : deux tuyaux de types différents
+se raccordent à l'œil comme ils se raccordent dans le graphe.
+
+### Ce que dit l'ouvrier
+
+Quatre phrases, cinq mots ou moins. « CHOISIS UN TUYAU » — « L'ISOLÉ ARRÊTE LE FROID » —
+« LE GRILLÉ ARRÊTE LES FEUILLES » — « REVIENS QUAND TU VEUX »
+
+Les deux du milieu sont symétriques à dessein : **même verbe, ARRÊTE**, et la menace qui
+change. Chacune répond au picto affiché au-dessus de son échantillon, flocon ou feuille.
+La dernière dit qu'on peut revenir : pas de stock, pas de panne au fond d'une galerie.
+
+## Phase 9b, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP.
+- Menus dans l'ordre, éditeur hors play : art, ScriptableObjects, scènes. Console propre.
+- **Les trois motifs comparés sur les seize masques, à taille réelle** : distincts entre eux, et
+  la silhouette identique d'une rangée à l'autre. **Puis sous les cinq couleurs d'état** :
+  toujours distincts, y compris sous le brun du bouchon et le rouge de l'abîmé.
+- Les trois noms relus : `NORMAL`, `ISOLÉ`, `GRILLÉ`, accents compris.
+- Plan du village relu : **deux façades et deux portes** aux cases attendues, et la station, les
+  cinq maisons, les trois bouches et le départ **exactement où ils étaient**. Bornes du village
+  inchangées. Sous-sol à 87 cases praticables.
+- Scène Interiors : deux pièces, 288 cases praticables, deux personnages de 3 et 4 phrases,
+  `PipeFactory` avec ses trois types, leurs motifs 0/1/2, leurs résistances 0-0, 1-0 et 0-1, et
+  leur usure identique à 0,1. Aucun renderer hors de la famille `Interior_*`.
+- Sous-sol : **48 tuiles câblées, aucune nulle**, rang 16 = `Tile_Pipe_1_00`, rang 47 =
+  `Tile_Pipe_2_15`.
+- Play depuis Boot, par injection clavier, `Application.isFocused` vérifié :
+  - **Espace sur la porte de l'usine** : fondu, intérieur, **caméra bornée à SA pièce en
+    (30, 25)** — la pièce voisine ne se voit pas ;
+  - face à l'ouvrier, **la bulle est au-dessus de SA tête** et le picto du joueur est éteint ;
+  - **Espace : il parle**, quatre lignes, 97x9, 139x11, 175x11 et 127x9 pixels. Les deux
+    accentuées font bien deux rangées de plus, et la plus large tient largement sous 256 ;
+  - **Espace sur l'échantillon isolé** : le picto devient `pipe_1_10`, et le tuyau en main passe
+    à Isolé ;
+  - sous terre, **le picto de pose est `pipe_1_10`**, pas `picto_pipe` ; Espace pose un nœud de
+    type Isolé, motif 1, tuile `Tile_Pipe_1_00` ;
+  - **un seul standard au milieu d'isolés** : en hiver, **seuls les deux segments qui le
+    touchent gèlent**, les 44 autres non, et la maison se coupe. Une route isolée l'est de bout
+    en bout, ou elle ne l'est pas ;
+  - **le croisement des trois types et des deux saisons**, sur la même route de 44 cases dont 17
+    peu profondes :
+
+| Type | 1 hiver, gelés | 3 automnes, bouchés | Desservie |
+|---|---|---|---|
+| Standard | 18 | 11 | coupée aux deux |
+| Isolé | **0** | 12 | **desservie en hiver**, coupée en automne |
+| Grillagé | 18 | **0** | coupée en hiver, **desservie en automne** |
+
+  - **le critère de fin** : la maison peu profonde (27, 17), route de 46 cases, **reste
+    desservie en plein hiver en isolé de bout en bout**, et **se coupe en standard**, 18 gelés ;
+  - **le tableau de la phase 8, reproduit au chiffre près et sans copie de saison** :
+
+| Saison | Type posé | Desservies | Arrivant | Traité | Absorbé | Relâché | Bassin |
+|---|---|---|---|---|---|---|---|
+| Été | Standard | 5/5 | 5 | 5 | 0 | 0 | 0 |
+| Automne | Grillagé | 5/5 | **13** | **8** | **+5** | 0 | **5** |
+| Hiver | Isolé | 5/5 | **6** | 6 | 0 | **2** | **3** |
+| Printemps | Standard | 5/5 | **7** | 7 | 0 | **1** | **2** |
+
+  - **sauvegarde** : 68 cases posées, **35 écrites seulement**, les 33 standard ne le sont pas ;
+    `pipeInHand` à 2 ; version 1 ; aucun `.tmp` ;
+  - **quitter et relancer** : 33 standard, 33 isolés, 2 grillagés retrouvés, grillagé en main,
+    plaque retrouvée, joueur au départ du village. **Le chargement ne coûte qu'une résolution** :
+    une partie neuve en compte 1, une partie chargée 2 ;
+  - **une partie de la phase 8 se relit sans une erreur** : 78 nœuds, **tout standard**, standard
+    en main, automne, bassin à 7 ;
+  - le solveur **ne tourne pas par frame** : le compteur ne bouge plus après une résolution ;
+  - console **entièrement vide, tous types confondus**, sur la session complète.
+- Captures : l'ouvrier qui parle dans son usine, un réseau mêlant les trois motifs, le même en
+  plein hiver. Couleurs relues dans la tilemap : standard et grillagé en blanc bleuté, isolés en
+  blanc, **et les deux isolés en bout de section gelés parce qu'ils partagent un segment avec un
+  voisin d'un autre type**. La règle du bout le plus faible se voit à l'écran.
+- `git diff ProjectSettings/` : **vide**. Rien n'a bougé cette phase.
+
+### Ce que le croisement apprend
+
+**Aucun type ne met une maison peu profonde à l'abri de l'année entière.** Le nœud d'une maison
+peu profonde est à la profondeur 1, donc le segment qui y arrive est exposé quoi qu'on fasse, et
+un type ne vainc qu'une menace. Le tableau de la phase 8 n'est donc pas atteignable avec un
+réseau figé : **il l'est en changeant de tuyau entre les saisons**, grillagé avant l'automne,
+isolé avant l'hiver.
+
+C'est exactement la boucle voulue, et ce n'est pas un contournement : une saison dure dix
+minutes, et l'usine est à deux pas du départ. La réponse à la question ouverte de la phase 8 est
+donc « oui, mais en jouant », et non « oui, en posant les bons tuyaux une fois pour toutes ».
+
+## Prochaine étape, phase 10
+
+Les fuites. Ce que la phase 9 laisse en place :
+
+- **`SeasonSystem.LastBudget.Lost`** dit combien d'eau disparaît par saison : c'est l'entrée de
+  la phase 10, le débordement visible. Il reste à zéro tant que le bassin encaisse.
 - **Le patron du bâtiment** : façade et porte au plan du village, pièce dans un créneau libre,
-  personnage et phrases. Ajouter l'usine, c'est ajouter un bloc à `InteriorsLayout`, une façade
-  et une porte à `VillageLayout`, et des phrases au générateur d'art.
-- **Le patron accepte trois personnages** dans une pièce : `Villager` est un composant par
-  personnage, avec son registre et ses phrases, ce dont l'usine à panneaux aura besoin en
-  phase 12.
-- **La police a ses accents** : `ISOLÉ`, `GRILLÉ` et `ARRÊTE` sont déjà relus sur planche.
-- Ce que la phase 8 laissait, toujours vrai : **`PipeType.FrostResistance` a enfin un enjeu**,
-  **`SeasonSystem.LastBudget.Lost`** est l'entrée de la phase 10, **`TreatmentPlant` est un
-  objet**, et **le patron du nœud permanent** sert trois fois.
+  personnage et phrases. L'usine à panneaux de la phase 12 n'a plus qu'à ajouter un bloc à
+  `InteriorsLayout`, une façade et une porte à `VillageLayout`, et **trois** personnages dans sa
+  pièce, ce que `Villager` accepte déjà.
+- **Quatre créneaux de pièce restent libres** dans la scène Interiors.
+- **La police a ses accents et son apostrophe**, relus sur planche.
 
 ## Décisions prises
+
+### Phase 9b
+
+- **La bulle « on peut lui parler » est au-dessus de la tête du PERSONNAGE**, seule exception à
+  la règle « le picto d'action est au-dessus de la tête du joueur ». Tranché le 3 septembre 2026
+  après l'avoir vu en jeu : la place habituelle tombe exactement sur le visage de qui se tient
+  une case plus haut. Un picto qui cache ce qu'il désigne ne désigne rien. Les huit autres
+  pictos ne bougent pas.
+- **Le type vit sur le nœud, la résistance effective sur le segment.** Une case porte un tuyau
+  d'un type, c'est ce que le joueur voit et ce qu'il pose. Le segment retient **la plus basse
+  des deux résistances** et la plus forte des deux usures : il est aussi faible que son bout le
+  plus faible, comme il est aussi exposé que son extrémité la moins profonde depuis la phase 5.
+- **Une extrémité sans type ne compte pas.** Station, maisons et bassin ne sont pas des tuyaux
+  qu'on a choisi de poser ; c'est l'autre bout qui décide seul.
+- **`LeafResistance` est une probabilité de tenir**, symétrique exacte de `FrostResistance`.
+  Elle vaut 0 ou 1 aujourd'hui, mais le champ reste une probabilité : un type intermédiaire ne
+  demanderait pas une ligne de code.
+- **L'usure est la même pour les trois.** Un tuyau qui ne s'use pas rendrait la clé inutile, et
+  c'est ce geste qui garde le bassin bas.
+- **Le motif plutôt que la teinte, et le motif est une nuance du corps.** C'est ce qui le fait
+  survivre aux cinq couleurs d'état : teinter multiplie toute la tuile. `PipeType.Tint` reste
+  inutilisé plutôt que de casser les assets.
+- **La silhouette est identique d'un motif à l'autre.** Seul le remplissage change : deux tuyaux
+  de types différents se raccordent à l'œil comme dans le graphe.
+- **Les quarante-huit tuiles sont nommées `Tile_Pipe_<motif>_<masque>`**, et les seize de la
+  phase 3 sont retirées. Un schéma mixte, seize sans motif plus trente-deux avec, aurait été une
+  verrue dont la phase 12 aurait hérité.
+- **L'échantillon EST la tuile posée en jeu**, masque est-ouest. Le picto de pose ne peut donc
+  pas mentir sur ce qu'il va poser, et il n'y a aucune image de plus à dessiner.
+- **Le picto de pose est le tuyau en main**, comme le picto de choix est la plaque en phase 7.
+  `picto_pipe` disparaît : un symbole générique ne disait plus rien des trois types.
+- **Seules les cases non standard sont écrites**, comme seuls les segments abîmés le sont.
+  Chaque ligne du fichier est un choix, pas un état.
+- **Le type en main est un entier sauvegardé.** Exception assumée à « on ne sauvegarde pas ce
+  qu'on ne relit pas » : redescendre pour découvrir qu'on a repris le standard serait une
+  surprise, et le jeu n'en fait pas.
+- **`PlayerInteractor` garde l'usine à tuyaux une fois trouvée, en `FindObjectsInactive.Include`.**
+  C'est le contraire de l'atelier : on consulte l'atelier sur place, mais on pose des tuyaux
+  **sous terre**, donc l'usine est toujours éteinte au moment où l'on s'en sert.
+- **`SaveSystem` cherche l'usine pour elle-même** plutôt que de supposer qu'elle arrive avec
+  l'atelier, bien qu'elles vivent dans la même scène. C'est exactement la supposition qui avait
+  coûté les plaques en 9a.
+- **Le tableau de la phase 8 se reproduit en changeant de tuyau entre les saisons**, pas avec un
+  réseau figé. Voir « Ce que le croisement apprend ».
 
 ### Phase 9a, choix techniques tranchés le 3 septembre 2026
 
@@ -1252,6 +1431,13 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
+- **L'ouvrier des tuyaux est le personnage joueur repeint en bleu**, comme l'artisan l'est en
+  vert. Les trois ne se distinguent que par la couleur.
+- **Les échantillons de tuyaux font seize pixels**, comme les tuiles posées, ce qui est voulu
+  mais les rend petits dans la vitrine. Les motifs se lisent, mais de près.
+- **Le blanc bleuté du gel se voit peu sur le gris pâle des tuyaux.** Relu dans la tilemap, la
+  teinte est bien posée ; à l'œil, plein écran, l'écart est faible. À revoir à l'habillage, du
+  côté de la couleur du corps plutôt que de celle du gel.
 - **Les onze PNG de la phase 9a** : la façade de l'atelier, le mur de pièce, la porte,
   l'artisan, `picto_enter`, `picto_exit`, `picto_talk` et les trois phrases. La façade est un
   aplat ocre de quatre cases sur deux : elle se lit comme un bâtiment sur l'herbe, mais elle
@@ -1311,18 +1497,19 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   3 septembre 2026 : ils parlent en phrases de moins de six mots, en français, et Victorien
   sait lire. Les phrases exactes sont à écrire et à relire à voix haute pour six ans. Les
   accents manquent encore à `PixelFont`.
-- **Le picto « parler » couvre la tête de l'artisan** quand on l'aborde par en dessous. Le
-  picto d'action se pose au-dessus de la tête du JOUEUR depuis la phase 2, « toujours au même
-  endroit », et cette place tombe exactement sur le visage de qui se tient une case plus haut.
-  Vu de côté ou par le haut, aucun recouvrement. Deux issues, à trancher : garder la règle et
-  reprendre le picto à l'habillage, plus petit et transparent ; ou **poser la bulle au-dessus
-  de la tête du personnage qui parle**, ce qui est la convention partout ailleurs et ne cache
-  rien, au prix de la règle « toujours au même endroit ». Dix lignes dans les deux cas.
-  Non tranché.
+- ~~**Le picto « parler » couvre la tête de l'artisan.**~~ **Tranché le 3 septembre 2026** : la
+  bulle passe au-dessus de la tête du personnage qui parle. Fait en 9b.
 
 - ~~**Une scène de plus pour les intérieurs ?**~~ **Tranché le 3 septembre 2026** : oui, une
   cinquième scène `Interiors` et une troisième couche `GameLayer.Interior`. Écart à CLAUDE.md
   accepté explicitement. Voir les décisions de la phase 9a.
+- **Le tableau de la phase 8 demande de changer de tuyau entre les saisons.** La phase 9b
+  montre qu'il se reproduit au chiffre près, mais seulement si le joueur pose du grillagé avant
+  l'automne et de l'isolé avant l'hiver : aucun type ne met une maison peu profonde à l'abri de
+  l'année entière, par construction. C'est la boucle voulue, mais **elle demande de comprendre
+  que la saison qui vient décide du tuyau**. À observer quand Victorien jouera : c'est le point
+  de compréhension le plus exigeant du jeu à ce jour.
+
 - **Le bilan de l'eau est calculé au tick, après les effets de la saison qui commence.** Le
   plan le demande ainsi, et c'est fait ainsi. Conséquence vue en jeu : l'hiver gèle les trois
   maisons peu profondes **avant** le bilan, l'automne en bouche autant, et aucun entretien ne

@@ -38,6 +38,7 @@ namespace SousLaVille.Core
         private PipeNetwork network;
         private UndergroundMap map;
         private ManholeFactory factory;
+        private PipeFactory pipeFactory;
         private WaterReserve reserve;
 
         private bool loaded;
@@ -134,7 +135,15 @@ namespace SousLaVille.Core
                 factory = FindAnyObjectByType<ManholeFactory>(FindObjectsInactive.Include);
             }
 
-            if (map == null || network == null || factory == null)
+            // L'usine a tuyaux vit dans la meme scene que l'atelier, mais on la cherche pour
+            // elle-meme plutot que de supposer qu'elles arrivent ensemble : c'est exactement
+            // la supposition qui a coute les plaques ci-dessus.
+            if (pipeFactory == null)
+            {
+                pipeFactory = FindAnyObjectByType<PipeFactory>(FindObjectsInactive.Include);
+            }
+
+            if (map == null || network == null || factory == null || pipeFactory == null)
             {
                 return;
             }
@@ -165,6 +174,11 @@ namespace SousLaVille.Core
                 factory.Changed += MarkDirty;
             }
 
+            if (pipeFactory != null)
+            {
+                pipeFactory.Changed += MarkDirty;
+            }
+
             if (reserve != null)
             {
                 reserve.Changed += MarkDirty;
@@ -191,6 +205,11 @@ namespace SousLaVille.Core
             if (factory != null)
             {
                 factory.Changed -= MarkDirty;
+            }
+
+            if (pipeFactory != null)
+            {
+                pipeFactory.Changed -= MarkDirty;
             }
 
             if (reserve != null)
@@ -286,9 +305,34 @@ namespace SousLaVille.Core
                     map.Dig(cell.ToCell());
                 }
 
-                foreach (SaveCell cell in data.pipeCells)
+                // Le type en main d'abord : il ne depend de rien et rien ne depend de lui.
+                if (pipeFactory != null)
                 {
-                    network.PlacePipe(cell.ToCell());
+                    pipeFactory.Restore(data.pipeInHand);
+                }
+
+                // Puis les types par case, AVANT de poser : un noeud recoit son type a la
+                // creation, et il n'existe aucun geste pour le changer ensuite. Une case
+                // absente de la liste est standard, c'est tout le principe du champ.
+                Dictionary<Vector2Int, int> typeByCell = new Dictionary<Vector2Int, int>();
+                foreach (SavePipeType saved in data.pipeTypes)
+                {
+                    if (saved != null && saved.cell != null)
+                    {
+                        typeByCell[saved.cell.ToCell()] = saved.type;
+                    }
+                }
+
+                foreach (SaveCell saved in data.pipeCells)
+                {
+                    Vector2Int cell = saved.ToCell();
+
+                    int typeIndex;
+                    PipeType type = typeByCell.TryGetValue(cell, out typeIndex) && pipeFactory != null
+                        ? pipeFactory.TypeAt(typeIndex)
+                        : null;
+
+                    network.PlacePipe(cell, type);
                 }
 
                 foreach (SaveSegment saved in data.segments)
@@ -425,6 +469,7 @@ namespace SousLaVille.Core
             data.seasonIndex = seasons != null ? seasons.CurrentIndex : 0;
             data.seasonProgress = clock != null ? clock.SeasonProgress : 0f;
             data.reserveLevel = reserve != null ? reserve.Level : 0;
+            data.pipeInHand = pipeFactory != null ? pipeFactory.CurrentIndex : 0;
 
             foreach (Vector2Int cell in map.DugCells)
             {
@@ -441,6 +486,18 @@ namespace SousLaVille.Core
                 }
 
                 data.pipeCells.Add(new SaveCell(node.GridPos));
+
+                // Seules les cases NON standard sont ecrites, comme seuls les segments
+                // abimes le sont : le rang 0 est ce que la pose donne par defaut.
+                int typeIndex = pipeFactory != null ? pipeFactory.IndexOf(node.PipeType) : 0;
+                if (typeIndex != 0)
+                {
+                    data.pipeTypes.Add(new SavePipeType
+                    {
+                        cell = new SaveCell(node.GridPos),
+                        type = typeIndex
+                    });
+                }
             }
 
             foreach (PipeSegment segment in network.Segments)

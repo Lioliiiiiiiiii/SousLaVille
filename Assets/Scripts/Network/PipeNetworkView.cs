@@ -4,13 +4,17 @@ using UnityEngine.Tilemaps;
 namespace SousLaVille.Network
 {
     /// <summary>
-    /// Le rendu du reseau. Chaque noeud recoit la tuile qui correspond a son masque de
-    /// raccords : un tuyau isole, un coude, un T et un croisement se distinguent donc sans
-    /// code de dessin particulier.
+    /// Le rendu du reseau. Chaque noeud recoit la tuile qui correspond a son MOTIF et a son
+    /// masque de raccords : un tuyau isole, un coude, un T et un croisement se distinguent
+    /// donc sans code de dessin particulier, et les trois types aussi.
     ///
-    /// La couleur dit l'etat, dans un ordre de priorite fixe : gele, bouche, trop abime,
-    /// porteur d'eau, sain. Aucune image supplementaire : une couleur par case suffit a
-    /// montrer tout le reseau d'un coup d'oeil, et aucune ne demande de legende.
+    /// Le motif dit le type, la couleur dit l'etat. Jamais l'inverse : la couleur est prise
+    /// depuis la phase 5, dans un ordre de priorite fixe, gele, bouche, trop abime, porteur
+    /// d'eau, sain. Un type qui prendrait une couleur entrerait en concurrence avec ces
+    /// cinq-la, et un tuyau gele ne se verrait plus.
+    ///
+    /// Le motif etant une nuance plus sombre du corps, il survit a la teinte : multiplier
+    /// toute la tuile garde le contraste entre le corps et son motif.
     ///
     /// Tout est redessine a chaque changement. Quelques centaines de cases, et seulement sur
     /// action du joueur ou apres une resolution : le calcul incremental viendra s'il se voit
@@ -21,8 +25,14 @@ namespace SousLaVille.Network
         [SerializeField] private PipeNetwork network;
         [SerializeField] private Tilemap pipes;
 
-        [Tooltip("Seize tuiles, indexees par le masque de raccords.")]
-        [SerializeField] private TileBase[] tilesByMask;
+        [Tooltip("Seize tuiles par motif, mises bout a bout : rang = motif * 16 + masque.")]
+        [SerializeField] private TileBase[] tilesByPatternAndMask;
+
+        [Tooltip("Nombre de motifs. Trois depuis la phase 9b, un par type de tuyau.")]
+        [SerializeField] private int patternCount = 3;
+
+        /// <summary>Nombre de masques de raccords : quatre bits, seize combinaisons.</summary>
+        private const int MaskCount = 16;
 
         [Tooltip("Teinte d'un tuyau qui porte de l'eau.")]
         [SerializeField] private Color waterTint = new Color(0.36f, 0.66f, 0.94f, 1f);
@@ -77,7 +87,8 @@ namespace SousLaVille.Network
 
         private void Redraw()
         {
-            if (pipes == null || tilesByMask == null || tilesByMask.Length < 16)
+            if (pipes == null || tilesByPatternAndMask == null
+                || tilesByPatternAndMask.Length < MaskCount)
             {
                 return;
             }
@@ -94,13 +105,36 @@ namespace SousLaVille.Network
                 Vector3Int position = new Vector3Int(node.GridPos.x, node.GridPos.y, 0);
                 int mask = network.NeighbourMask(node.GridPos);
 
-                pipes.SetTile(position, tilesByMask[mask]);
+                pipes.SetTile(position, TileFor(node, mask));
 
                 // LockColor est pose par defaut sur une tuile : sans ce reglage, SetColor
                 // serait ignore en silence.
                 pipes.SetTileFlags(position, TileFlags.None);
                 pipes.SetColor(position, TintFor(node.GridPos));
             }
+        }
+
+        /// <summary>
+        /// La tuile d'un noeud : son motif d'abord, son masque ensuite. Un noeud sans type,
+        /// station, maison ou bassin, prend le motif du standard : il n'a pas ete pose, et
+        /// il n'a donc rien de particulier a montrer.
+        /// </summary>
+        private TileBase TileFor(PipeNode node, int mask)
+        {
+            int pattern = node.PipeType != null ? node.PipeType.PatternIndex : 0;
+
+            if (pattern < 0 || pattern >= patternCount)
+            {
+                pattern = 0;
+            }
+
+            int index = pattern * MaskCount + mask;
+
+            // Un motif dont les tuiles manquent retombe sur celui du standard, en silence :
+            // un reseau qui ne se dessine plus serait pire qu'un reseau mal dessine.
+            return index < tilesByPatternAndMask.Length
+                ? tilesByPatternAndMask[index]
+                : tilesByPatternAndMask[mask];
         }
 
         /// <summary>

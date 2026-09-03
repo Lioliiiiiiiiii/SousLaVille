@@ -287,28 +287,28 @@ namespace SousLaVille.Seasons
                 segment.IsFrozen = false;
             }
 
-            // 2. Le gel. La resistance du type est une probabilite de tenir : 0 gele des le
-            // premier hiver, 1 ne gele jamais. C'est ce qui donnera un sens aux types de
-            // canalisation, en phase 9.
-            if (season.FreezeMaxDepth > 0 && depth <= season.FreezeMaxDepth)
+            // 2. Le gel. La resistance est une probabilite de tenir : 0 gele des le premier
+            // hiver, 1 ne gele jamais. Elle est celle du bout le plus faible du segment,
+            // depuis la phase 9b : une route isolee l'est de bout en bout, ou elle gele.
+            if (season.FreezeMaxDepth > 0 && depth <= season.FreezeMaxDepth
+                && UnityEngine.Random.value >= segment.FrostResistance)
             {
-                float resistance = segment.PipeType != null ? segment.PipeType.FrostResistance : 0f;
-                if (UnityEngine.Random.value >= resistance)
-                {
-                    segment.IsFrozen = true;
-                }
+                segment.IsFrozen = true;
             }
 
-            // 3. Les feuilles de l'automne, sur les tuyaux peu profonds seulement.
+            // 3. Les feuilles de l'automne, sur les tuyaux peu profonds seulement. La
+            // resistance aux feuilles se lit exactement comme celle au gel : c'est sa
+            // jumelle, et le grillage est a l'automne ce que l'isole est a l'hiver.
             if (season.ClogChance > 0f && depth <= ShallowDepth
-                && UnityEngine.Random.value < season.ClogChance)
+                && UnityEngine.Random.value < season.ClogChance
+                && UnityEngine.Random.value >= segment.LeafResistance)
             {
                 segment.IsClogged = true;
             }
 
-            // 4. L'usure, sur tous les tuyaux. Elle seule demande un geste pour se defaire.
-            float wear = segment.PipeType != null ? segment.PipeType.WearPerSeason : 0f;
-            segment.Condition -= wear * season.WearMultiplier;
+            // 4. L'usure, sur tous les tuyaux. Elle seule demande un geste pour se defaire,
+            // et elle est la meme pour les trois types : l'entretien reste la boucle.
+            segment.Condition -= segment.WearPerSeason * season.WearMultiplier;
         }
 
         private int CountSegments(bool frozen)

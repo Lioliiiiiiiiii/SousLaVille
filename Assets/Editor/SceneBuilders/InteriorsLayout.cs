@@ -17,10 +17,12 @@ namespace SousLaVille.EditorTools
     ///
     /// Legende
     ///   #  mur (bloquant)     .  sol      D  porte, vers le village
-    ///   C  plaque exposee     V  personnage
+    ///   C  plaque exposee     P  echantillon de tuyau      V  personnage
     ///
-    /// C et V sont des marqueurs : le builder peint du sol dessous et pose un GameObject
-    /// par-dessus. Ni l'un ni l'autre ne bloque le passage.
+    /// C, P et V sont des marqueurs : le builder peint du sol dessous et pose un GameObject
+    /// par-dessus. Les echantillons ne bloquent pas, on marche dessus pour les choisir ; le
+    /// personnage, lui, bloque : on ne traverse pas quelqu'un, et debout sur lui on ne
+    /// pourrait plus lui parler.
     ///
     /// Tout ce qui n'appartient a aucune piece est infranchissable : voir InteriorMap, qui
     /// refuse toute case hors piece plutot que de peindre six cents tuiles de mur qu'on ne
@@ -38,6 +40,7 @@ namespace SousLaVille.EditorTools
         public const char Floor = '.';
         public const char Door = 'D';
         public const char Cover = 'C';
+        public const char PipeSample = 'P';
         public const char Villager = 'V';
 
         /// <summary>Une piece : son bloc dessine et le coin bas gauche de son creneau.</summary>
@@ -92,10 +95,35 @@ namespace SousLaVille.EditorTools
             });
 
         /// <summary>
-        /// Les pieces du jeu. La phase 9b y ajoutera l'usine a tuyaux, dans le creneau
-        /// (20, 20) laisse libre a sa droite ; la phase 12, l'usine a panneaux.
+        /// L'usine a tuyaux. Trois echantillons seulement, largement espaces : au-dessus de
+        /// chacun, le picto de la saison qu'il vainc, flocon ou feuille, et sous chacun son
+        /// nom ecrit. Le standard ne vainc rien et n'a donc pas de picto, ce qui se voit.
+        ///
+        /// L'ouvrier se tient au meme endroit que l'artisan chez le voisin : les deux
+        /// batiments s'apprennent une seule fois.
         /// </summary>
-        public static readonly Room[] Rooms = { CoverWorkshop };
+        private static readonly Room PipeWorks = new Room(
+            "Usine a tuyaux",
+            new Vector2Int(20, 20),
+            new[]
+            {
+                "####################",
+                "#..................#",
+                "#..................#",
+                "#..................#",
+                "#....P....P....P...#",
+                "#..................#",
+                "#..................#",
+                "#........V.........#",
+                "#..................#",
+                "#########D##########",
+            });
+
+        /// <summary>
+        /// Les pieces du jeu. La phase 12 y ajoutera l'usine a panneaux, dans un des quatre
+        /// creneaux encore libres.
+        /// </summary>
+        public static readonly Room[] Rooms = { CoverWorkshop, PipeWorks };
 
         /// <summary>
         /// Caractere de la case (x, y), ou le mur si la case n'appartient a aucune piece.

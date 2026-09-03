@@ -26,6 +26,10 @@ namespace SousLaVille.Network
     /// C'est elle qui porte tout le puzzle, la regle de CLAUDE.md etant qu'un segment ne
     /// transporte que si la profondeur ne diminue pas dans le sens de l'ecoulement.
     ///
+    /// LE TYPE VIT SUR LE NOEUD et non sur le segment, depuis la phase 9b : une case porte
+    /// un tuyau d'un type, et c'est ce que le joueur voit et ce qu'il pose. Un segment en
+    /// deduit sa resistance, en retenant celle de sa plus faible extremite.
+    ///
     /// Classe serialisable et non MonoBehaviour : la sauvegarde de la phase 6 doit pouvoir
     /// l'ecrire telle quelle.
     /// </summary>
@@ -35,12 +39,14 @@ namespace SousLaVille.Network
         [SerializeField] private Vector2Int gridPos;
         [SerializeField] private int depth;
         [SerializeField] private NodeType type;
+        [SerializeField] private PipeType pipeType;
 
-        public PipeNode(Vector2Int gridPos, int depth, NodeType type)
+        public PipeNode(Vector2Int gridPos, int depth, NodeType type, PipeType pipeType = null)
         {
             this.gridPos = gridPos;
             this.depth = depth;
             this.type = type;
+            this.pipeType = pipeType;
         }
 
         public Vector2Int GridPos => gridPos;
@@ -49,6 +55,13 @@ namespace SousLaVille.Network
         public int Depth => depth;
 
         public NodeType Type => type;
+
+        /// <summary>
+        /// Le type de tuyau pose sur cette case, ou null. Les noeuds imposes par le monde,
+        /// station, maisons et bassin, n'en portent aucun : ils ne sont pas des tuyaux qu'on
+        /// a choisi de poser, et ils ne comptent donc pas dans la resistance d'un segment.
+        /// </summary>
+        public PipeType PipeType => pipeType;
 
         /// <summary>
         /// Un noeud pose par le monde, station, maison ou bassin, ne s'enleve pas. Seules

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SousLaVille.Buildings;
 using SousLaVille.Core;
+using SousLaVille.Network;
 using SousLaVille.World;
 using UnityEditor;
 using UnityEngine;
@@ -29,6 +30,10 @@ namespace SousLaVille.EditorTools
 
         private const string GroundSortingLayer = GameSortingLayers.InteriorGround;
         private const string EntitiesSortingLayer = GameSortingLayers.InteriorEntities;
+
+        // Meme decalage que le picto d'action du joueur, dans PersistentSceneBuilder : les
+        // deux bulles se posent a la meme hauteur au-dessus d'une tete.
+        private static readonly Vector3 PromptOffset = new Vector3(0f, 1.25f, 0f);
 
         [MenuItem("Sous La Ville/Construire la scène Interiors")]
         public static void Build()
@@ -65,6 +70,7 @@ namespace SousLaVille.EditorTools
             CreateDoors(root);
             CreateVillagers(root);
             CreateCoverWorkshop(root);
+            CreatePipeWorks(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
@@ -189,11 +195,11 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static void CreateDoors(GameObject root)
         {
-            List<Vector2Int> villageDoors = VillageLayout.FindAll(VillageLayout.Door);
-            if (villageDoors.Count != InteriorsLayout.Rooms.Length)
+            if (VillageLayout.Doors.Length != InteriorsLayout.Rooms.Length)
             {
-                Debug.LogError($"[Sous la Ville] Le village porte {villageDoors.Count} porte(s) " +
-                               $"pour {InteriorsLayout.Rooms.Length} pièce(s) : il en faut autant.");
+                Debug.LogError($"[Sous la Ville] Le village porte {VillageLayout.Doors.Length} " +
+                               $"porte(s) pour {InteriorsLayout.Rooms.Length} pièce(s) : il en " +
+                               "faut autant.");
                 return;
             }
 
@@ -216,7 +222,7 @@ namespace SousLaVille.EditorTools
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
 
                 PortalBuilder.Attach(door, cell, GameLayer.Interior, GameLayer.Surface,
-                    villageDoors[i]);
+                    VillageLayout.FindSingle(VillageLayout.Doors[i]));
             }
         }
 
@@ -242,26 +248,160 @@ namespace SousLaVille.EditorTools
                 villager.transform.position = CellCenter(cell);
 
                 SpriteRenderer renderer = villager.AddComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerCraftsman);
+                renderer.sprite = LoadSprite(SpriteFor(i));
 
                 // Un cran devant le decor, un cran derriere le joueur, qui est en ordre 10.
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 5);
+
+                // La bulle au-dessus de SA tete, au meme decalage que le picto du joueur.
+                // Elle passe devant tout le monde : c'est elle qu'on doit voir.
+                GameObject promptObject = new GameObject("Prompt");
+                promptObject.transform.SetParent(villager.transform, false);
+                promptObject.transform.localPosition = PromptOffset;
+
+                SpriteRenderer prompt = promptObject.AddComponent<SpriteRenderer>();
+                prompt.sprite = LoadSprite(PlaceholderArtGenerator.PictoTalk);
+                prompt.enabled = false;
+                SceneBuilderUtility.ApplySortingLayer(prompt, EntitiesSortingLayer, 12);
 
                 Villager component = villager.AddComponent<Villager>();
 
                 SerializedObject serialized = new SerializedObject(component);
                 serialized.FindProperty("cell").vector2IntValue = cell;
+                serialized.FindProperty("prompt").objectReferenceValue = prompt;
 
+                string[] paths = LinesFor(i);
                 SerializedProperty lines = serialized.FindProperty("lines");
-                lines.arraySize = PlaceholderArtGenerator.CraftsmanLines.Length;
-                for (int line = 0; line < PlaceholderArtGenerator.CraftsmanLines.Length; line++)
+                lines.arraySize = paths.Length;
+                for (int line = 0; line < paths.Length; line++)
                 {
-                    lines.GetArrayElementAtIndex(line).objectReferenceValue =
-                        LoadSprite(PlaceholderArtGenerator.CraftsmanLineTexture(line));
+                    lines.GetArrayElementAtIndex(line).objectReferenceValue = LoadSprite(paths[line]);
                 }
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
+        }
+
+        /// <summary>
+        /// Le sprite du personnage d'une piece. Une table plutot qu'un champ dans le plan :
+        /// InteriorsLayout decrit une geometrie, pas des chemins d'images.
+        /// </summary>
+        private static string SpriteFor(int roomIndex)
+        {
+            return roomIndex == 1
+                ? PlaceholderArtGenerator.VillagerWorker
+                : PlaceholderArtGenerator.VillagerCraftsman;
+        }
+
+        /// <summary>Ce que dit le personnage d'une piece, une image par phrase.</summary>
+        private static string[] LinesFor(int roomIndex)
+        {
+            int count = roomIndex == 1
+                ? PlaceholderArtGenerator.WorkerLines.Length
+                : PlaceholderArtGenerator.CraftsmanLines.Length;
+
+            string[] paths = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                paths[i] = roomIndex == 1
+                    ? PlaceholderArtGenerator.WorkerLineTexture(i)
+                    : PlaceholderArtGenerator.CraftsmanLineTexture(i);
+            }
+
+            return paths;
+        }
+
+        /// <summary>
+        /// L'usine a tuyaux : trois echantillons poses au sol, chacun avec son nom ecrit en
+        /// dessous et, au-dessus, le picto de la saison qu'il vainc.
+        ///
+        /// L'echantillon EST la tuile qui sera posee en jeu : le picto de pose ne peut donc
+        /// pas mentir sur ce qu'il va poser. Le standard ne vainc rien et n'a pas de picto,
+        /// ce qui se voit d'un coup d'oeil et se comprend sans un mot.
+        ///
+        /// Comme les plaques, les echantillons ne bloquent pas : on marche dessus, et Espace
+        /// prend celui qu'on foule. Pas de stock, pas de compte : on repart avec ce type en
+        /// main, pour toujours, jusqu'a ce qu'on revienne en changer.
+        /// </summary>
+        private static void CreatePipeWorks(GameObject root)
+        {
+            InteriorsLayout.Room room = InteriorsLayout.Rooms[1];
+            List<Vector2Int> samples = InteriorsLayout.FindAll(room, InteriorsLayout.PipeSample);
+
+            if (samples.Count != ScriptableObjectSetup.PipeTypes.Length)
+            {
+                Debug.LogError($"[Sous la Ville] La pièce « {room.Name} » expose " +
+                               $"{samples.Count} échantillon(s), il en faut " +
+                               $"{ScriptableObjectSetup.PipeTypes.Length}.");
+                return;
+            }
+
+            GameObject parent = new GameObject("PipeWorks");
+            parent.transform.SetParent(root.transform, false);
+
+            PipeType[] catalogue = new PipeType[ScriptableObjectSetup.PipeTypes.Length];
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                catalogue[i] = AssetDatabase.LoadAssetAtPath<PipeType>(
+                    ScriptableObjectSetup.PipeTypes[i]);
+
+                if (catalogue[i] == null)
+                {
+                    Debug.LogError("[Sous la Ville] Type de tuyau introuvable : " +
+                                   ScriptableObjectSetup.PipeTypes[i]);
+                    continue;
+                }
+
+                GameObject sample = new GameObject($"Pipe_{i + 1:00}_{catalogue[i].DisplayName}");
+                sample.transform.SetParent(parent.transform, false);
+                sample.transform.position = CellCenter(samples[i]);
+
+                SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
+                view.sprite = catalogue[i].Sample;
+                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+
+                // Le cartel, une case sous l'echantillon, comme les noms de villes.
+                GameObject label = new GameObject($"Name_{i + 1:00}");
+                label.transform.SetParent(sample.transform, false);
+                label.transform.localPosition = new Vector3(0f, -0.9f, 0f);
+
+                SpriteRenderer labelView = label.AddComponent<SpriteRenderer>();
+                labelView.sprite = catalogue[i].NameImage;
+                SceneBuilderUtility.ApplySortingLayer(labelView, EntitiesSortingLayer, 1);
+
+                // Le picto de la saison vaincue, au-dessus. Le standard n'en a pas : il ne
+                // vainc rien, et l'absence est un message aussi.
+                if (catalogue[i].DefeatedSeasonIcon == null)
+                {
+                    continue;
+                }
+
+                GameObject icon = new GameObject($"Season_{i + 1:00}");
+                icon.transform.SetParent(sample.transform, false);
+                icon.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+
+                SpriteRenderer iconView = icon.AddComponent<SpriteRenderer>();
+                iconView.sprite = catalogue[i].DefeatedSeasonIcon;
+                SceneBuilderUtility.ApplySortingLayer(iconView, EntitiesSortingLayer, 1);
+            }
+
+            PipeFactory factory = root.AddComponent<PipeFactory>();
+
+            SerializedObject serialized = new SerializedObject(factory);
+            SetCells(serialized.FindProperty("sampleCells"), samples);
+
+            SerializedProperty catalogueProperty = serialized.FindProperty("catalogue");
+            catalogueProperty.arraySize = catalogue.Length;
+            for (int i = 0; i < catalogue.Length; i++)
+            {
+                catalogueProperty.GetArrayElementAtIndex(i).objectReferenceValue = catalogue[i];
+            }
+
+            // On part avec le standard en main : c'est le tuyau de la phase 3, et une partie
+            // qui n'a jamais visite l'usine se comporte exactement comme avant.
+            serialized.FindProperty("currentIndex").intValue = 0;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>

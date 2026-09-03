@@ -61,6 +61,20 @@ namespace SousLaVille.Core
     }
 
     /// <summary>
+    /// Le type de tuyau pose sur une case : sa case, et le rang dans le catalogue.
+    ///
+    /// SEULES LES CASES NON STANDARD SONT ECRITES, comme seuls les segments abimes le sont :
+    /// le standard est le rang 0 et c'est ce que PlacePipe pose sans qu'on lui demande rien.
+    /// Chaque ligne du fichier est donc un choix, pas un etat.
+    /// </summary>
+    [Serializable]
+    public class SavePipeType
+    {
+        public SaveCell cell;
+        public int type;
+    }
+
+    /// <summary>
     /// La forme du fichier sur le disque, et rien d'autre. Aucune logique ici : cette classe
     /// doit se lire d'un coup d'oeil, parce qu'elle decrit ce qui survit a l'extinction du jeu.
     ///
@@ -107,5 +121,21 @@ namespace SousLaVille.Core
         /// CurrentVersion reste a 1.
         /// </summary>
         public int reserveLevel;
+
+        /// <summary>
+        /// Les cases qui portent autre chose qu'un tuyau standard. Champ ajoute en phase 9b,
+        /// meme regle que covers et reserveLevel : une partie ecrite avant lui se relit avec
+        /// un reseau tout standard, ce qu'il etait, et CurrentVersion reste a 1.
+        /// </summary>
+        public List<SavePipeType> pipeTypes = new List<SavePipeType>();
+
+        /// <summary>
+        /// Le rang du type en main. Zero, le standard, pour une partie d'avant la phase 9b.
+        ///
+        /// Exception assumee a « on ne sauvegarde pas ce qu'on ne relit pas » : redescendre
+        /// pour decouvrir qu'on a repris le standard serait une surprise, et le jeu ne fait
+        /// pas de surprises.
+        /// </summary>
+        public int pipeInHand;
     }
 }

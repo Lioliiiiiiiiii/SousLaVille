@@ -30,6 +30,9 @@ namespace SousLaVille.Buildings
         [Tooltip("Ce qu'il dit, une image par phrase, dans l'ordre.")]
         [SerializeField] private Sprite[] lines;
 
+        [Tooltip("La bulle affichee au-dessus de SA tete quand le joueur le regarde.")]
+        [SerializeField] private SpriteRenderer prompt;
+
         // La couche qui dort est desactivee : ses personnages se desinscrivent tout seuls,
         // et la recherche ne voit donc que celui de la piece ou l'on se tient.
         private static readonly List<Villager> Active = new List<Villager>();
@@ -46,6 +49,25 @@ namespace SousLaVille.Buildings
         private void OnDisable()
         {
             Active.Remove(this);
+            ShowPrompt(false);
+        }
+
+        /// <summary>
+        /// Allume ou eteint la bulle au-dessus de sa tete. C'est l'interacteur qui l'appelle,
+        /// puisque c'est lui qui sait ce que le joueur regarde.
+        ///
+        /// La bulle est au-dessus de SA tete et non de celle du joueur, contrairement a tous
+        /// les autres pictos d'action. Decide le 3 septembre 2026, apres l'avoir vu en jeu :
+        /// la place habituelle, une unite et quart au-dessus du joueur, tombe exactement sur
+        /// le visage de qui se tient une case plus haut, et le picto effacait l'artisan a qui
+        /// l'on venait parler. Un picto qui cache ce qu'il designe ne designe rien.
+        /// </summary>
+        public void ShowPrompt(bool visible)
+        {
+            if (prompt != null && prompt.enabled != visible)
+            {
+                prompt.enabled = visible;
+            }
         }
 
         /// <summary>Nombre de phrases. Sert aux verifications.</summary>

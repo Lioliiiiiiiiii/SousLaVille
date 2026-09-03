@@ -29,7 +29,7 @@ namespace SousLaVille.Network
         [Tooltip("Carte du sous-sol : elle donne la profondeur et dit ou l'on peut poser.")]
         [SerializeField] private UndergroundMap map;
 
-        [Tooltip("Type pose par le joueur. Un seul en phase 3.")]
+        [Tooltip("Type retenu quand la pose n'en precise aucun. Le standard.")]
         [SerializeField] private PipeType defaultPipeType;
 
         [Tooltip("Noeuds imposes par le monde. La station pour l'instant, les maisons en phase 4.")]
@@ -161,18 +161,30 @@ namespace SousLaVille.Network
         }
 
         /// <summary>
-        /// Pose un tuyau sur une case creusee et le raccorde a ses voisins. Rend false et ne
-        /// fait rien si la case est pleine ou porte deja un noeud : aucun echec puni, il ne
-        /// se passe simplement rien.
+        /// Pose un tuyau du type par defaut. Garde pour les appels qui n'ont pas de type a
+        /// donner ; le joueur, lui, pose toujours le type qu'il a en main.
         /// </summary>
         public bool PlacePipe(Vector2Int cell)
+        {
+            return PlacePipe(cell, null);
+        }
+
+        /// <summary>
+        /// Pose un tuyau d'un type donne sur une case creusee et le raccorde a ses voisins.
+        /// Rend false et ne fait rien si la case est pleine ou porte deja un noeud : aucun
+        /// echec puni, il ne se passe simplement rien.
+        ///
+        /// Changer le type d'une case, c'est l'enlever puis la reposer, le meme geste que
+        /// depuis la phase 3. Il n'existe aucun geste de remplacement.
+        /// </summary>
+        public bool PlacePipe(Vector2Int cell, PipeType pipeType)
         {
             if (map == null || nodes.ContainsKey(cell) || !map.IsWalkable(cell))
             {
                 return false;
             }
 
-            PipeNode node = CreateNode(cell, NodeType.Junction);
+            PipeNode node = CreateNode(cell, NodeType.Junction, pipeType ?? defaultPipeType);
             ConnectToNeighbours(node);
 
             RaiseChanged();
@@ -294,15 +306,18 @@ namespace SousLaVille.Network
                     continue;
                 }
 
-                CreateNode(fixedNode.cell, fixedNode.type);
+                // Les noeuds imposes par le monde, station, maisons et bassin, ne portent
+                // aucun type : ce ne sont pas des tuyaux qu'on a choisi de poser, et ils ne
+                // comptent donc pas dans la resistance des segments qui y arrivent.
+                CreateNode(fixedNode.cell, fixedNode.type, null);
             }
         }
 
-        private PipeNode CreateNode(Vector2Int cell, NodeType type)
+        private PipeNode CreateNode(Vector2Int cell, NodeType type, PipeType pipeType)
         {
             int depth = map != null ? map.DepthAt(cell) : 1;
 
-            PipeNode node = new PipeNode(cell, depth, type);
+            PipeNode node = new PipeNode(cell, depth, type, pipeType);
             nodes.Add(cell, node);
             adjacency[cell] = new List<PipeSegment>();
 

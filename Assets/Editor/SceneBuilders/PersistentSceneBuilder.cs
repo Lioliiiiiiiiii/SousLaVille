@@ -183,12 +183,8 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoEnter);
             serialized.FindProperty("promptExit").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoExit);
-            serialized.FindProperty("promptTalk").objectReferenceValue =
-                LoadSprite(PlaceholderArtGenerator.PictoTalk);
             serialized.FindProperty("promptDig").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoDig);
-            serialized.FindProperty("promptPipe").objectReferenceValue =
-                LoadSprite(PlaceholderArtGenerator.PictoPipe);
             serialized.FindProperty("promptRepair").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoRepair);
             serialized.FindProperty("promptRemove").objectReferenceValue =

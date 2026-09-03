@@ -18,6 +18,17 @@ namespace SousLaVille.EditorTools
     {
         public const string Folder = "Assets/ScriptableObjects";
         public const string PipeTypeStandard = Folder + "/PipeType_Standard.asset";
+        public const string PipeTypeInsulated = Folder + "/PipeType_Isole.asset";
+        public const string PipeTypeGrated = Folder + "/PipeType_Grillage.asset";
+
+        /// <summary>
+        /// Les trois types, dans l'ordre du catalogue. Le rang 0 est le standard : c'est ce
+        /// que la pose donne par defaut, et ce que la sauvegarde n'ecrit pas.
+        /// </summary>
+        public static readonly string[] PipeTypes =
+        {
+            PipeTypeStandard, PipeTypeInsulated, PipeTypeGrated
+        };
 
         // Les quatre saisons, dans l'ordre du cycle. Le jeu demarre au printemps.
         public const string SeasonSpring = Folder + "/Season_Printemps.asset";
@@ -58,27 +69,73 @@ namespace SousLaVille.EditorTools
             CreateCovers();
 
             AssetDatabase.SaveAssets();
-            Debug.Log("[Sous la Ville] ScriptableObjects à jour : 1 type de tuyau, 4 saisons, "
+            Debug.Log("[Sous la Ville] ScriptableObjects à jour : " + PipeTypes.Length
+                      + " types de tuyau, 4 saisons, "
                       + PlaceholderArtGenerator.CoverCount + " plaques.");
         }
 
         /// <summary>
-        /// Le seul type de canalisation pour l'instant. L'usure de 0,1 par saison fait
-        /// tomber un tuyau sous le seuil de 0,3 apres sept saisons, soit environ soixante-dix
-        /// minutes de jeu : assez lent pour ne jamais surprendre, assez rapide pour que
-        /// l'entretien existe.
+        /// Les trois types de canalisation, un par menace de saison.
         ///
-        /// Resistance au gel nulle : le tuyau standard gele des le premier hiver. C'est ce
-        /// qui donnera un sens aux types de l'usine a tuyaux, en phase 9.
+        /// L'usure de 0,1 par saison fait tomber un tuyau sous le seuil de 0,3 apres sept
+        /// saisons, soit environ soixante-dix minutes de jeu : assez lent pour ne jamais
+        /// surprendre, assez rapide pour que l'entretien existe. ELLE EST LA MEME POUR LES
+        /// TROIS : un tuyau qui ne s'use pas rendrait la cle inutile.
+        ///
+        /// Les resistances sont des probabilites de TENIR. Elles valent 0 ou 1 aujourd'hui,
+        /// mais le champ reste une probabilite, comme le gel depuis la phase 3 : un type
+        /// intermediaire ne demanderait pas une ligne de code.
+        ///
+        /// Chaque type ne resiste qu'a UNE menace. L'hiver reste un probleme pour le
+        /// grillage, l'automne pour l'isole : c'est ce qui fait qu'il y a un choix.
         /// </summary>
         private static void CreatePipeTypes()
         {
-            SerializedObject serialized = new SerializedObject(LoadOrCreate<PipeType>(PipeTypeStandard));
-            serialized.FindProperty("displayName").stringValue = "Standard";
+            CreatePipeType(PipeTypeStandard, "Standard", pattern: 0,
+                frost: 0f, leaf: 0f, seasonIcon: null);
+
+            CreatePipeType(PipeTypeInsulated, "Isolé", pattern: 1,
+                frost: 1f, leaf: 0f, seasonIcon: PlaceholderArtGenerator.PictoWinter);
+
+            CreatePipeType(PipeTypeGrated, "Grillagé", pattern: 2,
+                frost: 0f, leaf: 1f, seasonIcon: PlaceholderArtGenerator.PictoAutumn);
+        }
+
+        private static void CreatePipeType(string path, string displayName, int pattern,
+            float frost, float leaf, string seasonIcon)
+        {
+            SerializedObject serialized = new SerializedObject(LoadOrCreate<PipeType>(path));
+            serialized.FindProperty("displayName").stringValue = displayName;
             serialized.FindProperty("tint").colorValue = Color.white;
-            serialized.FindProperty("frostResistance").floatValue = 0f;
+            serialized.FindProperty("frostResistance").floatValue = frost;
+            serialized.FindProperty("leafResistance").floatValue = leaf;
             serialized.FindProperty("wearPerSeason").floatValue = 0.1f;
+            serialized.FindProperty("patternIndex").intValue = pattern;
+
+            // L'echantillon EST la tuile posee en jeu, masque est-ouest : le picto de pose ne
+            // peut donc pas mentir sur ce qu'il va poser.
+            serialized.FindProperty("sample").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PipeTexture(
+                    pattern, PlaceholderArtGenerator.PipeSampleMask));
+
+            serialized.FindProperty("nameImage").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PipeNameTexture(pattern));
+
+            serialized.FindProperty("defeatedSeasonIcon").objectReferenceValue =
+                seasonIcon != null ? LoadSprite(seasonIcon) : null;
+
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static Sprite LoadSprite(string path)
+        {
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                Debug.LogError($"[Sous la Ville] Sprite introuvable : {path}");
+            }
+
+            return sprite;
         }
 
         /// <summary>
@@ -171,9 +228,12 @@ namespace SousLaVille.EditorTools
         /// <summary>Vrai si tous les ScriptableObjects attendus sont sur le disque.</summary>
         public static bool ArePresent()
         {
-            if (AssetDatabase.LoadAssetAtPath<PipeType>(PipeTypeStandard) == null)
+            foreach (string path in PipeTypes)
             {
-                return false;
+                if (AssetDatabase.LoadAssetAtPath<PipeType>(path) == null)
+                {
+                    return false;
+                }
             }
 
             foreach (string path in SeasonCycle)

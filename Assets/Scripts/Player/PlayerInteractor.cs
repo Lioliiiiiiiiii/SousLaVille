@@ -33,6 +33,7 @@ namespace SousLaVille.Player
             Descend,
             Ascend,
             ChooseCover,
+            ChoosePipe,
             Enter,
             Exit,
             Talk,
@@ -49,9 +50,7 @@ namespace SousLaVille.Player
         [SerializeField] private Sprite promptUp;
         [SerializeField] private Sprite promptEnter;
         [SerializeField] private Sprite promptExit;
-        [SerializeField] private Sprite promptTalk;
         [SerializeField] private Sprite promptDig;
-        [SerializeField] private Sprite promptPipe;
         [SerializeField] private Sprite promptRepair;
         [SerializeField] private Sprite promptRemove;
 
@@ -59,6 +58,7 @@ namespace SousLaVille.Player
         private PlayerController controller;
         private PipeNetwork network;
         private ManholeFactory factory;
+        private PipeFactory pipeFactory;
         private VillageMapScreen map;
         private SpeechBox speech;
         private bool isTravelling;
@@ -78,8 +78,14 @@ namespace SousLaVille.Player
         /// <summary>Rang de la plaque exposee sous les pieds, ou -1. Pose par Evaluate.</summary>
         private int coverUnderfoot = -1;
 
+        /// <summary>Rang de l'echantillon de tuyau sous les pieds, ou -1. Pose par Evaluate.</summary>
+        private int pipeSampleUnderfoot = -1;
+
         /// <summary>Le personnage regarde, ou null. Pose par Evaluate.</summary>
         private Villager villagerAhead;
+
+        /// <summary>Celui dont la bulle est allumee, pour l'eteindre quand on se detourne.</summary>
+        private Villager promptedVillager;
 
         private void Awake()
         {
@@ -98,6 +104,7 @@ namespace SousLaVille.Player
         private void OnDisable()
         {
             input?.Gameplay.Disable();
+            ShowVillagerPrompt(null);
         }
 
         private void EnsureInput()
@@ -124,6 +131,10 @@ namespace SousLaVille.Player
             InteractionKind kind = Evaluate(out portal);
 
             ShowPrompt(kind);
+
+            // La bulle « on peut lui parler » vit au-dessus de la tete du PERSONNAGE, pas de
+            // celle du joueur : voir Villager.ShowPrompt.
+            ShowVillagerPrompt(kind == InteractionKind.Talk ? villagerAhead : null);
 
             // WasPressedThisFrame et non ReadValue : un appui, jamais un maintien. Espace
             // garde enfonce ne creuse pas une galerie entiere.
@@ -170,7 +181,20 @@ namespace SousLaVille.Player
                 }
             }
 
-            // 3. Un personnage devant soi : lui parler. Sur la case REGARDEE, contrairement
+            // 3. Un echantillon de tuyau sous les pieds, dans l'usine. Meme geste que la
+            // plaque : on marche dessus et on appuie, et on repart avec ce type en main.
+            pipeSampleUnderfoot = -1;
+            PipeFactory pipeWorks = ResolvePipeFactory();
+            if (pipeWorks != null && pipeWorks.isActiveAndEnabled)
+            {
+                pipeSampleUnderfoot = pipeWorks.SampleIndexAt(controller.Cell);
+                if (pipeSampleUnderfoot >= 0)
+                {
+                    return InteractionKind.ChoosePipe;
+                }
+            }
+
+            // 4. Un personnage devant soi : lui parler. Sur la case REGARDEE, contrairement
             // au passage et a la plaque : on ne se tient pas sur quelqu'un.
             villagerAhead = Villager.At(controller.FacingCell);
             if (villagerAhead != null && villagerAhead.CanSpeak)
@@ -191,7 +215,7 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 4. De la terre pleine devant soi : creuser.
+            // 5. De la terre pleine devant soi : creuser.
             if (!underground.IsWalkable(target))
             {
                 return InteractionKind.Dig;
@@ -203,14 +227,14 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 5. Une galerie vide devant soi : poser.
+            // 6. Une galerie vide devant soi : poser.
             PipeNode node = pipes.NodeAt(target);
             if (node == null)
             {
                 return InteractionKind.PlacePipe;
             }
 
-            // 6. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
+            // 7. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
             // un noeud pose par le monde : le raccordement d'une maison gele doit pouvoir
             // se degeler a la main, sans attendre le printemps.
             if (pipes.NeedsRepair(target))
@@ -218,7 +242,7 @@ namespace SousLaVille.Player
                 return InteractionKind.RepairPipe;
             }
 
-            // 7. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
+            // 8. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
             // maison, ne s'annonce pas : il ne s'enleve pas.
             return node.IsPermanent ? InteractionKind.None : InteractionKind.RemovePipe;
         }
@@ -242,12 +266,18 @@ namespace SousLaVille.Player
                     OpenVillageMap();
                     return;
 
+                case InteractionKind.ChoosePipe:
+                    // Aucun ecran, aucune confirmation : on marche sur l'echantillon, on
+                    // appuie, et on repart avec ce tuyau en main.
+                    ResolvePipeFactory().SetCurrent(pipeSampleUnderfoot);
+                    return;
+
                 case InteractionKind.Dig:
                     ((UndergroundMap)controller.Map).Dig(controller.FacingCell);
                     return;
 
                 case InteractionKind.PlacePipe:
-                    ResolveNetwork().PlacePipe(controller.FacingCell);
+                    ResolveNetwork().PlacePipe(controller.FacingCell, PipeInHand);
                     return;
 
                 case InteractionKind.RepairPipe:
@@ -405,7 +435,33 @@ namespace SousLaVille.Player
             return network;
         }
 
-        /// <summary>L'atelier vit dans la scene Surface : il ne repond que quand elle est allumee.</summary>
+        /// <summary>
+        /// L'usine a tuyaux vit dans la scene Interiors, ETEINTE des qu'on n'y est pas. Or on
+        /// pose des tuyaux sous terre : il faut donc l'inclure explicitement dans la recherche,
+        /// et la garder une fois trouvee. C'est le contraire de l'atelier, qu'on ne consulte
+        /// que sur place.
+        /// </summary>
+        private PipeFactory ResolvePipeFactory()
+        {
+            if (pipeFactory == null)
+            {
+                pipeFactory = FindAnyObjectByType<PipeFactory>(FindObjectsInactive.Include);
+            }
+
+            return pipeFactory;
+        }
+
+        /// <summary>Le type de tuyau en main, ou null si l'usine ne repond pas encore.</summary>
+        private PipeType PipeInHand
+        {
+            get
+            {
+                PipeFactory pipeWorks = ResolvePipeFactory();
+                return pipeWorks != null ? pipeWorks.Current : null;
+            }
+        }
+
+        /// <summary>L'atelier vit dans la scene Interiors : il ne repond que quand elle est allumee.</summary>
         private ManholeFactory ResolveFactory()
         {
             if (factory != null && factory.isActiveAndEnabled)
@@ -426,6 +482,30 @@ namespace SousLaVille.Player
             }
 
             return map;
+        }
+
+        /// <summary>
+        /// Allume la bulle du personnage regarde, et eteint celle de l'ancien. Le changement
+        /// seul est traite : on ne touche a rien tant qu'on regarde le meme.
+        /// </summary>
+        private void ShowVillagerPrompt(Villager villager)
+        {
+            if (promptedVillager == villager)
+            {
+                return;
+            }
+
+            if (promptedVillager != null)
+            {
+                promptedVillager.ShowPrompt(false);
+            }
+
+            promptedVillager = villager;
+
+            if (promptedVillager != null)
+            {
+                promptedVillager.ShowPrompt(true);
+            }
         }
 
         private void ShowPrompt(InteractionKind kind)
@@ -452,15 +532,30 @@ namespace SousLaVille.Player
                 return definition != null ? definition.Cover : null;
             }
 
+            // Sur un echantillon de tuyau, meme idee : « celui-la ».
+            if (kind == InteractionKind.ChoosePipe)
+            {
+                PipeFactory pipeWorks = ResolvePipeFactory();
+                PipeType type = pipeWorks != null ? pipeWorks.TypeAt(pipeSampleUnderfoot) : null;
+                return type != null ? type.Sample : null;
+            }
+
+            // ET DEVANT UNE GALERIE VIDE, LE PICTO EST LE TUYAU EN MAIN. Il sait toujours ce
+            // qu'il va poser, sans jauge et sans compteur au HUD. picto_pipe a disparu avec
+            // cette ligne : un symbole generique ne disait plus rien des trois types.
+            if (kind == InteractionKind.PlacePipe)
+            {
+                PipeType type = PipeInHand;
+                return type != null ? type.Sample : null;
+            }
+
             switch (kind)
             {
                 case InteractionKind.Descend: return promptDown;
                 case InteractionKind.Ascend: return promptUp;
                 case InteractionKind.Enter: return promptEnter;
                 case InteractionKind.Exit: return promptExit;
-                case InteractionKind.Talk: return promptTalk;
                 case InteractionKind.Dig: return promptDig;
-                case InteractionKind.PlacePipe: return promptPipe;
                 case InteractionKind.RepairPipe: return promptRepair;
                 case InteractionKind.RemovePipe: return promptRemove;
                 default: return null;

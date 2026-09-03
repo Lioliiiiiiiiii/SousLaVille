@@ -15,8 +15,9 @@ namespace SousLaVille.EditorTools
     ///   S  sol station        H  haie (bloquant)    B  batiment station (bloquant)
     ///   M  bouche d'egout     X  depart du joueur   T  entree de la station
     ///   A  maison (bloquant)  F  facade de l'atelier (bloquant)   D  porte de l'atelier
+    ///   G  facade de l'usine a tuyaux (bloquant)                   E  sa porte
     ///
-    /// M, X, T, A, F et D sont des marqueurs : le builder peint le sol correspondant dessous
+    /// M, X, T, A, F, D, G et E sont des marqueurs : le builder peint le sol correspondant dessous
     /// et pose un GameObject par-dessus. Une maison et une facade sont en plus bloquantes :
     /// on passe devant, pas dedans. Une porte ne bloque pas : on marche dessus et Espace
     /// fait entrer, exactement comme sur une bouche d'egout.
@@ -24,8 +25,8 @@ namespace SousLaVille.EditorTools
     /// PHASE 9A. La cour pavee de l'atelier, seize cases sur six a ciel ouvert, a disparu :
     /// l'atelier est devenu un batiment dans lequel on entre, et ses huit plaques sont
     /// passees a l'interieur, dans la scene Interiors. Il ne reste ici que sa facade et sa
-    /// porte. La place laissee libre a sa droite attend la facade de l'usine a tuyaux, en
-    /// phase 9b.
+    /// porte. PHASE 9B : l'usine a tuyaux prend la place laissee libre a sa droite, sur le
+    /// meme patron.
     ///
     /// Ni la station, ni les bosquets, ni les maisons, ni les bouches, ni le depart n'ont
     /// bouge d'un caractere depuis la phase 1.
@@ -47,15 +48,23 @@ namespace SousLaVille.EditorTools
         public const char House = 'A';
         public const char Facade = 'F';
         public const char Door = 'D';
+        public const char PipeFacade = 'G';
+        public const char PipeDoor = 'E';
+
+        /// <summary>Les facades des batiments, dans l'ordre des pieces d'InteriorsLayout.</summary>
+        public static readonly char[] Facades = { Facade, PipeFacade };
+
+        /// <summary>Les portes des batiments, dans le meme ordre.</summary>
+        public static readonly char[] Doors = { Door, PipeDoor };
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
             "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
             "H......................................H",
-            "H.BBBBBBBBB...........FFFF.............H",
-            "H.BSSSSSSSB...........FFFF.............H",
-            "H.BSSSTSSSB....HHH.....D...............H",
+            "H.BBBBBBBBB...........FFFF....GGGG.....H",
+            "H.BSSSSSSSB...........FFFF....GGGG.....H",
+            "H.BSSSTSSSB....HHH.....D.......E.......H",
             "H.BSSSSSSSB....HHH.....................H",
             "H.BSSSSSSSB............................H",
             "H.BBBBSBBBB............................H",
@@ -108,9 +117,11 @@ namespace SousLaVille.EditorTools
                 case PlayerStart:
                     return Road;
                 case Door:
+                case PipeDoor:
                     // Un seuil de chemin sous la porte : on voit ou l'on entre.
                     return Road;
                 case Facade:
+                case PipeFacade:
                     // De l'herbe sous la facade : la tuile bloquante se pose par-dessus.
                     return Grass;
                 case House:

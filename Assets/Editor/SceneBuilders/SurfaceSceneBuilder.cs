@@ -152,7 +152,8 @@ namespace SousLaVille.EditorTools
                     {
                         blockingTiles[index] = house;
                     }
-                    else if (VillageLayout.At(x, y) == VillageLayout.Facade)
+                    else if (VillageLayout.At(x, y) == VillageLayout.Facade
+                             || VillageLayout.At(x, y) == VillageLayout.PipeFacade)
                     {
                         blockingTiles[index] = facade;
                     }
@@ -279,11 +280,11 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static void CreateBuildingDoors(GameObject root)
         {
-            List<Vector2Int> doors = VillageLayout.FindAll(VillageLayout.Door);
-            if (doors.Count != InteriorsLayout.Rooms.Length)
+            if (VillageLayout.Doors.Length != InteriorsLayout.Rooms.Length)
             {
-                Debug.LogError($"[Sous la Ville] Le village porte {doors.Count} porte(s) pour " +
-                               $"{InteriorsLayout.Rooms.Length} pièce(s) : il en faut autant.");
+                Debug.LogError($"[Sous la Ville] Le village porte {VillageLayout.Doors.Length} " +
+                               $"porte(s) pour {InteriorsLayout.Rooms.Length} pièce(s) : il en " +
+                               "faut autant.");
                 return;
             }
 
@@ -292,14 +293,15 @@ namespace SousLaVille.EditorTools
             GameObject parent = new GameObject("Doors");
             parent.transform.SetParent(root.transform, false);
 
-            for (int i = 0; i < doors.Count; i++)
+            for (int i = 0; i < VillageLayout.Doors.Length; i++)
             {
                 InteriorsLayout.Room room = InteriorsLayout.Rooms[i];
+                Vector2Int outside = VillageLayout.FindSingle(VillageLayout.Doors[i]);
                 Vector2Int inside = InteriorsLayout.FindSingle(room, InteriorsLayout.Door);
 
                 GameObject door = new GameObject($"Door_{i + 1:00}_{room.Name}");
                 door.transform.SetParent(parent.transform, false);
-                door.transform.position = CellCenter(doors[i]);
+                door.transform.position = CellCenter(outside);
 
                 SpriteRenderer renderer = door.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
@@ -307,7 +309,7 @@ namespace SousLaVille.EditorTools
 
                 // Le pendant interieur de ce passage est pose par InteriorsSceneBuilder, sur
                 // la meme paire de cases lue dans les deux plans.
-                PortalBuilder.Attach(door, doors[i], GameLayer.Surface, GameLayer.Interior,
+                PortalBuilder.Attach(door, outside, GameLayer.Surface, GameLayer.Interior,
                     inside);
             }
         }
