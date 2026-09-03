@@ -49,6 +49,11 @@ namespace SousLaVille.Network
         /// <summary>Leve a chaque pose et a chaque retrait. Jamais par frame.</summary>
         public event Action Changed;
 
+        /// <summary>Profondeur d'imbrication des groupes ouverts. Zero : notification immediate.</summary>
+        private int batchDepth;
+
+        private bool changedDuringBatch;
+
         public int NodeCount => nodes.Count;
         public int SegmentCount => segments.Count;
         public IEnumerable<PipeNode> Nodes => nodes.Values;
@@ -96,6 +101,52 @@ namespace SousLaVille.Network
             return mask;
         }
 
+        /// <summary>
+        /// Le segment entre deux cases voisines, ou null. C'est par la que la sauvegarde
+        /// retrouve un tuyau dont elle doit restaurer l'usure ou le gel.
+        /// </summary>
+        public PipeSegment SegmentBetween(Vector2Int a, Vector2Int b)
+        {
+            foreach (PipeSegment segment in SegmentsAt(a))
+            {
+                if (segment.Touches(b))
+                {
+                    return segment;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Ouvre un groupe : les changements ne leveront Changed qu'a sa fermeture, et une
+        /// seule fois. Reposer cinquante tuyaux au chargement ne doit declencher qu'une
+        /// resolution du solveur, pas cinquante.
+        /// </summary>
+        public void BeginBatch()
+        {
+            batchDepth++;
+        }
+
+        /// <summary>Ferme un groupe et leve Changed une fois, si quelque chose a bouge.</summary>
+        public void EndBatch()
+        {
+            if (batchDepth == 0)
+            {
+                return;
+            }
+
+            batchDepth--;
+
+            if (batchDepth > 0 || !changedDuringBatch)
+            {
+                return;
+            }
+
+            changedDuringBatch = false;
+            Changed?.Invoke();
+        }
+
         public bool HasSegment(Vector2Int a, Vector2Int b)
         {
             foreach (PipeSegment segment in SegmentsAt(a))
@@ -124,7 +175,7 @@ namespace SousLaVille.Network
             PipeNode node = CreateNode(cell, NodeType.Junction);
             ConnectToNeighbours(node);
 
-            Changed?.Invoke();
+            RaiseChanged();
             return true;
         }
 
@@ -154,7 +205,7 @@ namespace SousLaVille.Network
 
             nodes.Remove(cell);
 
-            Changed?.Invoke();
+            RaiseChanged();
             return true;
         }
 
@@ -202,10 +253,25 @@ namespace SousLaVille.Network
 
             if (repaired)
             {
-                Changed?.Invoke();
+                RaiseChanged();
             }
 
             return repaired;
+        }
+
+        /// <summary>
+        /// Previent, ou retient la notification si un groupe est ouvert. Un groupe qui se
+        /// ferme ne leve qu'une seule fois, quel que soit le nombre de changements dedans.
+        /// </summary>
+        private void RaiseChanged()
+        {
+            if (batchDepth > 0)
+            {
+                changedDuringBatch = true;
+                return;
+            }
+
+            Changed?.Invoke();
         }
 
         /// <summary>Un segment est a reparer des qu'il n'est plus neuf.</summary>

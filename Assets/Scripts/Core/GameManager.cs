@@ -23,6 +23,8 @@ namespace SousLaVille.Core
 
         [SerializeField] private SeasonSystem seasons;
 
+        [SerializeField] private SaveSystem save;
+
         /// <summary>Routeur de scenes : chargement additif et bascule surface / sous-sol.</summary>
         public SceneRouter Router => router;
 
@@ -40,6 +42,12 @@ namespace SousLaVille.Core
         /// ne repondrait plus, et le temps passe des deux cotes de la bouche d'egout.
         /// </summary>
         public SeasonSystem Seasons => seasons;
+
+        /// <summary>
+        /// La sauvegarde. Elle n'a ni bouton ni menu : elle ecoute les gestes du joueur et
+        /// ecrit toute seule.
+        /// </summary>
+        public SaveSystem Save => save;
 
         private void Awake()
         {
@@ -78,6 +86,11 @@ namespace SousLaVille.Core
             if (seasons == null)
             {
                 seasons = GetComponent<SeasonSystem>();
+            }
+
+            if (save == null)
+            {
+                save = GetComponent<SaveSystem>();
             }
         }
 

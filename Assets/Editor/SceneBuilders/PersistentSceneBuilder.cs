@@ -67,12 +67,21 @@ namespace SousLaVille.EditorTools
             GameClock clock = managerObject.AddComponent<GameClock>();
             SeasonSystem seasons = CreateSeasonSystem(managerObject, clock, flow);
 
+            // La sauvegarde ecoute les gestes du joueur et ecrit toute seule. Elle vit ici
+            // parce qu'elle doit survivre aux bascules de couche.
+            SaveSystem save = managerObject.AddComponent<SaveSystem>();
+            SerializedObject serializedSave = new SerializedObject(save);
+            serializedSave.FindProperty("clock").objectReferenceValue = clock;
+            serializedSave.FindProperty("seasons").objectReferenceValue = seasons;
+            serializedSave.ApplyModifiedPropertiesWithoutUndo();
+
             // Cablage explicite des champs serialises : visibles dans l'inspecteur.
             SerializedObject serialized = new SerializedObject(manager);
             serialized.FindProperty("router").objectReferenceValue = router;
             serialized.FindProperty("flow").objectReferenceValue = flow;
             serialized.FindProperty("clock").objectReferenceValue = clock;
             serialized.FindProperty("seasons").objectReferenceValue = seasons;
+            serialized.FindProperty("save").objectReferenceValue = save;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return router;

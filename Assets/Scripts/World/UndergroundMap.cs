@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using SousLaVille.Core;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -30,7 +32,20 @@ namespace SousLaVille.World
         [Tooltip("Sol de galerie, une tuile par profondeur. Peinte au moment de creuser.")]
         [SerializeField] private TileBase[] tunnelTilesByDepth;
 
+        /// <summary>
+        /// Les cases ouvertes EN JEU. Les galeries deja creusees par le plan n'y sont pas :
+        /// elles viennent de la scene, pas du joueur, et c'est exactement ce que la
+        /// sauvegarde doit distinguer.
+        /// </summary>
+        private readonly HashSet<Vector2Int> dugCells = new HashSet<Vector2Int>();
+
+        /// <summary>Leve a chaque coup de pelle reussi. La sauvegarde s'y accroche.</summary>
+        public event Action<Vector2Int> Dug;
+
         public override GameLayer Layer => GameLayer.Underground;
+
+        /// <summary>Les cases ouvertes en jeu, dans l'ordre ou elles ont ete creusees.</summary>
+        public IReadOnlyCollection<Vector2Int> DugCells => dugCells;
 
         /// <summary>Tilemap du sol. La phase 3 y peindra le sol des galeries creusees.</summary>
         public Tilemap Ground => ground;
@@ -86,6 +101,9 @@ namespace SousLaVille.World
             {
                 ground.SetTile(position, tunnelTilesByDepth[DepthAt(cell) - 1]);
             }
+
+            dugCells.Add(cell);
+            Dug?.Invoke(cell);
 
             return true;
         }

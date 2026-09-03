@@ -120,6 +120,22 @@ namespace SousLaVille.Seasons
         }
 
         /// <summary>
+        /// Pose la saison lue dans une sauvegarde, SANS appliquer ses effets : charger une
+        /// partie en hiver ne doit pas regeler le reseau une deuxieme fois, il l'est deja.
+        /// Les vues sont prevenues pour se mettre a la bonne couleur.
+        /// </summary>
+        public void Restore(int seasonIndex)
+        {
+            if (seasons == null || seasons.Length == 0)
+            {
+                return;
+            }
+
+            index = Mathf.Clamp(seasonIndex, 0, seasons.Length - 1);
+            SeasonChanged?.Invoke(Current);
+        }
+
+        /// <summary>
         /// Une saison de plus. Publique : les tests la declenchent sans attendre l'horloge,
         /// et la phase 6 rejouera peut-etre les saisons manquees.
         /// </summary>

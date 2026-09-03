@@ -13,7 +13,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 3 | Creuser et poser | Terminée |
 | 4 | L'eau coule | Terminée |
 | 5 | Les saisons et le gel | Terminée |
-| 6 | Sauvegarde | À faire |
+| 6 | Sauvegarde | Terminée |
 | 7 | La plaque gravable | À faire |
 | 8 | La réserve d'eau | À faire |
 | 9 | L'usine à tuyaux | À faire |
@@ -408,23 +408,124 @@ Metal, pas le jeu. Vérifié en isolant : un cycle complet de saisons et huit ba
 sans capture laissent la console à zéro entrée, une seule capture fait apparaître les deux
 lignes. Rien à corriger côté projet.
 
-## Prochaine étape, phase 6
+## Phase 6, ce qui est fait
 
-**Tranché le 3 septembre 2026 : la sauvegarde passe maintenant.** La question d'ordre ouverte
-depuis la phase 4 est close. Le temps passe, l'usure mord au bout de sept saisons, et relancer
-le jeu efface un réseau de cinquante cases et toute une année de saisons. La phase 7, la plaque
-gravable, attendra.
+- `Assets/Scripts/Core/SaveData.cs` : la forme du fichier, et rien d'autre. `version`,
+  `seasonIndex`, `seasonProgress`, les cases creusées, les cases posées, les segments abîmés.
+- `Assets/Scripts/Core/SaveSystem.cs` : vit dans Persistent sur le `GameManager`. Écoute
+  `PipeNetwork.Changed`, `UndergroundMap.Dug` et `SeasonSystem.SeasonChanged`, écrit au plus
+  une fois toutes les deux secondes, plus une dernière à la fermeture. Écriture **atomique**
+  par fichier temporaire puis remplacement.
+- `UndergroundMap` : un `HashSet` des cases ouvertes **en jeu**, plus l'événement `Dug`. Les
+  galeries du plan n'y sont pas : elles viennent de la scène, pas du joueur.
+- `PipeNetwork` : `SegmentBetween(a, b)`, et un **mode groupé** `BeginBatch` / `EndBatch` qui
+  ne lève `Changed` qu'une fois à la fermeture du groupe.
+- `SeasonSystem.Restore(index)` : pose la saison **sans rejouer ses effets**. Charger une
+  partie en hiver ne doit pas regeler un réseau déjà gelé.
+- `GameManager` expose `Save`.
+- `Assets/Editor/ProjectSetup/SaveTools.cs` : « Ouvrir le dossier de sauvegarde » et
+  « Repartir d'une partie neuve ». **Aucun des deux ne détruit quoi que ce soit** : repartir
+  neuf met l'ancienne partie de côté avec un horodatage.
+- `ProjectSettings` : `companyName` passe à `Lio`. Les parties vivent désormais dans
+  `~/Library/Application Support/Lio/SousLaVille/partie.json`.
 
-Ce qui est prêt pour la sauvegarde :
+### L'ordre de restauration
 
-- **`GameClock.SeasonProgress`** a un accesseur en écriture : l'instant exact se recharge.
-- **`SeasonSystem.CurrentIndex`** dit le rang de la saison dans le cycle.
-- **`PipeNode` et `PipeSegment` sont `[Serializable]`** depuis la phase 3, et portent déjà
-  `condition`, `isFrozen` et `isClogged`. Aucun champ n'aura à être ajouté après coup.
-- **`companyName` reste `DefaultCompany`** : à trancher avant d'écrire la première sauvegarde,
-  voir les questions ouvertes.
+1. Rejouer les creusements. Sans terrain ouvert, `PlacePipe` refuse.
+2. Reposer les tuyaux. Les segments se recréent seuls, par voisinage.
+3. Appliquer l'état de chaque segment : condition, gel, bouchon.
+4. Poser la saison, puis l'avancement de l'horloge.
+5. `EndBatch` lève `Changed` une fois, et le solveur résout une fois.
+
+## Phase 6, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du
+  package MCP émis depuis `Library/PackageCache`.
+- Scènes reconstruites, `GameManager` câblé sur `save`, `SaveSystem` sur son horloge et ses
+  saisons.
+- Play depuis `Boot`, dossier de sauvegarde vidé au préalable :
+  - **partie neuve** : aucun fichier, aucun message, démarrage au printemps ;
+  - réseau de test construit, 55 nœuds, 51 segments, 39 cases creusées dont **une sans tuyau
+    dessus**, puis trois saisons passées jusqu'à l'hiver : 17 gelés, 4 bouchés, 1/5 desservie ;
+  - fichier écrit, **13 795 octets**, relu à l'œil : lisible, un objet par case, aucun
+    `.tmp` laissé derrière ;
+  - **sortie puis relance du play mode** : 55 nœuds, 51 segments, 39 creusées, 17 gelés,
+    4 bouchés, 1/5 desservie, saison Hiver index 3, et le segment témoin (5, 21)-(5, 20)
+    **exactement à 0,7000**. L'avancement dans la saison repart de 0,0507 et continue de
+    courir ;
+  - **le solveur ne tourne qu'une fois au chargement** : `SolveCount = 1` après avoir reposé
+    49 tuyaux. Le mode groupé fait son travail ;
+  - **aucune écriture pendant le chargement** : `SaveCount = 0` juste après la restauration ;
+  - **l'état rechargé se comporte comme un état vécu** : le printemps dégèle les 17 segments
+    venus du disque, et la réparation remet le témoin à 1,00 ;
+  - **le joueur repart au départ du village**, case (14, 15), en surface, alors qu'il avait
+    quitté sous terre ;
+  - **fichier tronqué à la main** : partie neuve, 6 nœuds, 0 creusée, printemps, l'ancien
+    fichier retrouvé sous `partie-illisible-2026-09-03-140651.json`, et **un seul
+    avertissement en console, rien à l'écran** ;
+  - **version inconnue** (99) : même comportement, et la saison du fichier n'est **pas**
+    appliquée ;
+  - **rien ne peut s'afficher à l'écran** : le HUD ne contient que le voile, le repère de
+    couche, le picto de saison et les cinq gouttes, et la scène ne porte **aucun élément de
+    texte** ;
+  - **chaîne complète au clavier** : Espace devant de la terre pleine creuse la case (35, 4),
+    la carte la retient, et le fichier part sur le disque dans la foulée ;
+  - console **entièrement vide** sur les sessions normales. Les deux seuls avertissements de
+    toute la phase sont ceux, voulus, des tests de fichier abîmé.
+- `git diff ProjectSettings/` : **une seule ligne**, `companyName`.
+
+## Prochaine étape, phase 7
+
+La plaque gravable, `ManholeFactory`. Le type `NodeType.Manhole`, posé en phase 3 et toujours
+inutilisé, y trouvera enfin son emploi.
+
+Ce que la phase 6 laisse en place pour la suite :
+
+- **Tout nouvel état se sauvegarde en ajoutant un champ à `SaveData`.** Newtonsoft relit sans
+  broncher un fichier auquel il manque un champ ; il ne faudra monter `CurrentVersion` que si
+  le sens d'un champ existant change.
+- **`PipeNetwork.BeginBatch` / `EndBatch`** est disponible pour toute opération de masse.
+- **`UndergroundMap.Dug`** dit à qui veut l'entendre qu'une case vient de s'ouvrir.
 
 ## Décisions prises
+
+### Phase 6
+
+- **`companyName` devient `Lio`.** Validé le 3 septembre 2026. Posé **avant** la première
+  sauvegarde écrite : le changer ensuite aurait déplacé les parties de Victorien. C'est la
+  seule modification de `ProjectSettings` de tout le projet, et elle est volontaire.
+- **On sauvegarde des gestes, pas un état.** La liste des cases creusées et des cases posées
+  suffit, puisque `Dig` et `PlacePipe` sont les seules mutations du monde. Conséquence :
+  **tout état chargé est un état atteignable en jouant**, et un fichier bricolé à la main ne
+  peut pas produire un réseau impossible.
+- **Écriture groupée à chaque geste**, au plus une toutes les deux secondes, plus une à la
+  fermeture. Au pire deux secondes de perdues.
+- **Au redémarrage, Victorien repart toujours au départ du village.** Validé le 3 septembre
+  2026. Sa position et sa couche ne sont donc **pas écrites du tout** : on ne sauvegarde pas
+  ce qu'on ne relit pas. La note provisoire de la phase 2 devient la règle.
+- **Seuls les segments abîmés sont écrits.** Reposer un tuyau le recrée neuf ; écrire un
+  segment intact ne changerait rien au chargement. Chaque ligne du fichier est une cicatrice.
+- **Les nœuds permanents ne sont pas sauvegardés.** La scène les recrée. Les figer dans le
+  fichier gèlerait le plan du monde dans les parties de Victorien, et le moindre changement de
+  carte les casserait.
+- **Les maisons desservies ne sont pas sauvegardées.** Le solveur les recalcule. Une donnée
+  dérivée sauvegardée est une donnée qui peut mentir.
+- **Les cases s'écrivent en deux entiers explicites, pas en `Vector2Int`.** Newtonsoft
+  écrirait aussi `magnitude` et `sqrMagnitude`, qu'il ne saurait pas relire. Le fichier ne
+  doit pas dépendre de la façon dont Unity sérialise ses types.
+- **Écriture atomique**, par fichier temporaire puis remplacement. Une coupure en pleine
+  écriture ne doit jamais laisser un fichier tronqué à la place d'une bonne partie.
+- **Un fichier qu'on n'a pas su lire n'est jamais écrasé.** Il est mis de côté avec un
+  horodatage, la partie repart neuve, et **rien ne s'affiche à l'écran**. Un avertissement en
+  console, pour moi.
+- **Aucun retour visuel de sauvegarde.** Un témoin qui clignote dirait qu'il existe un risque
+  de perdre quelque chose, et toute la promesse de CLAUDE.md est qu'il n'y en a pas.
+  Réversible : c'est une `Image` de plus dans le HUD.
+- **Le menu Editor s'appelle « Repartir d'une partie neuve » et ne détruit rien**, au lieu du
+  « Effacer la sauvegarde » du plan. Il met l'ancienne partie de côté. Un clic malheureux ne
+  doit pas coûter la partie de Victorien, même à moi.
+- **`Time.unscaledTime` pour l'anti-rebond**, et non `Time.time` : ralentir le jeu pour mes
+  tests ne doit pas ralentir les écritures.
 
 ### L'usine à panneaux, phases 12 à 15
 
@@ -697,10 +798,6 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 - **Intensité de la lumière du sous-sol et contraste terre / galerie.** 0,8 et deux bruns
   distincts sur les captures ; à juger en vrai, plein écran, avant de figer.
 
-- **`companyName` reste `DefaultCompany`.** Les sauvegardes iront donc dans
-  `~/Library/Application Support/DefaultCompany/SousLaVille`. **À trancher au tout début de la
-  phase 6, avant d'écrire la première sauvegarde** : le changer après coup déplacerait les
-  parties existantes de Victorien.
 - **`Assets/Settings/InputSystem_Actions.inputactions`**, l'asset d'input par défaut d'Unity,
   est conservé intact car les ProjectSettings le référencent comme *project-wide actions*.
   Il n'est pas utilisé par le jeu. Ménage possible plus tard.
