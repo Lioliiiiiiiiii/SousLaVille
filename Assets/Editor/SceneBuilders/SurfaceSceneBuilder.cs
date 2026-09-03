@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using SousLaVille.Core;
+using SousLaVille.Seasons;
 using SousLaVille.World;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
@@ -56,6 +58,7 @@ namespace SousLaVille.EditorTools
 
             SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
             AttachHouseSpawner(root, map);
+            AttachSeasonAmbience(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
@@ -247,6 +250,29 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoDropFull);
             serialized.FindProperty("dropIdle").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// La couleur du ciel selon la saison. Le composant vit ici, dans la couche de jeu,
+        /// et non dans le systeme de saisons : une couche eteinte ne repondrait pas, alors
+        /// qu'un composant local se rabonne a chaque rallumage.
+        ///
+        /// Le sous-sol n'en recoit pas : les saisons se voient dessus, se subissent dessous.
+        /// </summary>
+        private static void AttachSeasonAmbience(GameObject root)
+        {
+            Light2D globalLight = root.GetComponentInChildren<Light2D>(true);
+            if (globalLight == null)
+            {
+                Debug.LogError("[Sous la Ville] Lumière globale introuvable sur la surface.");
+                return;
+            }
+
+            SeasonAmbience ambience = root.AddComponent<SeasonAmbience>();
+
+            SerializedObject serialized = new SerializedObject(ambience);
+            serialized.FindProperty("globalLight").objectReferenceValue = globalLight;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

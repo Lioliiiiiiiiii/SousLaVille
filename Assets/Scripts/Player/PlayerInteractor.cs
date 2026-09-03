@@ -13,6 +13,9 @@ namespace SousLaVille.Player
     /// L'ordre compte. Le passage se prend sur la case OCCUPEE, tout le reste agit sur la
     /// case REGARDEE : on ne creuse pas le sol sous ses pieds, et se tenir sur une bouche ne
     /// doit jamais empecher d'en descendre.
+    ///
+    /// Depuis les saisons, Espace repare un tuyau abime, gele ou bouche, et n'enleve que
+    /// les tuyaux sains. Le picto au-dessus de la tete dit toujours lequel des deux.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerInteractor : MonoBehaviour
@@ -25,6 +28,7 @@ namespace SousLaVille.Player
             Ascend,
             Dig,
             PlacePipe,
+            RepairPipe,
             RemovePipe
         }
 
@@ -35,6 +39,7 @@ namespace SousLaVille.Player
         [SerializeField] private Sprite promptUp;
         [SerializeField] private Sprite promptDig;
         [SerializeField] private Sprite promptPipe;
+        [SerializeField] private Sprite promptRepair;
         [SerializeField] private Sprite promptRemove;
 
         private SousLaVilleInputActions input;
@@ -139,14 +144,23 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 3 et 4. Une galerie devant soi : poser, ou enlever ce qui y est deja. Un noeud
-            // pose par le monde, la station, ne s'annonce pas : il ne s'enleve pas.
+            // 3. Une galerie vide devant soi : poser.
             PipeNode node = pipes.NodeAt(target);
             if (node == null)
             {
                 return InteractionKind.PlacePipe;
             }
 
+            // 4. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
+            // un noeud pose par le monde : le raccordement d'une maison gele doit pouvoir
+            // se degeler a la main, sans attendre le printemps.
+            if (pipes.NeedsRepair(target))
+            {
+                return InteractionKind.RepairPipe;
+            }
+
+            // 5. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
+            // maison, ne s'annonce pas : il ne s'enleve pas.
             return node.IsPermanent ? InteractionKind.None : InteractionKind.RemovePipe;
         }
 
@@ -165,6 +179,10 @@ namespace SousLaVille.Player
 
                 case InteractionKind.PlacePipe:
                     ResolveNetwork().PlacePipe(controller.FacingCell);
+                    return;
+
+                case InteractionKind.RepairPipe:
+                    ResolveNetwork().Repair(controller.FacingCell);
                     return;
 
                 case InteractionKind.RemovePipe:
@@ -246,6 +264,7 @@ namespace SousLaVille.Player
                 case InteractionKind.Ascend: return promptUp;
                 case InteractionKind.Dig: return promptDig;
                 case InteractionKind.PlacePipe: return promptPipe;
+                case InteractionKind.RepairPipe: return promptRepair;
                 case InteractionKind.RemovePipe: return promptRemove;
                 default: return null;
             }

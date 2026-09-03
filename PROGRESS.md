@@ -12,7 +12,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 2 | Le portail | Terminée |
 | 3 | Creuser et poser | Terminée |
 | 4 | L'eau coule | Terminée |
-| 5 | Les saisons et le gel | À faire |
+| 5 | Les saisons et le gel | Terminée |
 | 6 | Sauvegarde | À faire |
 | 7 | La plaque gravable | À faire |
 | 8 | La réserve d'eau | À faire |
@@ -311,20 +311,163 @@ au réseau une seule fois au `Start` le laissait muet pour toujours, avec une er
 Même piège que la carte du joueur en phase 1, même remède : résolution paresseuse, retentée tant
 qu'elle échoue, puis plus jamais.
 
-## Prochaine étape, phase 5
+## Phase 5, ce qui est fait
 
-**Question d'ordre à trancher : la phase 6, la sauvegarde, devrait sans doute passer avant la
-phase 5.** Le joueur peut maintenant perdre un vrai réseau de trente cases en relançant. Les
-saisons rendront cette perte plus douloureuse encore.
+- `Assets/Scripts/Core/GameClock.cs` : l'horloge. Elle compte et lève `Tick` à la fin de
+  chaque saison, rien de plus. `SeasonDuration` vaut 600 s, sérialisé et réglable à chaud ;
+  `SeasonProgress` est déjà là pour que la phase 6 sauvegarde l'instant exact. La boucle
+  `while` du tick ne saute aucune saison quand l'horloge est très accélérée.
+- `Assets/Scripts/Seasons/SeasonDefinition.cs` : une saison en données. Pictogramme, couleur
+  de lumière, `freezeMaxDepth`, `clogChance`, `wearMultiplier`, `thaws`.
+- `Assets/Scripts/Seasons/SeasonSystem.cs` : avance d'une saison par tick, applique dégel,
+  gel, bouchons et usure, puis appelle `FlowSolver.Solve()`. Dans cet ordre, une fois par
+  saison, jamais par frame. Vit dans Persistent, résolution paresseuse du réseau.
+- `Assets/Scripts/Seasons/SeasonAmbience.cs` : posé sur la racine de la Surface, il teinte
+  sa propre `Light2D`. S'abonne dans `OnEnable`, se désabonne dans `OnDisable`, et **réapplique
+  la saison courante à chaque rallumage**.
+- `Assets/Scripts/UI/SeasonIndicator.cs` : le picto de saison au HUD, à droite du repère de
+  couche, même taille et même marge.
+- `PipeNetwork.Repair(cell)` et `PipeNetwork.NeedsRepair(cell)` : remettre à neuf, dégeler,
+  déboucher, et dire au picto lequel des deux gestes s'annonce.
+- `PlayerInteractor` : cinquième action. L'ordre est passage, creuser, poser, **réparer**,
+  enlever. Espace ne retire qu'un tuyau sain.
+- `PipeNetworkView` : cinq couleurs, dans l'ordre de priorité gelé, bouché, trop abîmé,
+  porteur d'eau, sain. Le seuil de 0,3 est devenu `FlowSolver.MinimumCondition`, public :
+  le rendu et le solveur lisent la même constante.
+- `GameManager` expose `Clock` et `Seasons` comme il exposait `Router` et `Flow`.
+- `ScriptableObjectSetup` produit les quatre saisons et **réécrit les valeurs à chaque
+  passage**, y compris celles de `PipeType_Standard` : le menu est la source de vérité.
+- `PlaceholderArtGenerator` : quatre pictos de saison 32x32 et une clé de réparation 16x16.
+  47 textures et 29 tuiles au total.
+- **Règle 9 traitée** : `SousLaVille.Runtime.asmdef` gagne
+  `Unity.RenderPipelines.Universal.2D.Runtime`, sans quoi `SeasonAmbience` ne compilerait pas.
 
-Ce qui est prêt pour les saisons, quand elles viendront :
+### Les quatre saisons
 
-- **`FlowSolver.Solve()` est public** : le tick de saison n'aura qu'à l'appeler.
-- **`PipeSegment.Condition`, `IsFrozen` et `IsClogged`** sont déjà lus par le solveur et
-  modifiables. Geler un segment le retire du réseau sans une ligne de plus côté écoulement.
-- **`PipeType.FrostResistance` et `WearPerSeason`** attendent leur premier usage réel.
+| Saison | Effet | Usure | Lumière |
+|---|---|---|---|
+| Printemps | dégèle tout | 1 | (0,82 ; 1,00 ; 0,80) |
+| Été | rien, saison de répit | 0,5 | (1,00 ; 0,95 ; 0,72) |
+| Automne | bouche 25 % des tuyaux de profondeur 1 | 1 | (1,00 ; 0,82 ; 0,60) |
+| Hiver | gèle les tuyaux de profondeur 1 | 1,5 | (0,78 ; 0,88 ; 1,00) |
+
+## Phase 5, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**. Seul subsiste le warning
+  du package MCP lui-même, émis depuis `Library/PackageCache`.
+- `Générer l'art placeholder`, `Créer les ScriptableObjects`, `Construire toutes les scènes` :
+  console propre, quatre scènes régénérées.
+- Assets relus par script : les quatre saisons portent leur picto et leurs valeurs du tableau
+  ci-dessus ; `PipeType_Standard` est à 0,1 d'usure et 0 de résistance au gel.
+- Scènes relues par script : `GameManager` câblé sur `router`, `flow`, `clock` et `seasons` ;
+  `SeasonSystem` sur son horloge, son solveur et les quatre saisons dans l'ordre du cycle ;
+  `PlayerInteractor` sur `picto_repair` ; picto de saison au HUD en (40, -4), 32x32 ;
+  `SeasonAmbience` sur la racine Surface, câblé sur `Global Light 2D`.
+- Play depuis `Boot`, deux réseaux construits pour le test : un **entièrement profond** de
+  7 cases jusqu'à la maison (5, 20), profondeur minimale 2, et un de **46 cases** jusqu'à la
+  maison (27, 17) qui descend à la profondeur 1.
+  - **horloge accélérée à 2 s par saison** : 42 ticks, 42 résolutions. Le cycle tourne
+    Printemps, Été, Automne, Hiver et **revient au printemps**, index et picto à l'appui ;
+  - **le solveur tourne exactement une fois par saison**, compteur à l'appui : +1 résolution
+    par `Advance()`, sur cinq saisons consécutives puis sur 42 ticks d'horloge ;
+  - **HIVER** : la maison profonde reste desservie, la maison peu profonde se coupe, 2/5
+    tombe à 1/5. **17 segments gelés, tous en profondeur 1, aucun en profondeur 2 ou 3** ;
+  - **PRINTEMPS, sans le moindre geste du joueur** : 0 gelé, les deux maisons reviennent,
+    1/5 remonte à 2/5 ;
+  - **AUTOMNE** : un bouchon, en profondeur 1 uniquement. La maison peu profonde se coupe,
+    `NeedsRepair` rend vrai sur la case (15, 13), et **réparer cette seule case suffit** à
+    la rétablir ;
+  - **usure**, mesurée saison par saison sur un segment profond que ni le gel ni les feuilles
+    n'atteignent : 0,95 puis 0,85 / 0,70 / 0,60 / 0,55 / 0,45 puis **0,2999 à la septième
+    saison**. Le tuyau cesse de porter et la maison se coupe exactement là. La réparation le
+    remet à 1,00, et remettre toute la ligne à neuf ramène les deux maisons ;
+  - **les cinq couleurs, relues dans la tilemap** en plein hiver : 18 cases en blanc bleuté
+    `(0,85 ; 0,93 ; 1,00)`, 7 en bleu d'eau `(0,36 ; 0,66 ; 0,94)`, 30 en blanc de tuyau sain ;
+  - **les pictos, par injection clavier réelle** : Espace sur une bouche fait descendre ;
+    face à un tuyau sain le picto est `picto_remove` ; l'hiver venu, le même tuyau affiche
+    `picto_repair` ; **Espace le répare** (condition 1,00, dégelé, teinte revenue au blanc) et
+    le picto rebascule aussitôt sur `picto_remove` ; **Espace l'enlève** alors, 55 nœuds
+    tombent à 54, et le picto revient à `picto_pipe`. Le même geste fait et défait ;
+  - **le piège de la couche éteinte** : deux saisons passées pendant que la Surface est
+    éteinte laissent sa lumière au vert du printemps ; au rallumage elle **se remet d'elle-même
+    à la couleur de la saison en cours**, accord exact vérifié. C'est `OnEnable` qui la sauve ;
+  - console **entièrement vide** sur un cycle complet de saisons et huit bascules de couche.
+- Captures : les quatre ambiances de surface et un réseau gelé vu du sous-sol.
+- `git status` : **aucune modification des ProjectSettings**. `Application.runInBackground`,
+  `Time.timeScale` et l'horloge accélérée n'ont existé qu'à chaud, en play mode.
+
+### Note d'atelier : deux erreurs qui ne viennent pas du jeu
+
+`Ignoring depth surface load action as it is memoryless` apparaît deux fois en console, mais
+**uniquement quand je prends une capture d'écran** : c'est le chemin `ScreenCapture` d'URP sur
+Metal, pas le jeu. Vérifié en isolant : un cycle complet de saisons et huit bascules de couche
+sans capture laissent la console à zéro entrée, une seule capture fait apparaître les deux
+lignes. Rien à corriger côté projet.
+
+## Prochaine étape, phase 6
+
+**Tranché le 3 septembre 2026 : la sauvegarde passe maintenant.** La question d'ordre ouverte
+depuis la phase 4 est close. Le temps passe, l'usure mord au bout de sept saisons, et relancer
+le jeu efface un réseau de cinquante cases et toute une année de saisons. La phase 7, la plaque
+gravable, attendra.
+
+Ce qui est prêt pour la sauvegarde :
+
+- **`GameClock.SeasonProgress`** a un accesseur en écriture : l'instant exact se recharge.
+- **`SeasonSystem.CurrentIndex`** dit le rang de la saison dans le cycle.
+- **`PipeNode` et `PipeSegment` sont `[Serializable]`** depuis la phase 3, et portent déjà
+  `condition`, `isFrozen` et `isClogged`. Aucun champ n'aura à être ajouté après coup.
+- **`companyName` reste `DefaultCompany`** : à trancher avant d'écrire la première sauvegarde,
+  voir les questions ouvertes.
 
 ## Décisions prises
+
+### Phase 5
+
+- **Une saison dure dix minutes**, cycle complet de quarante minutes. `seasonDuration` est
+  sérialisé et réglable à chaud : les tests l'abaissent, la scène garde 600 s.
+- **Le jeu démarre au printemps.** Le plan ne le disait pas ; c'est le premier de la liste du
+  cycle, et c'est ce qui fait tomber l'usure sous 0,3 à la septième saison exactement.
+- **Espace répare un tuyau abîmé, gelé ou bouché, et n'enlève que les tuyaux sains.**
+  Conséquence assumée : enlever un tuyau cassé demande de le réparer d'abord.
+- **La réparation s'annonce aussi sur un nœud permanent.** La phase 3 n'affichait aucun picto
+  face à la station ou à une maison. Désormais, si le tuyau qui y arrive est gelé ou abîmé, le
+  picto de réparation s'affiche et Espace répare. L'enlèvement, lui, reste impossible : le
+  picto d'enlèvement ne s'affiche toujours pas. Un raccordement de maison gelé doit pouvoir se
+  dégeler à la main, sans attendre le printemps.
+- **`clogChance` vaut 0,25 à l'automne.** Le plan crée le champ sans donner de valeur. Un quart
+  des tuyaux peu profonds par automne fait un bouchon quasi certain sur un long trajet, aucun
+  sur un trajet court et profond. **À valider en jouant** : c'est un réglage sérialisé, il se
+  change d'un clic.
+- **« Peu profond » est une constante du système, pas un champ de saison.** Le plan décrit
+  `clogChance` comme la probabilité qu'un tuyau *peu profond* se bouche, sans deuxième réglage
+  de profondeur. C'est la même frontière que celle du gel : la profondeur 1.
+- **Un segment est aussi exposé que son extrémité la moins profonde.** `Mathf.Min` des deux
+  profondeurs : si un bout affleure, le froid et les feuilles entrent par là.
+- **La résistance au gel est une probabilité de tenir**, conformément au tooltip posé en
+  phase 3 : 0 gèle dès le premier hiver, 1 ne gèle jamais. Le type standard est à 0, donc le
+  gel est parfaitement déterministe tant qu'il n'y a qu'un type. La phase 9 s'en servira.
+- **L'usure passe de 0,05 à 0,1 par saison**, modulée par saison. Les saisons sont cinq fois
+  plus longues que dans la proposition initiale. Sept saisons, soit environ soixante-dix
+  minutes de jeu, avant qu'un tuyau ne cesse de porter.
+- **`FlowSolver.MinimumCondition` devient public.** Le rendu peint en rouge terne à partir du
+  même seuil que celui qui coupe l'eau ; le laisser en double aurait fini par diverger.
+- **`FrozenCount` et `CloggedCount` sont recalculés à la lecture**, pas mis en cache. Une
+  première version cachait le compte au dernier changement de saison : une réparation du joueur
+  ne s'y voyait pas. Ils ne servent qu'aux vérifications, jamais au jeu.
+- **`SeasonAmbience` vit dans la scène Surface**, pas dans le système. Une couche éteinte ne
+  répondrait pas ; un composant local qui se réabonne à chaque rallumage évite le piège
+  rencontré en phase 1 et en phase 4. Vérifié en jeu, saisons passées couche éteinte.
+- **Le sous-sol ne change pas de lumière.** Les saisons se voient dessus, se subissent dessous.
+- **Les saisons sont des données, pas du code.** Ajouter une saison ou changer un effet ne
+  demande pas de recompiler.
+- **`ScriptableObjectSetup` réécrit les valeurs des assets qu'il possède**, au lieu de se
+  contenter de les créer s'ils manquent. C'est ce qui a permis de relever l'usure de
+  `PipeType_Standard` d'un clic, sans édition à la main.
+- **`BuildAllScenes` vérifie l'art avant les ScriptableObjects.** Les saisons portent leur
+  pictogramme : l'ordre des deux gardes devait s'inverser.
+- **Le tick n'a lieu qu'à la fin d'une saison.** Le solveur tourne quatre fois par cycle, plus
+  une fois par action du joueur. Toujours jamais par frame.
 
 ### Phase 4
 
@@ -472,6 +615,15 @@ Ce qui est prêt pour les saisons, quand elles viendront :
 
 ## Placeholders à remplacer
 
+- **Les cinq PNG de la phase 5** : les quatre pictos de saison et la clé de réparation. La
+  clé se lit bien au-dessus de la tête ; les quatre saisons se distinguent surtout par la
+  couleur de fond, le motif venant après.
+- **Le contraste des saisons se voit peu sur l'herbe.** Les quatre couleurs de lumière
+  changent nettement le chemin de terre et le sol de la station, beaucoup moins l'herbe :
+  le vert est porté par le canal qui varie le moins entre les quatre saisons. À juger plein
+  écran avant de figer, et à corriger côté couleurs de lumière plutôt que côté tuiles.
+- **Le blanc bleuté du gel et le bleu de l'eau** sont très différents en valeur sur les
+  captures, mais les deux restent des bleus. À revoir si Victorien les confond.
 - **Les cinq PNG de la phase 4** : maison, tuile bloquante de maison, arrivée de maison sous
   terre, goutte pleine, goutte vide.
 - **La goutte au-dessus des maisons est grande** par rapport au toit, et flotte au ras des
@@ -498,8 +650,9 @@ Ce qui est prêt pour les saisons, quand elles viendront :
 
 ## Questions ouvertes
 
-- **L'ordre des phases 5 et 6.** La sauvegarde devrait probablement passer avant les saisons :
-  le joueur peut désormais perdre un réseau entier en relançant.
+- **`clogChance` à 0,25 par automne.** Valeur choisie faute d'indication dans le plan. Un
+  quart des tuyaux peu profonds : quasi certain sur un long trajet, jamais sur un trajet court
+  et profond. À valider en jouant ; c'est un champ sérialisé sur `Season_Automne`.
 - **La difficulté des crêtes pour un enfant de six ans.** Les portes se voient dans la teinte
   de la terre, mais elles demandent de comprendre que la bande claire est un mur. À observer
   quand Victorien jouera, en dernière phase.
@@ -511,9 +664,10 @@ Ce qui est prêt pour les saisons, quand elles viendront :
 - **Intensité de la lumière du sous-sol et contraste terre / galerie.** 0,8 et deux bruns
   distincts sur les captures ; à juger en vrai, plein écran, avant de figer.
 
-- **`companyName` reste `DefaultCompany`.** Les sauvegardes de la phase 6 iront donc dans
-  `~/Library/Application Support/DefaultCompany/SousLaVille`. À trancher avant la phase 6 :
-  le changer après coup déplacerait les parties existantes de Victorien.
+- **`companyName` reste `DefaultCompany`.** Les sauvegardes iront donc dans
+  `~/Library/Application Support/DefaultCompany/SousLaVille`. **À trancher au tout début de la
+  phase 6, avant d'écrire la première sauvegarde** : le changer après coup déplacerait les
+  parties existantes de Victorien.
 - **`Assets/Settings/InputSystem_Actions.inputactions`**, l'asset d'input par défaut d'Unity,
   est conservé intact car les ProjectSettings le référencent comme *project-wide actions*.
   Il n'est pas utilisé par le jeu. Ménage possible plus tard.

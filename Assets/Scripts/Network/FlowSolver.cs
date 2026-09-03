@@ -21,8 +21,11 @@ namespace SousLaVille.Network
     /// </summary>
     public class FlowSolver : MonoBehaviour
     {
-        /// <summary>En dessous, le tuyau est trop abime pour transporter. Phase 5.</summary>
-        private const float MinimumCondition = 0.3f;
+        /// <summary>
+        /// En dessous, le tuyau est trop abime pour transporter. Publique : la vue peint en
+        /// rouge terne a partir du meme seuil, il ne doit exister qu'a un seul endroit.
+        /// </summary>
+        public const float MinimumCondition = 0.3f;
 
         private PipeNetwork network;
 

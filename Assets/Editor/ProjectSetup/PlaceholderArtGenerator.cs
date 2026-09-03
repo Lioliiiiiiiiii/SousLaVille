@@ -54,6 +54,14 @@ namespace SousLaVille.EditorTools
         public const string CursorTarget = PictosFolder + "/cursor_target.png";
         public const string PictoDropFull = PictosFolder + "/picto_drop_full.png";
         public const string PictoDropEmpty = PictosFolder + "/picto_drop_empty.png";
+        public const string PictoRepair = PictosFolder + "/picto_repair.png";
+
+        // Les quatre saisons, phase 5. Chacune dit sa couleur avant de dire son motif :
+        // le fond suffit a reconnaitre la saison du coin de l'oeil.
+        public const string PictoSpring = PictosFolder + "/picto_season_spring.png";
+        public const string PictoSummer = PictosFolder + "/picto_season_summer.png";
+        public const string PictoAutumn = PictosFolder + "/picto_season_autumn.png";
+        public const string PictoWinter = PictosFolder + "/picto_season_winter.png";
 
         /// <summary>Nombre de nuances de profondeur : 1 peu profond, 3 profond.</summary>
         public const int DepthCount = 3;
@@ -187,6 +195,12 @@ namespace SousLaVille.EditorTools
                 WriteTexture(CursorTarget, BuildCursor());
                 WriteTexture(PictoDropFull, BuildDrop(full: true));
                 WriteTexture(PictoDropEmpty, BuildDrop(full: false));
+                WriteTexture(PictoRepair, BuildRepairPicto());
+
+                WriteTexture(PictoSpring, BuildSpringPicto(), PictoSize);
+                WriteTexture(PictoSummer, BuildSummerPicto(), PictoSize);
+                WriteTexture(PictoAutumn, BuildAutumnPicto(), PictoSize);
+                WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
             }
             finally
             {
@@ -225,7 +239,8 @@ namespace SousLaVille.EditorTools
 
             foreach (string path in new[] { PictoSurface, PictoUnderground, PictoDown, PictoUp,
                          PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
-                         PictoDropEmpty })
+                         PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn,
+                         PictoWinter })
             {
                 ConfigureImporter(path, null);
             }
@@ -251,7 +266,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 42 textures, 29 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 47 textures, 29 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -292,7 +307,7 @@ namespace SousLaVille.EditorTools
                 ManholeTexture, LadderTexture, HouseTexture, HouseInletTexture, PlayerDown,
                 PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
                 PictoUp, PictoDig, PictoPipe, PictoRemove, CursorTarget, PictoDropFull,
-                PictoDropEmpty
+                PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter
             };
 
             foreach (string path in sprites)
@@ -732,6 +747,181 @@ namespace SousLaVille.EditorTools
             Fill(pixels, TileSize, 4, 11, 7, 8, bar);
 
             return pixels;
+        }
+
+        /// <summary>
+        /// « Ici on repare » : une cle plate, machoire ouverte vers le haut. Le vocabulaire
+        /// de l'atelier plutot que celui de l'interdiction.
+        /// </summary>
+        private static Color32[] BuildRepairPicto()
+        {
+            Color32 metal = new Color32(0xC8, 0xCE, 0xD4, 0xFF);
+            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Contours d'abord, corps ensuite : le picto reste lisible sur la terre comme
+            // sur un tuyau.
+            Fill(pixels, TileSize, 5, 10, 0, 11, outline);
+            Fill(pixels, TileSize, 3, 12, 9, 15, outline);
+
+            Fill(pixels, TileSize, 6, 9, 1, 10, metal);
+            Fill(pixels, TileSize, 4, 11, 10, 14, metal);
+
+            // L'entaille de la machoire, puis son fond : deux dents et un creux.
+            Fill(pixels, TileSize, 6, 9, 13, 15, clear);
+            Fill(pixels, TileSize, 6, 9, 12, 12, outline);
+
+            return pixels;
+        }
+
+        /// <summary>Printemps : une pousse qui sort de terre, sur un vert tendre.</summary>
+        private static Color32[] BuildSpringPicto()
+        {
+            Color32 sky = new Color32(0xC8, 0xE6, 0xA0, 0xFF);
+            Color32 soil = new Color32(0x7A, 0x55, 0x33, 0xFF);
+            Color32 plant = new Color32(0x2E, 0x7D, 0x32, 0xFF);
+
+            Color32[] pixels = FilledPicto(sky);
+
+            Fill(pixels, PictoSize, 0, PictoSize - 1, 0, 4, soil);
+            Fill(pixels, PictoSize, 15, 16, 4, 24, plant);
+
+            // Deux feuilles, l'une plus haute que l'autre : une pousse n'est pas symetrique.
+            FillEllipse(pixels, PictoSize, 10f, 20f, 5f, 3f, plant);
+            FillEllipse(pixels, PictoSize, 21f, 14f, 5f, 3f, plant);
+
+            return pixels;
+        }
+
+        /// <summary>Ete : un soleil haut et plein, huit rayons, sur un or pale.</summary>
+        private static Color32[] BuildSummerPicto()
+        {
+            Color32 sky = new Color32(0xF7, 0xDE, 0x8B, 0xFF);
+            Color32 sun = new Color32(0xE8, 0x87, 0x1E, 0xFF);
+
+            Color32[] pixels = FilledPicto(sky);
+
+            FillEllipse(pixels, PictoSize, 15.5f, 15.5f, 9f, 9f, sun);
+
+            // Quatre rayons cardinaux, quatre en diagonale : le soleil au zenith.
+            Fill(pixels, PictoSize, 15, 16, 27, 30, sun);
+            Fill(pixels, PictoSize, 15, 16, 1, 4, sun);
+            Fill(pixels, PictoSize, 1, 4, 15, 16, sun);
+            Fill(pixels, PictoSize, 27, 30, 15, 16, sun);
+
+            Fill(pixels, PictoSize, 5, 7, 24, 26, sun);
+            Fill(pixels, PictoSize, 24, 26, 24, 26, sun);
+            Fill(pixels, PictoSize, 5, 7, 5, 7, sun);
+            Fill(pixels, PictoSize, 24, 26, 5, 7, sun);
+
+            return pixels;
+        }
+
+        /// <summary>Automne : une feuille et sa nervure, sur un orange de feuillage.</summary>
+        private static Color32[] BuildAutumnPicto()
+        {
+            Color32 sky = new Color32(0xE8, 0xA4, 0x5C, 0xFF);
+            Color32 leaf = new Color32(0x8C, 0x3A, 0x17, 0xFF);
+            Color32 vein = new Color32(0xC9, 0x6B, 0x2E, 0xFF);
+
+            Color32[] pixels = FilledPicto(sky);
+
+            // Un losange allonge : large au milieu, pointu aux deux bouts.
+            for (int y = 6; y <= 27; y++)
+            {
+                int half = Mathf.RoundToInt(9f - Mathf.Abs(y - 17f) * 0.85f);
+                if (half <= 0)
+                {
+                    continue;
+                }
+
+                Fill(pixels, PictoSize, 15 - half, 16 + half, y, y, leaf);
+            }
+
+            Fill(pixels, PictoSize, 15, 16, 3, 24, vein);
+
+            return pixels;
+        }
+
+        /// <summary>Hiver : un flocon a six branches, sur un bleu de givre.</summary>
+        private static Color32[] BuildWinterPicto()
+        {
+            Color32 sky = new Color32(0x8F, 0xB4, 0xD9, 0xFF);
+            Color32 flake = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+
+            Color32[] pixels = FilledPicto(sky);
+
+            Fill(pixels, PictoSize, 15, 16, 3, 28, flake);
+            Fill(pixels, PictoSize, 3, 28, 15, 16, flake);
+
+            // Les deux diagonales, tracees pixel par pixel plutot qu'en rectangles.
+            for (int step = -12; step <= 12; step++)
+            {
+                PlotThick(pixels, 15 + step, 15 + step, flake);
+                PlotThick(pixels, 15 + step, 16 - step, flake);
+            }
+
+            // Les pointes des quatre branches droites, comme sur un vrai flocon.
+            Fill(pixels, PictoSize, 12, 19, 25, 26, flake);
+            Fill(pixels, PictoSize, 12, 19, 5, 6, flake);
+            Fill(pixels, PictoSize, 5, 6, 12, 19, flake);
+            Fill(pixels, PictoSize, 25, 26, 12, 19, flake);
+
+            return pixels;
+        }
+
+        /// <summary>Un picto 32x32 rempli d'une couleur de fond.</summary>
+        private static Color32[] FilledPicto(Color32 background)
+        {
+            Color32[] pixels = new Color32[PictoSize * PictoSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = background;
+            }
+
+            return pixels;
+        }
+
+        /// <summary>Un point epais de 2x2, borne au picto. Sert aux traits en diagonale.</summary>
+        private static void PlotThick(Color32[] pixels, int x, int y, Color32 color)
+        {
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                for (int dx = 0; dx <= 1; dx++)
+                {
+                    int px = x + dx;
+                    int py = y + dy;
+
+                    if (px >= 0 && px < PictoSize && py >= 0 && py < PictoSize)
+                    {
+                        pixels[py * PictoSize + px] = color;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Une ellipse pleine, bornee a l'image. Feuilles et soleils.</summary>
+        private static void FillEllipse(Color32[] pixels, int width, float cx, float cy,
+            float rx, float ry, Color32 color)
+        {
+            int height = pixels.Length / width;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float dx = (x - cx) / rx;
+                    float dy = (y - cy) / ry;
+
+                    if (dx * dx + dy * dy <= 1f)
+                    {
+                        pixels[y * width + x] = color;
+                    }
+                }
+            }
         }
 
         /// <summary>Le cadre de la case regardee : quatre equerres, centre libre.</summary>

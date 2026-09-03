@@ -15,4 +15,4 @@ MonoBehaviour:
   displayName: Standard
   tint: {r: 1, g: 1, b: 1, a: 1}
   frostResistance: 0
-  wearPerSeason: 0.05
+  wearPerSeason: 0.1

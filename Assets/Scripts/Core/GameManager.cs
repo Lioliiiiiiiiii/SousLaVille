@@ -1,4 +1,5 @@
 using SousLaVille.Network;
+using SousLaVille.Seasons;
 using UnityEngine;
 
 namespace SousLaVille.Core
@@ -18,6 +19,10 @@ namespace SousLaVille.Core
 
         [SerializeField] private FlowSolver flow;
 
+        [SerializeField] private GameClock clock;
+
+        [SerializeField] private SeasonSystem seasons;
+
         /// <summary>Routeur de scenes : chargement additif et bascule surface / sous-sol.</summary>
         public SceneRouter Router => router;
 
@@ -26,6 +31,15 @@ namespace SousLaVille.Core
         /// ne repondrait plus aux maisons de la surface.
         /// </summary>
         public FlowSolver Flow => flow;
+
+        /// <summary>L'horloge. Elle compte, et leve un tick a la fin de chaque saison.</summary>
+        public GameClock Clock => clock;
+
+        /// <summary>
+        /// Les saisons. Elles vivent ici et non dans une couche de jeu : la couche eteinte
+        /// ne repondrait plus, et le temps passe des deux cotes de la bouche d'egout.
+        /// </summary>
+        public SeasonSystem Seasons => seasons;
 
         private void Awake()
         {
@@ -54,6 +68,16 @@ namespace SousLaVille.Core
             if (flow == null)
             {
                 flow = GetComponent<FlowSolver>();
+            }
+
+            if (clock == null)
+            {
+                clock = GetComponent<GameClock>();
+            }
+
+            if (seasons == null)
+            {
+                seasons = GetComponent<SeasonSystem>();
             }
         }
 

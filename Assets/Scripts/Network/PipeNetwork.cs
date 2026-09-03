@@ -158,6 +158,62 @@ namespace SousLaVille.Network
             return true;
         }
 
+        /// <summary>
+        /// Vrai si au moins un segment de cette case demande une reparation : abime, gele
+        /// ou bouche. C'est ce que lit le picto au-dessus de la tete pour annoncer si
+        /// Espace va reparer ou enlever.
+        /// </summary>
+        public bool NeedsRepair(Vector2Int cell)
+        {
+            foreach (PipeSegment segment in SegmentsAt(cell))
+            {
+                if (IsDamaged(segment))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Repare tous les segments de cette case : condition remise a neuf, degel,
+        /// debouchage. Rend false et ne fait rien si rien n'etait a reparer.
+        ///
+        /// Consequence assumee de la decision de phase 5 : enlever un tuyau casse demande
+        /// de le reparer d'abord. Un seul geste, jamais deux touches.
+        /// </summary>
+        public bool Repair(Vector2Int cell)
+        {
+            bool repaired = false;
+
+            foreach (PipeSegment segment in SegmentsAt(cell))
+            {
+                if (!IsDamaged(segment))
+                {
+                    continue;
+                }
+
+                segment.Condition = 1f;
+                segment.IsFrozen = false;
+                segment.IsClogged = false;
+                repaired = true;
+            }
+
+            if (repaired)
+            {
+                Changed?.Invoke();
+            }
+
+            return repaired;
+        }
+
+        /// <summary>Un segment est a reparer des qu'il n'est plus neuf.</summary>
+        private static bool IsDamaged(PipeSegment segment)
+        {
+            return segment.IsFrozen || segment.IsClogged || segment.Condition < 1f;
+        }
+
         private void CreateFixedNodes()
         {
             if (fixedNodes == null)

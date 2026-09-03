@@ -3,8 +3,9 @@ using UnityEngine;
 namespace SousLaVille.Network
 {
     /// <summary>
-    /// Une famille de canalisation. Un seul type en phase 3 : les variantes n'auront
-    /// d'interet qu'avec le gel, en phase 5.
+    /// Une famille de canalisation. Un seul type pour l'instant : les variantes n'auront
+    /// d'interet qu'a l'usine a tuyaux, en phase 9, ou la resistance au gel et l'usure
+    /// deviendront un choix.
     /// </summary>
     [CreateAssetMenu(fileName = "PipeType_", menuName = "Sous la Ville/Type de canalisation")]
     public class PipeType : ScriptableObject
@@ -19,8 +20,8 @@ namespace SousLaVille.Network
         [Range(0f, 1f)]
         [SerializeField] private float frostResistance;
 
-        [Tooltip("Usure retiree a la condition a chaque saison. Phase 5.")]
-        [SerializeField] private float wearPerSeason = 0.05f;
+        [Tooltip("Usure retiree a la condition a chaque saison, avant le facteur de saison.")]
+        [SerializeField] private float wearPerSeason = 0.1f;
 
         public string DisplayName => displayName;
         public Color Tint => tint;

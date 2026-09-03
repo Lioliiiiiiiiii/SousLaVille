@@ -8,8 +8,9 @@ namespace SousLaVille.Network
     /// raccords : un tuyau isole, un coude, un T et un croisement se distinguent donc sans
     /// code de dessin particulier.
     ///
-    /// Un tuyau qui porte de l'eau est teinte en bleu, les autres restent gris. Aucune image
-    /// supplementaire : une couleur par case suffit a montrer tout le trajet d'un coup d'oeil.
+    /// La couleur dit l'etat, dans un ordre de priorite fixe : gele, bouche, trop abime,
+    /// porteur d'eau, sain. Aucune image supplementaire : une couleur par case suffit a
+    /// montrer tout le reseau d'un coup d'oeil, et aucune ne demande de legende.
     ///
     /// Tout est redessine a chaque changement. Quelques centaines de cases, et seulement sur
     /// action du joueur ou apres une resolution : le calcul incremental viendra s'il se voit
@@ -25,6 +26,18 @@ namespace SousLaVille.Network
 
         [Tooltip("Teinte d'un tuyau qui porte de l'eau.")]
         [SerializeField] private Color waterTint = new Color(0.36f, 0.66f, 0.94f, 1f);
+
+        [Tooltip("Tuyau gele : blanc bleute.")]
+        [SerializeField] private Color frozenTint = new Color(0.85f, 0.93f, 1f, 1f);
+
+        [Tooltip("Tuyau bouche : brun.")]
+        [SerializeField] private Color cloggedTint = new Color(0.55f, 0.40f, 0.24f, 1f);
+
+        [Tooltip("Tuyau trop abime pour porter : rouge terne.")]
+        [SerializeField] private Color brokenTint = new Color(0.72f, 0.35f, 0.32f, 1f);
+
+        [Tooltip("Tuyau sain, sans eau. Blanc : la tuile garde son gris d'origine.")]
+        [SerializeField] private Color idleTint = Color.white;
 
         private SousLaVille.Core.GameManager Manager => SousLaVille.Core.GameManager.Instance;
         private FlowSolver flow;
@@ -86,9 +99,40 @@ namespace SousLaVille.Network
                 // LockColor est pose par defaut sur une tuile : sans ce reglage, SetColor
                 // serait ignore en silence.
                 pipes.SetTileFlags(position, TileFlags.None);
-                pipes.SetColor(position,
-                    flow != null && flow.IsCarryingAt(node.GridPos) ? waterTint : Color.white);
+                pipes.SetColor(position, TintFor(node.GridPos));
             }
+        }
+
+        /// <summary>
+        /// L'etat d'une case, dans l'ordre de priorite du plan : ce qui empeche l'eau de
+        /// passer se voit avant ce qui la laisse passer. Une case peut porter plusieurs
+        /// segments : le pire l'emporte, c'est celui que le joueur doit aller reparer.
+        /// </summary>
+        private Color TintFor(Vector2Int cell)
+        {
+            bool broken = false;
+
+            foreach (PipeSegment segment in network.SegmentsAt(cell))
+            {
+                if (segment.IsFrozen)
+                {
+                    return frozenTint;
+                }
+
+                if (segment.IsClogged)
+                {
+                    return cloggedTint;
+                }
+
+                broken |= segment.Condition <= FlowSolver.MinimumCondition;
+            }
+
+            if (broken)
+            {
+                return brokenTint;
+            }
+
+            return flow != null && flow.IsCarryingAt(cell) ? waterTint : idleTint;
         }
     }
 }

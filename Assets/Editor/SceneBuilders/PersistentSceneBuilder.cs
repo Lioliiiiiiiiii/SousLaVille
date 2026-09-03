@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using SousLaVille.Core;
 using SousLaVille.Network;
 using SousLaVille.Player;
+using SousLaVille.Seasons;
 using SousLaVille.UI;
 using UnityEditor;
 using UnityEngine;
@@ -61,13 +62,55 @@ namespace SousLaVille.EditorTools
             // plus repondre aux maisons de la surface.
             FlowSolver flow = managerObject.AddComponent<FlowSolver>();
 
+            // L'horloge et les saisons vivent ici pour la meme raison : le temps passe des
+            // deux cotes de la bouche d'egout, et une couche eteinte ne repondrait plus.
+            GameClock clock = managerObject.AddComponent<GameClock>();
+            SeasonSystem seasons = CreateSeasonSystem(managerObject, clock, flow);
+
             // Cablage explicite des champs serialises : visibles dans l'inspecteur.
             SerializedObject serialized = new SerializedObject(manager);
             serialized.FindProperty("router").objectReferenceValue = router;
             serialized.FindProperty("flow").objectReferenceValue = flow;
+            serialized.FindProperty("clock").objectReferenceValue = clock;
+            serialized.FindProperty("seasons").objectReferenceValue = seasons;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return router;
+        }
+
+        /// <summary>
+        /// Les quatre saisons dans l'ordre du cycle. Elles sont des donnees : changer un
+        /// effet ou en ajouter une ne demande pas de toucher au code.
+        /// </summary>
+        private static SeasonSystem CreateSeasonSystem(GameObject managerObject, GameClock clock,
+            FlowSolver flow)
+        {
+            SeasonSystem seasons = managerObject.AddComponent<SeasonSystem>();
+
+            SerializedObject serialized = new SerializedObject(seasons);
+            serialized.FindProperty("clock").objectReferenceValue = clock;
+            serialized.FindProperty("flow").objectReferenceValue = flow;
+
+            SerializedProperty cycle = serialized.FindProperty("seasons");
+            cycle.arraySize = ScriptableObjectSetup.SeasonCycle.Length;
+
+            for (int i = 0; i < ScriptableObjectSetup.SeasonCycle.Length; i++)
+            {
+                string path = ScriptableObjectSetup.SeasonCycle[i];
+                SeasonDefinition definition = AssetDatabase.LoadAssetAtPath<SeasonDefinition>(path);
+
+                if (definition == null)
+                {
+                    Debug.LogError($"[Sous la Ville] Saison introuvable : {path}. Lance d'abord " +
+                                   "« Sous La Ville/Créer les ScriptableObjects ».");
+                }
+
+                cycle.GetArrayElementAtIndex(i).objectReferenceValue = definition;
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return seasons;
         }
 
         private static GameObject CreatePlayer()
@@ -131,6 +174,8 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoDig);
             serialized.FindProperty("promptPipe").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoPipe);
+            serialized.FindProperty("promptRepair").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoRepair);
             serialized.FindProperty("promptRemove").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoRemove);
             serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -212,6 +257,7 @@ namespace SousLaVille.EditorTools
 
             Image veil = CreateFullScreenVeil(canvasObject.transform);
             Image icon = CreateLayerIcon(canvasObject.transform);
+            Image seasonIcon = CreateSeasonIcon(canvasObject.transform);
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
@@ -231,6 +277,11 @@ namespace SousLaVille.EditorTools
             SerializedObject serializedRouter = new SerializedObject(router);
             serializedRouter.FindProperty("fader").objectReferenceValue = fader;
             serializedRouter.ApplyModifiedPropertiesWithoutUndo();
+
+            SeasonIndicator seasonIndicator = canvasObject.AddComponent<SeasonIndicator>();
+            SerializedObject serializedSeason = new SerializedObject(seasonIndicator);
+            serializedSeason.FindProperty("icon").objectReferenceValue = seasonIcon;
+            serializedSeason.ApplyModifiedPropertiesWithoutUndo();
 
             HouseCounter counter = canvasObject.AddComponent<HouseCounter>();
 
@@ -330,6 +381,29 @@ namespace SousLaVille.EditorTools
             rect.pivot = new Vector2(0f, 1f);
             rect.sizeDelta = new Vector2(32f, 32f);
             rect.anchoredPosition = new Vector2(4f, -4f);
+
+            return icon;
+        }
+
+        /// <summary>
+        /// Le picto de saison, juste a droite du repere de couche. Meme taille, meme marge :
+        /// deux panneaux cote a cote, ou l'on est et quand on est.
+        /// </summary>
+        private static Image CreateSeasonIcon(Transform parent)
+        {
+            GameObject iconObject = new GameObject("SeasonIndicator");
+            iconObject.transform.SetParent(parent, false);
+
+            Image icon = iconObject.AddComponent<Image>();
+            icon.raycastTarget = false;
+            icon.sprite = LoadSprite(PlaceholderArtGenerator.PictoSpring);
+
+            RectTransform rect = icon.rectTransform;
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.sizeDelta = new Vector2(32f, 32f);
+            rect.anchoredPosition = new Vector2(40f, -4f);
 
             return icon;
         }
