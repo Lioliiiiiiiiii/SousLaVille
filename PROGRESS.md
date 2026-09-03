@@ -16,7 +16,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 6 | Sauvegarde | Terminée |
 | 7 | La plaque gravable | Terminée |
 | 8 | La réserve d'eau | Terminée |
-| 9 | L'usine à tuyaux | À faire |
+| 9 | Les bâtiments et l'usine à tuyaux | Plan validé sur le design |
 | 10 | Les fuites | À faire |
 | 11 | Le parc | À faire |
 | 12 | L'usine à panneaux | À faire |
@@ -689,7 +689,22 @@ L'usine à tuyaux, `PipeFactory`. Ce que la phase 8 laisse en place :
 
 ## Décisions prises
 
-### Phase 8
+### Phase 9, design validé le 3 septembre 2026
+
+Voir PLAN-PHASE-09.md. Les choix techniques des intérieurs restent à fixer en début de
+session.
+
+- **Trois types de canalisation, un par menace de saison** : Standard, Isolé qui ne gèle pas,
+  Grillagé que les feuilles ne bouchent pas. Même usure pour les trois.
+- **Pas de stock.** Tuyaux illimités, le choix se fait dans l'usine.
+- **Les usines sont des bâtiments dans lesquels on entre**, par une porte et un fondu comme
+  pour descendre sous terre. **Un personnage s'y tient et dit ce qu'on peut y faire.**
+  Décision rétroactive : **l'atelier des plaques de la phase 7 est refait sur ce modèle**, la
+  cour à ciel ouvert disparaît. Décision d'avance : **l'usine à panneaux, phases 12 à 15, est
+  un bâtiment avec trois personnages**, un par mini-jeu, chacun expliquant son problème et
+  demandant de l'aide ; Espace lance le mini-jeu.
+- **Le type se lit par un motif**, jamais par une couleur : la couleur dit l'état.
+- **Les noms des tuyaux sont écrits**, sous les échantillons, comme les noms de villes.
 
 - **La route du bassin porte la teinte de l'eau** quand elle est valide, comme celle d'une
   maison. C'est le même parcours, et c'est le seul retour qui dise « relié » avant que le
@@ -823,6 +838,10 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 - **L'usine est une pure récréation, sans lien avec le réseau.** Rien de ce qui s'y fabrique
   ne sort du bâtiment. Aucun mini-jeu ne peut donc bloquer la progression du réseau, ce qui
   garde intact le « aucun échec puni » de CLAUDE.md.
+- **C'est un bâtiment dans lequel on entre**, décidé le 3 septembre 2026 avec la phase 9 :
+  trois personnages à trois endroits de l'intérieur, un par mini-jeu. Chacun explique son
+  problème et demande de l'aide ; Espace face à lui lance son mini-jeu. Le patron du bâtiment
+  et du personnage qui parle est construit en phase 9.
 
 ### Phase 5
 
@@ -1060,6 +1079,13 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Questions ouvertes
 
+- **Les personnages parlent, et CLAUDE.md veut le moins de texte possible.** Décidé le
+  3 septembre 2026 : ils parlent en phrases de moins de six mots, en français, et Victorien
+  sait lire. Les phrases exactes sont à écrire et à relire à voix haute pour six ans. Les
+  accents manquent encore à `PixelFont`.
+- **Une scène de plus pour les intérieurs ?** CLAUDE.md impose quatre scènes. La voie
+  recommandée en phase 9 en ajoute une cinquième, `Interiors`, avec une troisième couche.
+  Écart à accepter explicitement, ou peindre les pièces hors du village dans la scène Surface.
 - **Le bilan de l'eau est calculé au tick, après les effets de la saison qui commence.** Le
   plan le demande ainsi, et c'est fait ainsi. Conséquence vue en jeu : l'hiver gèle les trois
   maisons peu profondes **avant** le bilan, l'automne en bouche autant, et aucun entretien ne
