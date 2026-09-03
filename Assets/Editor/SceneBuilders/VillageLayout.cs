@@ -14,11 +14,16 @@ namespace SousLaVille.EditorTools
     ///   .  herbe              #  chemin             P  dalle du parc
     ///   S  sol station        H  haie (bloquant)    B  batiment station (bloquant)
     ///   M  bouche d'egout     X  depart du joueur   T  entree de la station
-    ///   A  maison (bloquant)
+    ///   A  maison (bloquant)  W  pave de l'atelier  C  plaque exposee
     ///
-    /// M, X, T et A sont des marqueurs : le builder peint le sol correspondant dessous et
+    /// M, X, T, A et C sont des marqueurs : le builder peint le sol correspondant dessous et
     /// pose un GameObject par-dessus. Une maison est en plus bloquante : on passe devant,
-    /// pas dedans.
+    /// pas dedans. Une plaque exposee ne bloque pas : on marche dessus pour la choisir.
+    ///
+    /// La cour de l'atelier occupe seize cases sur six, en haut a droite, dans la zone
+    /// d'herbe restee libre. Ses huit plaques sont espacees de quatre cases : le nom
+    /// AMSTERDAM mesure 3,4 cases de large, et deux cartels voisins se chevaucheraient a
+    /// moins.
     /// </summary>
     public static class VillageLayout
     {
@@ -35,18 +40,20 @@ namespace SousLaVille.EditorTools
         public const char PlayerStart = 'X';
         public const char PlantInlet = 'T';
         public const char House = 'A';
+        public const char Workshop = 'W';
+        public const char Cover = 'C';
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
             "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
             "H......................................H",
-            "H.BBBBBBBBB............................H",
-            "H.BSSSSSSSB............................H",
-            "H.BSSSTSSSB....HHH.....................H",
-            "H.BSSSSSSSB....HHH.....................H",
-            "H.BSSSSSSSB............................H",
-            "H.BBBBSBBBB............................H",
+            "H.BBBBBBBBB..........WWWWWWWWWWWWWWWW..H",
+            "H.BSSSSSSSB..........WCWWWCWWWCWWWCWW..H",
+            "H.BSSSTSSSB....HHH...WWWWWWWWWWWWWWWW..H",
+            "H.BSSSSSSSB....HHH...WWWWWWWWWWWWWWWW..H",
+            "H.BSSSSSSSB..........WCWWWCWWWCWWWCWW..H",
+            "H.BBBBSBBBB..........WWWWWWWWWWWWWWWW..H",
             "H.....#................................H",
             "H....A#................................H",
             "H.....##M######################........H",
@@ -95,6 +102,9 @@ namespace SousLaVille.EditorTools
                 case Manhole:
                 case PlayerStart:
                     return Road;
+                case Cover:
+                    // Une plaque exposee est un marqueur : le pave de l'atelier passe dessous.
+                    return Workshop;
                 case House:
                     // De l'herbe sous la maison : la tuile bloquante se pose par-dessus.
                     return Grass;

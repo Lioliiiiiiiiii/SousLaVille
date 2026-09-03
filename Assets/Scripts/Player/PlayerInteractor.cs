@@ -1,5 +1,7 @@
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Network;
+using SousLaVille.UI;
 using SousLaVille.World;
 using UnityEngine;
 
@@ -26,6 +28,7 @@ namespace SousLaVille.Player
             None,
             Descend,
             Ascend,
+            ChooseCover,
             Dig,
             PlacePipe,
             RepairPipe,
@@ -45,7 +48,21 @@ namespace SousLaVille.Player
         private SousLaVilleInputActions input;
         private PlayerController controller;
         private PipeNetwork network;
+        private ManholeFactory factory;
+        private VillageMapScreen map;
         private bool isTravelling;
+        private bool isChoosing;
+
+        /// <summary>
+        /// Image ou le plan du village s'est referme. Le meme Espace ne doit pas etre lu deux
+        /// fois : celui qui pose une plaque refermerait le plan puis le rouvrirait aussitot,
+        /// puisque le personnage est encore debout sur la plaque exposee. C'est la garde
+        /// symetrique de celle que VillageMapScreen pose a l'ouverture.
+        /// </summary>
+        private int mapClosedFrame = -1;
+
+        /// <summary>Rang de la plaque exposee sous les pieds, ou -1. Pose par Evaluate.</summary>
+        private int coverUnderfoot = -1;
 
         private void Awake()
         {
@@ -105,7 +122,8 @@ namespace SousLaVille.Player
             portal = null;
 
             SceneRouter router = Router;
-            if (isTravelling || router == null || !controller.HasMap)
+            if (isTravelling || isChoosing || Time.frameCount == mapClosedFrame
+                || router == null || !controller.HasMap)
             {
                 return InteractionKind.None;
             }
@@ -117,6 +135,22 @@ namespace SousLaVille.Player
                 return portal.DestinationLayer == GameLayer.Underground
                     ? InteractionKind.Descend
                     : InteractionKind.Ascend;
+            }
+
+            // 2. Une plaque exposee sous les pieds, dans l'atelier. Meme geste que la bouche :
+            // on marche dessus et on appuie.
+            coverUnderfoot = -1;
+            if (router.CurrentLayer == GameLayer.Surface)
+            {
+                ManholeFactory workshop = ResolveFactory();
+                if (workshop != null)
+                {
+                    coverUnderfoot = workshop.SampleIndexAt(controller.Cell);
+                    if (coverUnderfoot >= 0)
+                    {
+                        return InteractionKind.ChooseCover;
+                    }
+                }
             }
 
             // Creuser et poser n'existent que sous terre.
@@ -132,7 +166,7 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 2. De la terre pleine devant soi : creuser.
+            // 3. De la terre pleine devant soi : creuser.
             if (!underground.IsWalkable(target))
             {
                 return InteractionKind.Dig;
@@ -144,14 +178,14 @@ namespace SousLaVille.Player
                 return InteractionKind.None;
             }
 
-            // 3. Une galerie vide devant soi : poser.
+            // 4. Une galerie vide devant soi : poser.
             PipeNode node = pipes.NodeAt(target);
             if (node == null)
             {
                 return InteractionKind.PlacePipe;
             }
 
-            // 4. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
+            // 5. Un tuyau abime, gele ou bouche : reparer. Avant l'enlevement, et meme sur
             // un noeud pose par le monde : le raccordement d'une maison gele doit pouvoir
             // se degeler a la main, sans attendre le printemps.
             if (pipes.NeedsRepair(target))
@@ -159,7 +193,7 @@ namespace SousLaVille.Player
                 return InteractionKind.RepairPipe;
             }
 
-            // 5. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
+            // 6. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
             // maison, ne s'annonce pas : il ne s'enleve pas.
             return node.IsPermanent ? InteractionKind.None : InteractionKind.RemovePipe;
         }
@@ -171,6 +205,10 @@ namespace SousLaVille.Player
                 case InteractionKind.Descend:
                 case InteractionKind.Ascend:
                     UsePortal(portal);
+                    return;
+
+                case InteractionKind.ChooseCover:
+                    OpenVillageMap();
                     return;
 
                 case InteractionKind.Dig:
@@ -189,6 +227,38 @@ namespace SousLaVille.Player
                     ResolveNetwork().RemovePipe(controller.FacingCell);
                     return;
             }
+        }
+
+        /// <summary>
+        /// Le plan du village s'ouvre, une plaque en main. Le personnage s'eteint le temps du
+        /// choix : une fleche ne doit pas le faire marcher et deplacer le choix en meme temps.
+        /// </summary>
+        private void OpenVillageMap()
+        {
+            VillageMapScreen screen = ResolveMap();
+            if (screen == null || !screen.Open(coverUnderfoot))
+            {
+                return;
+            }
+
+            isChoosing = true;
+            controller.enabled = false;
+            ShowPrompt(InteractionKind.None);
+
+            screen.Closed += OnVillageMapClosed;
+        }
+
+        private void OnVillageMapClosed()
+        {
+            VillageMapScreen screen = ResolveMap();
+            if (screen != null)
+            {
+                screen.Closed -= OnVillageMapClosed;
+            }
+
+            controller.enabled = true;
+            isChoosing = false;
+            mapClosedFrame = Time.frameCount;
         }
 
         /// <summary>
@@ -244,6 +314,29 @@ namespace SousLaVille.Player
             return network;
         }
 
+        /// <summary>L'atelier vit dans la scene Surface : il ne repond que quand elle est allumee.</summary>
+        private ManholeFactory ResolveFactory()
+        {
+            if (factory != null && factory.isActiveAndEnabled)
+            {
+                return factory;
+            }
+
+            factory = FindAnyObjectByType<ManholeFactory>();
+            return factory;
+        }
+
+        /// <summary>Le plan vit dans Persistent, jamais eteinte : une fois trouve, il le reste.</summary>
+        private VillageMapScreen ResolveMap()
+        {
+            if (map == null)
+            {
+                map = FindAnyObjectByType<VillageMapScreen>(FindObjectsInactive.Include);
+            }
+
+            return map;
+        }
+
         private void ShowPrompt(InteractionKind kind)
         {
             if (prompt == null)
@@ -258,6 +351,16 @@ namespace SousLaVille.Player
 
         private Sprite SpriteFor(InteractionKind kind)
         {
+            // Sur une plaque exposee, le picto EST la plaque : « celle-la ». Aucune image de
+            // plus a dessiner, et aucun symbole a apprendre.
+            if (kind == InteractionKind.ChooseCover)
+            {
+                ManholeFactory workshop = ResolveFactory();
+                ManholeCoverDefinition definition =
+                    workshop != null ? workshop.CoverAt(coverUnderfoot) : null;
+                return definition != null ? definition.Cover : null;
+            }
+
             switch (kind)
             {
                 case InteractionKind.Descend: return promptDown;

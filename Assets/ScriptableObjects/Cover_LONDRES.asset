@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c296b1bd4869340578622bb702aa8c6a, type: 3}
+  m_Name: Cover_LONDRES
+  m_EditorClassIdentifier: SousLaVille.Runtime::SousLaVille.Buildings.ManholeCoverDefinition
+  displayName: LONDRES
+  cover: {fileID: 21300000, guid: 6e30700b7626b49438b9281f496e1baf, type: 3}
+  nameImage: {fileID: 21300000, guid: a01c3d4d76eaa41ab8212564f1d1cbb8, type: 3}

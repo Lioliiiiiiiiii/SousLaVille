@@ -1,7 +1,9 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using SousLaVille.Buildings;
 using SousLaVille.Network;
 using SousLaVille.Seasons;
 using SousLaVille.World;
@@ -35,6 +37,7 @@ namespace SousLaVille.Core
 
         private PipeNetwork network;
         private UndergroundMap map;
+        private ManholeFactory factory;
 
         private bool loaded;
         private bool restoring;
@@ -124,6 +127,10 @@ namespace SousLaVille.Core
                 return;
             }
 
+            // L'atelier vit dans la scene Surface, chargee AVANT l'Underground par
+            // LoadGameplayScenesAsync : si le reseau repond, l'atelier existe deja.
+            factory = FindAnyObjectByType<ManholeFactory>(FindObjectsInactive.Include);
+
             // Marque pose avant la lecture : rien ne doit s'ecrire tant que la partie n'est
             // pas chargee, sinon un monde vide ecraserait un bon fichier.
             loaded = true;
@@ -140,6 +147,11 @@ namespace SousLaVille.Core
             if (seasons != null)
             {
                 seasons.SeasonChanged += OnSeasonChanged;
+            }
+
+            if (factory != null)
+            {
+                factory.Changed += MarkDirty;
             }
         }
 
@@ -158,6 +170,11 @@ namespace SousLaVille.Core
             if (seasons != null)
             {
                 seasons.SeasonChanged -= OnSeasonChanged;
+            }
+
+            if (factory != null)
+            {
+                factory.Changed -= MarkDirty;
             }
         }
 
@@ -270,6 +287,21 @@ namespace SousLaVille.Core
                     segment.Condition = saved.condition;
                     segment.IsFrozen = saved.isFrozen;
                     segment.IsClogged = saved.isClogged;
+                }
+
+                if (factory != null)
+                {
+                    var assignments = new Dictionary<Vector2Int, int>();
+
+                    foreach (SaveCover saved in data.covers)
+                    {
+                        if (saved != null && saved.cell != null)
+                        {
+                            assignments[saved.cell.ToCell()] = saved.cover;
+                        }
+                    }
+
+                    factory.Restore(assignments);
                 }
 
                 if (seasons != null)
@@ -399,6 +431,18 @@ namespace SousLaVille.Core
                     isFrozen = segment.IsFrozen,
                     isClogged = segment.IsClogged
                 });
+            }
+
+            if (factory != null)
+            {
+                foreach (KeyValuePair<Vector2Int, int> entry in factory.Assignments)
+                {
+                    data.covers.Add(new SaveCover
+                    {
+                        cell = new SaveCell(entry.Key),
+                        cover = entry.Value
+                    });
+                }
             }
 
             return data;

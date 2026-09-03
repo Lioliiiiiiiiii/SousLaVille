@@ -268,6 +268,7 @@ namespace SousLaVille.EditorTools
             Image icon = CreateLayerIcon(canvasObject.transform);
             Image seasonIcon = CreateSeasonIcon(canvasObject.transform);
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
+            CreateVillageMap(canvasObject);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
             SerializedObject serializedFader = new SerializedObject(fader);
@@ -415,6 +416,102 @@ namespace SousLaVille.EditorTools
             rect.anchoredPosition = new Vector2(40f, -4f);
 
             return icon;
+        }
+
+        /// <summary>
+        /// Le plan du village, ouvert le temps de choisir une bouche d'egout. Eteint le reste
+        /// du temps : un panneau plein ecran ne se dessine pas pour rien a chaque image.
+        ///
+        /// Le fond du plan est engendre depuis VillageLayout : il ne peut pas mentir sur le
+        /// village, puisqu'il en sort.
+        /// </summary>
+        private static void CreateVillageMap(GameObject canvasObject)
+        {
+            const float scale = 4f;
+
+            GameObject panel = new GameObject("VillageMap");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            RectTransform panelRect = panel.AddComponent<RectTransform>();
+            panelRect.anchorMin = Vector2.zero;
+            panelRect.anchorMax = Vector2.one;
+            panelRect.offsetMin = Vector2.zero;
+            panelRect.offsetMax = Vector2.zero;
+
+            // Un voile sombre derriere le plan : le village continue d'exister dessous, mais
+            // il ne doit pas concurrencer le choix en cours.
+            Image veil = panel.AddComponent<Image>();
+            veil.color = new Color(0f, 0f, 0f, 0.6f);
+            veil.raycastTarget = false;
+
+            GameObject mapObject = new GameObject("Map");
+            mapObject.transform.SetParent(panel.transform, false);
+
+            Image mapImage = mapObject.AddComponent<Image>();
+            mapImage.raycastTarget = false;
+            mapImage.sprite = LoadSprite(PlaceholderArtGenerator.VillageMapTexture);
+
+            RectTransform mapRect = mapImage.rectTransform;
+            mapRect.anchorMin = new Vector2(0.5f, 0.5f);
+            mapRect.anchorMax = new Vector2(0.5f, 0.5f);
+            mapRect.pivot = new Vector2(0.5f, 0.5f);
+            mapRect.anchoredPosition = Vector2.zero;
+            mapRect.sizeDelta = new Vector2(VillageLayout.Width * scale, VillageLayout.Height * scale);
+
+            // Le cadre du choix, sous les marqueurs dans l'ordre de dessin.
+            Image cursor = CreateMapMark(mapObject.transform, "Cursor", 16f);
+            cursor.sprite = LoadSprite(PlaceholderArtGenerator.CursorTarget);
+
+            List<Vector2Int> manholes = VillageLayout.FindAll(VillageLayout.Manhole);
+            List<Image> markers = new List<Image>(manholes.Count);
+
+            for (int i = 0; i < manholes.Count; i++)
+            {
+                Image marker = CreateMapMark(mapObject.transform, $"Manhole_{i + 1:00}", 12f);
+                marker.sprite = LoadSprite(PlaceholderArtGenerator.ManholeTexture);
+                markers.Add(marker);
+            }
+
+            VillageMapScreen screen = canvasObject.AddComponent<VillageMapScreen>();
+
+            SerializedObject serialized = new SerializedObject(screen);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("cursor").objectReferenceValue = cursor;
+            serialized.FindProperty("defaultCover").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.ManholeTexture);
+            serialized.FindProperty("mapSize").vector2IntValue =
+                new Vector2Int(VillageLayout.Width, VillageLayout.Height);
+            serialized.FindProperty("mapScale").floatValue = scale;
+
+            SerializedProperty markerProperty = serialized.FindProperty("markers");
+            markerProperty.arraySize = markers.Count;
+            for (int i = 0; i < markers.Count; i++)
+            {
+                markerProperty.GetArrayElementAtIndex(i).objectReferenceValue = markers[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : VillageMapScreen le rallume le temps du choix.
+            panel.SetActive(false);
+        }
+
+        /// <summary>Une marque posee sur le plan, centree sur sa case par le script.</summary>
+        private static Image CreateMapMark(Transform parent, string name, float size)
+        {
+            GameObject markObject = new GameObject(name);
+            markObject.transform.SetParent(parent, false);
+
+            Image mark = markObject.AddComponent<Image>();
+            mark.raycastTarget = false;
+
+            RectTransform rect = mark.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(size, size);
+
+            return mark;
         }
 
         private static Sprite LoadSprite(string path)

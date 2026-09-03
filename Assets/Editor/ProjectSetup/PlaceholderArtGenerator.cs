@@ -63,6 +63,31 @@ namespace SousLaVille.EditorTools
         public const string PictoAutumn = PictosFolder + "/picto_season_autumn.png";
         public const string PictoWinter = PictosFolder + "/picto_season_winter.png";
 
+        // La plaque d'egout du joueur, phase 7. Huit motifs inspires de styles regionaux,
+        // dessines ici : la geometrie est originale, jamais l'embleme d'une ville reelle.
+        public static readonly string[] CoverNames =
+        {
+            "PARIS", "TOKYO", "BERLIN", "NEW YORK",
+            "AMSTERDAM", "LONDRES", "ROME", "LISBONNE"
+        };
+
+        public const int CoverCount = 8;
+
+        public const string TileWorkshop = TilesFolder + "/Tile_Workshop.asset";
+        public const string VillageMapTexture = SpritesFolder + "/village_map.png";
+
+        /// <summary>Image 16x16 d'une plaque, celle-la meme qui se pose sur la bouche.</summary>
+        public static string CoverTexture(int index)
+        {
+            return $"{SpritesFolder}/cover_{index:00}.png";
+        }
+
+        /// <summary>Le nom de la ville, ecrit en pixels, affiche sous la plaque dans l'atelier.</summary>
+        public static string CoverNameTexture(int index)
+        {
+            return $"{PictosFolder}/cover_name_{index:00}.png";
+        }
+
         /// <summary>Nombre de nuances de profondeur : 1 peu profond, 3 profond.</summary>
         public const int DepthCount = 3;
 
@@ -201,6 +226,17 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoSummer, BuildSummerPicto(), PictoSize);
                 WriteTexture(PictoAutumn, BuildAutumnPicto(), PictoSize);
                 WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
+
+                WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
+
+                for (int index = 0; index < CoverCount; index++)
+                {
+                    WriteTexture(CoverTexture(index), BuildCover(index));
+                    WriteTexture(CoverNameTexture(index), BuildCoverName(index),
+                        PixelFont.WidthOf(CoverNames[index]));
+                }
+
+                WriteTexture(VillageMapTexture, BuildVillageMap(), VillageLayout.Width);
             }
             finally
             {
@@ -223,6 +259,15 @@ namespace SousLaVille.EditorTools
             for (int mask = 0; mask < PipeMaskCount; mask++)
             {
                 ConfigureImporter(PipeTexture(mask), null);
+            }
+
+            ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
+            ConfigureImporter(VillageMapTexture, null);
+
+            for (int index = 0; index < CoverCount; index++)
+            {
+                ConfigureImporter(CoverTexture(index), null);
+                ConfigureImporter(CoverNameTexture(index), null);
             }
 
             ConfigureImporter(ManholeTexture, null);
@@ -252,6 +297,7 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TileHedge, $"{TilesFolder}/tile_hedge.png");
             CreateTileAsset(TilePlantWall, PlantWallTexture);
             CreateTileAsset(TileHouse, $"{TilesFolder}/tile_house.png");
+            CreateTileAsset(TileWorkshop, $"{TilesFolder}/tile_workshop.png");
 
             for (int depth = 1; depth <= DepthCount; depth++)
             {
@@ -266,7 +312,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 47 textures, 29 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 65 textures, 30 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -274,7 +320,8 @@ namespace SousLaVille.EditorTools
         {
             string[] tiles =
             {
-                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse
+                TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
+                TileWorkshop
             };
 
             foreach (string path in tiles)
@@ -318,7 +365,16 @@ namespace SousLaVille.EditorTools
                 }
             }
 
-            return true;
+            for (int index = 0; index < CoverCount; index++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(CoverTexture(index)) == null
+                    || AssetDatabase.LoadAssetAtPath<Sprite>(CoverNameTexture(index)) == null)
+                {
+                    return false;
+                }
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(VillageMapTexture) != null;
         }
 
         // ---------------------------------------------------------------- dessin
@@ -924,6 +980,176 @@ namespace SousLaVille.EditorTools
             }
         }
 
+        /// <summary>
+        /// Une plaque d'egout : un disque cercle d'un jonc, et un motif creuse dedans.
+        ///
+        /// Les huit motifs sont des familles de geometrie inspirees de styles regionaux, pas
+        /// des emblemes de villes. Un blason municipal est une oeuvre a part entiere, et
+        /// CLAUDE.md n'autorise que l'original ou le CC0.
+        /// </summary>
+        private static Color32[] BuildCover(int index)
+        {
+            Color32 rim = new Color32(0x3A, 0x3F, 0x44, 0xFF);
+            Color32 body = new Color32(0x8A, 0x91, 0x98, 0xFF);
+            Color32 groove = new Color32(0x51, 0x58, 0x5E, 0xFF);
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            const float center = (TileSize - 1) * 0.5f;
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float radius = Mathf.Sqrt(dx * dx + dy * dy);
+
+                    Color32 pixel;
+
+                    if (radius > 7.4f)
+                    {
+                        pixel = clear;
+                    }
+                    else if (radius > 6.3f)
+                    {
+                        pixel = rim;
+                    }
+                    else
+                    {
+                        // Atan2 rend un angle de -PI a PI ; on le ramene dans [0, 2 PI[ pour
+                        // que les decoupes angulaires soient continues.
+                        float angle = Mathf.Atan2(dy, dx) + Mathf.PI;
+                        pixel = HasGroove(index, x, y, dx, dy, radius, angle) ? groove : body;
+                    }
+
+                    pixels[y * TileSize + x] = pixel;
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Le motif creuse de chaque plaque. Un cas par ville.
+        ///
+        /// Les huit motifs doivent se distinguer a leur taille reelle, seize pixels de cote.
+        /// C'est la seule contrainte qui compte ici, et elle est severe : la premiere version
+        /// donnait a New York et a Londres deux quadrillages qu'on ne pouvait pas separer.
+        /// Ils ont ete redessines, pas doubles.
+        /// </summary>
+        private static bool HasGroove(int index, int x, int y, float dx, float dy, float radius,
+            float angle)
+        {
+            const float sector = Mathf.PI / 6f;
+
+            switch (index)
+            {
+                case 0:  // Paris : gaufrage fin en losanges
+                    return (x + y) % 4 == 0 || (x - y + 16) % 4 == 0;
+
+                case 1:  // Tokyo : une fleur, six petales autour d'un coeur
+                    return radius < 1.9f || IsPetal(dx, dy);
+
+                case 2:  // Berlin : anneaux concentriques
+                    return Mathf.RoundToInt(radius) % 2 == 0;
+
+                case 3:  // New York : gros appareillage de briques, decale d'un rang a l'autre
+                    return y % 5 == 0 || (x + (y / 5) * 2) % 5 == 0;
+
+                case 4:  // Amsterdam : losanges en diagonale, largement espaces
+                    return (x + y) % 5 == 0 || (x - y + 20) % 5 == 0;
+
+                case 5:  // Londres : une croix epaisse qui partage la plaque en quatre panneaux
+                    return Mathf.Abs(dx) < 1.1f || Mathf.Abs(dy) < 1.1f
+                        || (radius > 5.3f && radius < 6.2f);
+
+                case 6:  // Rome : rayons partant du centre
+                    return radius > 1.8f && Mathf.RoundToInt(angle / sector) % 2 == 0;
+
+                default: // Lisbonne : vague en spirale
+                    return Mathf.RoundToInt(radius * 1.6f + angle * 1.4f) % 3 == 0;
+            }
+        }
+
+        /// <summary>Six petales poses en couronne, pour la plaque japonaise.</summary>
+        private static bool IsPetal(float dx, float dy)
+        {
+            const float ring = 4.1f;
+            const float petal = 2.1f;
+
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * Mathf.PI / 3f;
+                float px = dx - Mathf.Cos(a) * ring;
+                float py = dy - Mathf.Sin(a) * ring;
+
+                if (px * px + py * py < petal * petal)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Le nom d'une ville, en blanc cerne de sombre pour tenir sur le pave.</summary>
+        private static Color32[] BuildCoverName(int index)
+        {
+            return PixelFont.Render(CoverNames[index],
+                new Color32(0xFF, 0xFF, 0xFF, 0xFF),
+                new Color32(0x2B, 0x1B, 0x14, 0xFF));
+        }
+
+        /// <summary>
+        /// Le plan du village, une case par pixel, engendre depuis VillageLayout. Deux dessins
+        /// d'un meme village finiraient par diverger ; celui-ci en sort, donc il ne peut pas
+        /// mentir.
+        /// </summary>
+        private static Color32[] BuildVillageMap()
+        {
+            Color32 grass = new Color32(0x4E, 0x9A, 0x3E, 0xFF);
+            Color32 road = new Color32(0xC8, 0xA9, 0x6E, 0xFF);
+            Color32 park = new Color32(0xB8, 0xB8, 0xB0, 0xFF);
+            Color32 plantFloor = new Color32(0x6E, 0x7B, 0x8B, 0xFF);
+            Color32 hedge = new Color32(0x1F, 0x5C, 0x2E, 0xFF);
+            Color32 plantWall = new Color32(0x3A, 0x6E, 0xA5, 0xFF);
+            Color32 house = new Color32(0xA0, 0x44, 0x2B, 0xFF);
+            Color32 workshop = new Color32(0x8E, 0x87, 0x78, 0xFF);
+
+            Color32[] pixels = new Color32[VillageLayout.Width * VillageLayout.Height];
+
+            for (int y = 0; y < VillageLayout.Height; y++)
+            {
+                for (int x = 0; x < VillageLayout.Width; x++)
+                {
+                    char cell = VillageLayout.At(x, y);
+                    Color32 pixel;
+
+                    switch (cell)
+                    {
+                        case VillageLayout.House: pixel = house; break;
+                        case VillageLayout.Hedge: pixel = hedge; break;
+                        case VillageLayout.PlantWall: pixel = plantWall; break;
+                        default:
+                            switch (VillageLayout.GroundAt(x, y))
+                            {
+                                case VillageLayout.Road: pixel = road; break;
+                                case VillageLayout.Park: pixel = park; break;
+                                case VillageLayout.PlantFloor: pixel = plantFloor; break;
+                                case VillageLayout.Workshop: pixel = workshop; break;
+                                default: pixel = grass; break;
+                            }
+                            break;
+                    }
+
+                    pixels[y * VillageLayout.Width + x] = pixel;
+                }
+            }
+
+            return pixels;
+        }
+
         /// <summary>Le cadre de la case regardee : quatre equerres, centre libre.</summary>
         private static Color32[] BuildCursor()
         {
@@ -1018,7 +1244,10 @@ namespace SousLaVille.EditorTools
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.alphaIsTransparency = true;
             importer.npotScale = TextureImporterNPOTScale.None;
-            importer.maxTextureSize = 32;
+            // Le plan du village fait 40 px de large et le nom AMSTERDAM 55 : un plafond a
+            // 32 les reduirait en silence et detruirait la police. Ce plafond ne fait que
+            // tronquer, il n'agrandit rien : aucune image existante ne change.
+            importer.maxTextureSize = 64;
 
             TextureImporterSettings settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);

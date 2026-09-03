@@ -50,6 +50,17 @@ namespace SousLaVille.Core
     }
 
     /// <summary>
+    /// La plaque posee sur une bouche d'egout : sa case, et le rang dans le catalogue.
+    /// Purement decoratif ; une bouche absente de la liste garde son allure d'usine.
+    /// </summary>
+    [Serializable]
+    public class SaveCover
+    {
+        public SaveCell cell;
+        public int cover;
+    }
+
+    /// <summary>
     /// La forme du fichier sur le disque, et rien d'autre. Aucune logique ici : cette classe
     /// doit se lire d'un coup d'oeil, parce qu'elle decrit ce qui survit a l'extinction du jeu.
     ///
@@ -82,5 +93,12 @@ namespace SousLaVille.Core
 
         /// <summary>Les segments qui ne sont plus neufs.</summary>
         public List<SaveSegment> segments = new List<SaveSegment>();
+
+        /// <summary>
+        /// Les plaques posees sur les bouches. Champ ajoute en phase 7 : une partie ecrite
+        /// avant lui se relit sans erreur, la liste arrive simplement vide. C'est pourquoi
+        /// CurrentVersion reste a 1.
+        /// </summary>
+        public List<SaveCover> covers = new List<SaveCover>();
     }
 }

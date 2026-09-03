@@ -14,7 +14,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 4 | L'eau coule | Terminée |
 | 5 | Les saisons et le gel | Terminée |
 | 6 | Sauvegarde | Terminée |
-| 7 | La plaque gravable | À faire |
+| 7 | La plaque gravable | Terminée |
 | 8 | La réserve d'eau | À faire |
 | 9 | L'usine à tuyaux | À faire |
 | 10 | Les fuites | À faire |
@@ -474,20 +474,168 @@ lignes. Rien à corriger côté projet.
     toute la phase sont ceux, voulus, des tests de fichier abîmé.
 - `git diff ProjectSettings/` : **une seule ligne**, `companyName`.
 
-## Prochaine étape, phase 7
+## Phase 7, ce qui est fait
 
-La plaque gravable, `ManholeFactory`. Le type `NodeType.Manhole`, posé en phase 3 et toujours
-inutilisé, y trouvera enfin son emploi.
+- `Assets/Scripts/Buildings/ManholeCoverDefinition.cs` : une plaque du catalogue, son image et
+  l'image de son nom. Même patron que `SeasonDefinition` ; c'est celui que `SignDefinition`
+  reprendra en phase 12.
+- `Assets/Scripts/Buildings/ManholeFactory.cs` : le catalogue, les cases où les plaques sont
+  exposées, les bouches du village, et laquelle porte quoi. Vit dans la scène **Surface**,
+  comme `PipeNetwork` vit dans l'Underground.
+- `Assets/Scripts/World/ManholeCover.cs` : la plaque que porte une bouche. S'abonne dans
+  `OnEnable`, se réapplique à chaque rallumage.
+- `Assets/Scripts/UI/VillageMapScreen.cs` : le plan du village. Les flèches passent d'une
+  bouche à l'autre, Espace pose et referme.
+- `Assets/Editor/ProjectSetup/PixelFont.cs` : **une police de 5 sur 7 pixels, A à Z**, dessinée
+  à la main. Fichier non prévu au plan, sorti du générateur d'art pour que la phase 14 le
+  reprenne tel quel.
+- `PlayerInteractor` : sixième action, `ChooseCover`, sur la case occupée comme le passage.
+  **Le picto est la plaque elle-même** : « celle-là ». Aucune image de plus à dessiner.
+- `PlaceholderArtGenerator` : huit plaques, huit noms, le plan du village et le pavé de
+  l'atelier. 65 textures et 30 tuiles.
+- `VillageLayout` : la cour de l'atelier, seize cases sur six, en haut à droite. Ni la
+  station, ni les bosquets, ni les maisons, ni les bouches n'ont bougé d'un caractère.
+- `SaveData` et `SaveSystem` : le champ `covers`. **`CurrentVersion` reste à 1.**
 
-Ce que la phase 6 laisse en place pour la suite :
+### Les huit plaques
 
-- **Tout nouvel état se sauvegarde en ajoutant un champ à `SaveData`.** Newtonsoft relit sans
-  broncher un fichier auquel il manque un champ ; il ne faudra monter `CurrentVersion` que si
-  le sens d'un champ existant change.
+Géométrie originale inspirée de styles régionaux, jamais l'emblème d'une ville réelle.
+
+| Plaque | Motif |
+|---|---|
+| PARIS | gaufrage fin en losanges |
+| TOKYO | une fleur, six pétales autour d'un cœur |
+| BERLIN | anneaux concentriques |
+| NEW YORK | gros appareillage de briques, décalé d'un rang à l'autre |
+| AMSTERDAM | losanges en diagonale, largement espacés |
+| LONDRES | une croix épaisse qui partage la plaque en quatre panneaux |
+| ROME | rayons partant du centre |
+| LISBONNE | vague en spirale |
+
+## Phase 7, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du
+  package MCP.
+- Plan du village relu par script : **30 lignes de 40 caractères**, huit plaques exposées aux
+  cases attendues, 88 cases de pavé, et **les trois bouches, les cinq maisons, le départ et la
+  station exactement où ils étaient**.
+- **Les huit motifs comparés deux à deux à leur taille réelle**, planche à l'appui. La
+  première version donnait à NEW YORK et LONDRES deux quadrillages indistinguables, et à TOKYO
+  une croix au lieu d'une fleur : **les trois ont été redessinés, pas doublés**, comme le plan
+  l'annonçait.
+- Play depuis `Boot` :
+  - la cour est praticable, les huit plaques au sol ne bloquent pas le passage, et **chaque nom
+    est lisible sous la sienne**, sans chevauchement ;
+  - **Espace sur une plaque** : le picto au-dessus de la tête est la plaque elle-même, le plan
+    s'ouvre, le personnage s'éteint, et **rien n'est posé dans la foulée** ;
+  - le plan montre les trois bouches aux bonnes positions, **chacune portant la plaque qu'elle
+    a déjà** ;
+  - **les flèches passent d'une bouche à l'autre**, par vrai clavier, sans faire bouger le
+    personnage. Pousser vers une direction où il n'y a pas de bouche ne fait rien, et ce n'est
+    pas une erreur ;
+  - **Espace pose**, le plan se referme, le personnage se rallume, et la bouche du village
+    porte la nouvelle plaque ;
+  - **reposer une autre plaque sur la même bouche la remplace** : PARIS puis LONDRES sur
+    (20, 10) ;
+  - **les trois bouches portent trois plaques différentes** : BERLIN, LONDRES, LISBONNE ;
+  - **une plaque posée pendant que la surface est éteinte s'applique au rallumage** : c'est
+    `OnEnable` qui la sauve ;
+  - **quitter et relancer** : les trois plaques sont retrouvées ;
+  - **une sauvegarde de phase 6, sans champ `covers`, se relit sans une erreur** : les bouches
+    gardent leur allure d'usine et le reste de la partie est intact. C'est exactement la
+    compatibilité que la phase 6 promettait ;
+  - console **entièrement vide** sur les sessions normales.
+- `git diff` des 52 `.meta` de texture : **une seule ligne chacun**, `maxTextureSize` de 32 à
+  64. Aucune image existante ne dépasse 32, donc aucune ne change.
+- `git status` : **aucune modification des ProjectSettings**, malgré les réglages d'input
+  touchés à chaud pendant les essais.
+
+### Le bug trouvé au test : le même Espace lu deux fois
+
+Poser une plaque refermait le plan, puis le rouvrait aussitôt. Le personnage est encore debout
+sur la plaque exposée quand le plan se referme, et `PlayerInteractor` lisait la **même**
+pression d'Espace que `VillageMapScreen` venait de consommer. Le plan semblait ne jamais se
+fermer.
+
+`VillageMapScreen` se gardait déjà de l'appui qui l'ouvre ; il manquait la garde symétrique.
+`PlayerInteractor` retient désormais l'image où le plan s'est refermé et ne fait rien pendant
+celle-là. **Deux composants qui lisent la même touche ont besoin d'une garde de chaque côté**,
+et l'ordre de leurs `Update` n'est garanti par rien.
+
+### Note d'atelier : l'injection clavier demande le focus, vraiment
+
+`Application.runInBackground = true` fait tourner la boucle de jeu sans focus, mais **ne suffit
+pas** : le New Input System laisse la touche enfoncée sur le périphérique et n'en informe
+jamais les actions. On le voit à `Move.phase = Waiting` alors que `leftArrowKey.isPressed` est
+vrai. Ni `backgroundBehavior`, ni `editorInputBehaviorInPlayMode`, ni recréer le clavier ne
+débloquent quoi que ce soit à chaud : `canRunInBackground` reste faux.
+
+**Il faut donc que l'éditeur soit réellement au premier plan au moment de l'appui**, et le
+vérifier par `Application.isFocused` avant de conclure quoi que ce soit d'un test d'entrée.
+Une autre application peut reprendre le focus entre deux appels du pont.
+
+Conséquence de conception, et elle est bonne : `VillageMapScreen` sépare désormais la lecture
+du clavier (`ReadDirection`) du choix lui-même (`Select`), qui se vérifie sans clavier.
+
+## Prochaine étape, phase 8
+
+La réserve d'eau, `WaterReserve`. Un tampon en amont du réseau, de quoi rendre l'écoulement
+visible dans le temps et non plus seulement vrai ou faux.
+
+Ce que les phases 6 et 7 laissent en place pour la suite :
+
+- **Tout nouvel état se sauvegarde en ajoutant un champ à `SaveData`.** Vérifié pour de bon en
+  phase 7 : une partie écrite avant le champ `covers` se relit sans une erreur.
 - **`PipeNetwork.BeginBatch` / `EndBatch`** est disponible pour toute opération de masse.
 - **`UndergroundMap.Dug`** dit à qui veut l'entendre qu'une case vient de s'ouvrir.
+- **`PixelFont`** écrit n'importe quel mot en majuscules. Les accents s'ajouteront quand
+  `ÉCOLE` en aura besoin, en phase 14.
+- **Le patron du catalogue** : un ScriptableObject par entrée, un menu qui les réécrit toutes,
+  un tableau sérialisé côté scène.
+- **`NodeType.Manhole` attend toujours** : la phase 7 est restée décorative, comme décidé.
 
 ## Décisions prises
+
+### Phase 7
+
+- **Un catalogue de plaques toutes faites**, inspirées des plaques du monde réel, plutôt qu'une
+  gravure case par case. Validé le 3 septembre 2026.
+- **Une plaque par bouche**, et **le choix se fait sur un plan du village**. La mini-carte
+  écartée en phase 2 « faute d'objet à montrer » en a enfin un, et elle ne demande toujours pas
+  de légende : chaque bouche y porte la plaque qu'elle a déjà.
+- **La plaque reste décorative.** `NodeType.Manhole` continue d'attendre un usage qui ait du
+  sens ; cette phase ne touche pas au réseau, donc aucun mini-détour ne peut couper une maison.
+- **Le geste tient en deux appuis** : Espace sur une plaque de l'atelier, Espace sur une bouche
+  du plan. Le premier se prend sur la case occupée, comme une bouche d'égout depuis la phase 2.
+- **Le picto de choix est la plaque elle-même.** Aucune image de plus à dessiner, aucun symbole
+  à apprendre : « celle-là ».
+- **Chaque plaque porte le nom de sa ville**, écrit sous elle en permanence, comme les cartels
+  d'une vitrine. Validé le 3 septembre 2026 : Victorien sait lire. Ce sont les huit seuls mots
+  du jeu, et ils n'apparaissent que dans l'atelier — ni sur le plan, ni dans la rue.
+- **Les noms sont des images, pas de l'uGUI.** Une police TTF s'affiche lissée et hors grille.
+  `PixelFont` dessine les mots une fois pour toutes, et **la phase 14 en a besoin de toute
+  façon** pour ses trois noms de panneaux : ce n'est pas du travail spéculatif.
+- **`maxTextureSize` passe de 32 à 64.** Le plan du village fait 40 px de large et le nom
+  AMSTERDAM 55 : un plafond à 32 les réduirait en silence et détruirait la police. Ce plafond
+  ne fait que tronquer ; aucune des 52 images existantes ne change.
+- **Les plaques sont espacées de quatre cases dans l'atelier.** Ce n'est pas décoratif :
+  AMSTERDAM mesure 3,4 cases de large, et deux cartels voisins se chevaucheraient à moins.
+- **L'atelier est à ciel ouvert.** Un bâtiment avec intérieur demanderait une scène, une
+  transition et un mode de plus, pour un décor que la cour rend déjà.
+- **Le plan est engendré depuis `VillageLayout`.** Deux dessins d'un même village finiraient
+  par diverger ; celui-là en sort, donc il ne peut pas mentir.
+- **Une seule image par plaque, agrandie pour le catalogue.** Deux images, une petite et une
+  grande, finiraient par ne plus se ressembler, et il choisirait autre chose que ce qu'il
+  obtient.
+- **`ManholeCoverDefinition` est un ScriptableObject** bien qu'il ne porte presque rien : c'est
+  le patron de catalogue que la phase 12 reprendra pour les panneaux.
+- **`ManholeFactory` connaît ses propres échantillons**, plutôt qu'un composant par plaque
+  exposée. L'atelier possède sa vitrine ; cela évite un cinquième fichier.
+- **`VillageMapScreen` sépare la lecture du clavier du choix.** `ReadDirection` lit,
+  `Select(direction)` choisit. La logique se vérifie ainsi sans dépendre du focus de
+  l'éditeur, ce qui a permis de la tester quand le clavier ne passait plus.
+- **Deux gardes symétriques sur la même touche**, une à l'ouverture du plan et une à sa
+  fermeture. Voir le bug ci-dessus : sans elles, le même Espace est lu deux fois.
 
 ### Phase 6
 
@@ -749,6 +897,12 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
+- **Les dix-huit PNG de la phase 7** : les huit plaques, les huit noms, le plan du village et
+  le pavé de l'atelier.
+- **La police de 5 sur 7 pixels** se lit, mais quelques lettres sont grasses à cette taille,
+  le M et le B surtout. À reprendre à l'habillage, en même temps que le reste.
+- **L'atelier n'a ni mur ni toit.** Une cour pavée posée sur l'herbe se lit comme un lieu, mais
+  ce n'est pas encore une usine. À habiller.
 - **Les cinq PNG de la phase 5** : les quatre pictos de saison et la clé de réparation. La
   clé se lit bien au-dessus de la tête ; les quatre saisons se distinguent surtout par la
   couleur de fond, le motif venant après.
@@ -784,6 +938,11 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Questions ouvertes
 
+- **`GameManager.Instance` ne survit pas à un rechargement de domaine.** L'instance est posée
+  dans `Awake`, qu'Unity ne rappelle pas après un rechargement en plein play ; tout ce qui en
+  dépend devient muet jusqu'au prochain lancement. Cela n'arrive que dans l'éditeur, jamais
+  dans un build, et cela a coûté une fausse piste en phase 7. Le poser dans `OnEnable` le
+  réglerait en une ligne, mais cela touche du code de la phase 0 : à décider.
 - **`clogChance` à 0,25 par automne.** Valeur choisie faute d'indication dans le plan. Un
   quart des tuyaux peu profonds : quasi certain sur un long trajet, jamais sur un trajet court
   et profond. À valider en jouant ; c'est un champ sérialisé sur `Season_Automne`.

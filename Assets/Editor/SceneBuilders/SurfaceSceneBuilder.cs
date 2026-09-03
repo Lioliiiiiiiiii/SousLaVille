@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Seasons;
 using SousLaVille.World;
@@ -59,6 +60,7 @@ namespace SousLaVille.EditorTools
             SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
             AttachHouseSpawner(root, map);
             AttachSeasonAmbience(root);
+            CreateWorkshop(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
@@ -105,6 +107,7 @@ namespace SousLaVille.EditorTools
             Tile hedge = LoadTile(PlaceholderArtGenerator.TileHedge);
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
             Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
+            Tile workshop = LoadTile(PlaceholderArtGenerator.TileWorkshop);
 
             int width = VillageLayout.Width;
             int height = VillageLayout.Height;
@@ -134,6 +137,9 @@ namespace SousLaVille.EditorTools
                             // Du sol de station sous le batiment : le mur se pose dessus.
                             groundTiles[index] = plantFloor;
                             blockingTiles[index] = plantWall;
+                            break;
+                        case VillageLayout.Workshop:
+                            groundTiles[index] = workshop;
                             break;
                         case VillageLayout.Hedge:
                             groundTiles[index] = grass;
@@ -186,6 +192,15 @@ namespace SousLaVille.EditorTools
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
 
                 PortalBuilder.Attach(manhole, cells[i], GameLayer.Surface, GameLayer.Underground);
+
+                // La plaque que porte cette bouche. Elle demande a l'atelier ce qu'elle doit
+                // afficher, et retombe sur son allure d'usine tant qu'on ne lui a rien pose.
+                ManholeCover cover = manhole.AddComponent<ManholeCover>();
+                SerializedObject serializedCover = new SerializedObject(cover);
+                serializedCover.FindProperty("cell").vector2IntValue = cells[i];
+                serializedCover.FindProperty("view").objectReferenceValue = renderer;
+                serializedCover.FindProperty("defaultCover").objectReferenceValue = sprite;
+                serializedCover.ApplyModifiedPropertiesWithoutUndo();
             }
         }
 
@@ -251,6 +266,87 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("dropIdle").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// L'atelier des plaques : huit echantillons poses au sol, chacun avec son nom ecrit
+        /// juste en dessous, comme les cartels d'une vitrine.
+        ///
+        /// Les plaques ne bloquent pas le passage, comme les tuyaux depuis la phase 3 : on
+        /// marche dessus, et Espace prend celle qu'on foule.
+        /// </summary>
+        private static void CreateWorkshop(GameObject root)
+        {
+            List<Vector2Int> samples = VillageLayout.FindAll(VillageLayout.Cover);
+            List<Vector2Int> manholes = VillageLayout.FindAll(VillageLayout.Manhole);
+
+            if (samples.Count != PlaceholderArtGenerator.CoverCount)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan expose {samples.Count} plaque(s), il en " +
+                               $"faut {PlaceholderArtGenerator.CoverCount}.");
+                return;
+            }
+
+            GameObject parent = new GameObject("Workshop");
+            parent.transform.SetParent(root.transform, false);
+
+            ManholeCoverDefinition[] catalogue =
+                new ManholeCoverDefinition[PlaceholderArtGenerator.CoverCount];
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                catalogue[i] = AssetDatabase.LoadAssetAtPath<ManholeCoverDefinition>(
+                    ScriptableObjectSetup.CoverAsset(i));
+
+                if (catalogue[i] == null)
+                {
+                    Debug.LogError("[Sous la Ville] Plaque introuvable : " +
+                                   ScriptableObjectSetup.CoverAsset(i));
+                    continue;
+                }
+
+                GameObject sample = new GameObject($"Cover_{i + 1:00}_{catalogue[i].DisplayName}");
+                sample.transform.SetParent(parent.transform, false);
+                sample.transform.position = CellCenter(samples[i]);
+
+                SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
+                view.sprite = catalogue[i].Cover;
+                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+
+                // Le cartel, une case sous la plaque. Toujours affiche : aucune logique,
+                // aucun mode, huit images de plus dans le decor.
+                GameObject label = new GameObject($"Name_{i + 1:00}");
+                label.transform.SetParent(sample.transform, false);
+                label.transform.localPosition = new Vector3(0f, -0.9f, 0f);
+
+                SpriteRenderer labelView = label.AddComponent<SpriteRenderer>();
+                labelView.sprite = catalogue[i].NameImage;
+                SceneBuilderUtility.ApplySortingLayer(labelView, EntitiesSortingLayer, 1);
+            }
+
+            ManholeFactory factory = root.AddComponent<ManholeFactory>();
+
+            SerializedObject serialized = new SerializedObject(factory);
+            SetCells(serialized.FindProperty("sampleCells"), samples);
+            SetCells(serialized.FindProperty("manholeCells"), manholes);
+
+            SerializedProperty catalogueProperty = serialized.FindProperty("catalogue");
+            catalogueProperty.arraySize = catalogue.Length;
+            for (int i = 0; i < catalogue.Length; i++)
+            {
+                catalogueProperty.GetArrayElementAtIndex(i).objectReferenceValue = catalogue[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetCells(SerializedProperty property, List<Vector2Int> cells)
+        {
+            property.arraySize = cells.Count;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                property.GetArrayElementAtIndex(i).vector2IntValue = cells[i];
+            }
         }
 
         /// <summary>

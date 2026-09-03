@@ -1,3 +1,4 @@
+using SousLaVille.Buildings;
 using SousLaVille.Network;
 using SousLaVille.Seasons;
 using UnityEditor;
@@ -30,6 +31,12 @@ namespace SousLaVille.EditorTools
             SeasonSpring, SeasonSummer, SeasonAutumn, SeasonWinter
         };
 
+        /// <summary>Chemin de la plaque d'egout de rang donne, dans l'ordre du catalogue.</summary>
+        public static string CoverAsset(int index)
+        {
+            return $"{Folder}/Cover_{PlaceholderArtGenerator.CoverNames[index].Replace(" ", string.Empty)}.asset";
+        }
+
         [MenuItem("Sous La Ville/Créer les ScriptableObjects")]
         public static void CreateAll()
         {
@@ -48,9 +55,11 @@ namespace SousLaVille.EditorTools
 
             CreatePipeTypes();
             CreateSeasons();
+            CreateCovers();
 
             AssetDatabase.SaveAssets();
-            Debug.Log("[Sous la Ville] ScriptableObjects à jour : 1 type de tuyau, 4 saisons.");
+            Debug.Log("[Sous la Ville] ScriptableObjects à jour : 1 type de tuyau, 4 saisons, "
+                      + PlaceholderArtGenerator.CoverCount + " plaques.");
         }
 
         /// <summary>
@@ -119,6 +128,28 @@ namespace SousLaVille.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>
+        /// Les huit plaques du catalogue. Chacune porte son image et l'image de son nom :
+        /// ce sont les huit seuls mots du jeu.
+        /// </summary>
+        private static void CreateCovers()
+        {
+            for (int index = 0; index < PlaceholderArtGenerator.CoverCount; index++)
+            {
+                SerializedObject serialized =
+                    new SerializedObject(LoadOrCreate<ManholeCoverDefinition>(CoverAsset(index)));
+
+                serialized.FindProperty("displayName").stringValue =
+                    PlaceholderArtGenerator.CoverNames[index];
+                serialized.FindProperty("cover").objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<Sprite>(PlaceholderArtGenerator.CoverTexture(index));
+                serialized.FindProperty("nameImage").objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<Sprite>(PlaceholderArtGenerator.CoverNameTexture(index));
+
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
         private static T LoadOrCreate<T>(string assetPath) where T : ScriptableObject
         {
             T asset = AssetDatabase.LoadAssetAtPath<T>(assetPath);
@@ -144,6 +175,14 @@ namespace SousLaVille.EditorTools
             foreach (string path in SeasonCycle)
             {
                 if (AssetDatabase.LoadAssetAtPath<SeasonDefinition>(path) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < PlaceholderArtGenerator.CoverCount; index++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<ManholeCoverDefinition>(CoverAsset(index)) == null)
                 {
                     return false;
                 }
