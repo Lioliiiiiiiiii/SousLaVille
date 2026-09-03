@@ -222,6 +222,29 @@ namespace SousLaVille.Network
         }
 
         /// <summary>
+        /// Vrai si un segment de cette case est tombe au seuil : le tuyau ne porte plus.
+        ///
+        /// C'est le mot « trop abime » du rendu depuis la phase 5, et la fuite de la
+        /// phase 10 le reprend tel quel. Deux regles pour un meme mot finiraient par
+        /// diverger, comme le seuil l'aurait fait s'il etait reste en double.
+        ///
+        /// A ne pas confondre avec NeedsRepair, qui est vrai des qu'un tuyau n'est plus
+        /// neuf : un tuyau gele ou bouche est BOUCHE, pas creve, et il ne fuit pas.
+        /// </summary>
+        public bool IsWornOut(Vector2Int cell)
+        {
+            foreach (PipeSegment segment in SegmentsAt(cell))
+            {
+                if (segment.Condition <= FlowSolver.MinimumCondition)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Vrai si au moins un segment de cette case demande une reparation : abime, gele
         /// ou bouche. C'est ce que lit le picto au-dessus de la tete pour annoncer si
         /// Espace va reparer ou enlever.

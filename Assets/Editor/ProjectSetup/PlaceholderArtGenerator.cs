@@ -78,6 +78,9 @@ namespace SousLaVille.EditorTools
 
         // Phase 9a, les batiments. Le pave de l'atelier de la phase 7 sert desormais de sol
         // aux pieces : c'est la meme matiere, elle est simplement passee a l'interieur.
+        /// <summary>L'eau du village, phase 10. Semi-transparente : on voit le sol dessous.</summary>
+        public const string TileWater = TilesFolder + "/Tile_Water.asset";
+
         public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
         public const string TileWall = TilesFolder + "/Tile_Wall.asset";
         public const string DoorTexture = SpritesFolder + "/door.png";
@@ -340,6 +343,7 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
 
                 WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
+                WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
                 WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
                 WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
 
@@ -414,6 +418,7 @@ namespace SousLaVille.EditorTools
             }
 
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
+            ConfigureImporter($"{TilesFolder}/tile_water.png", null);
             ConfigureImporter($"{TilesFolder}/tile_facade.png", null);
             ConfigureImporter($"{TilesFolder}/tile_wall.png", null);
             ConfigureImporter(VillageMapTexture, null);
@@ -484,6 +489,7 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TilePlantWall, PlantWallTexture);
             CreateTileAsset(TileHouse, $"{TilesFolder}/tile_house.png");
             CreateTileAsset(TileWorkshop, $"{TilesFolder}/tile_workshop.png");
+            CreateTileAsset(TileWater, $"{TilesFolder}/tile_water.png");
             CreateTileAsset(TileFacade, $"{TilesFolder}/tile_facade.png");
             CreateTileAsset(TileWall, $"{TilesFolder}/tile_wall.png");
 
@@ -503,7 +509,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 121 textures, 64 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 122 textures, 65 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -512,7 +518,7 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop, TileFacade, TileWall
+                TileWorkshop, TileFacade, TileWall, TileWater
             };
 
             foreach (string path in tiles)
@@ -1403,6 +1409,39 @@ namespace SousLaVille.EditorTools
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// L'eau du village : un bleu SEMI-TRANSPARENT, avec deux trains de vaguelettes.
+        ///
+        /// Semi-transparente parce qu'elle se pose sur l'herbe, sur le chemin et sur la dalle
+        /// du parc : un bleu opaque ferait un carre plein qui cacherait le village, la ou une
+        /// eau qui laisse voir le sol dessous se lit tout de suite comme de l'eau.
+        ///
+        /// Les vaguelettes sont decoupees pour que la tuile se repete sans couture visible :
+        /// chaque train traverse le bord et reprend de l'autre cote.
+        /// </summary>
+        private static Color32[] BuildWater()
+        {
+            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xB4);
+            Color32 ripple = new Color32(0x9C, 0xD4, 0xF0, 0xC8);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = water;
+            }
+
+            // Rangee du bas : un train qui repart a droite et reprend a gauche.
+            Fill(pixels, TileSize, 12, 15, 4, 4, ripple);
+            Fill(pixels, TileSize, 0, 1, 4, 4, ripple);
+            Fill(pixels, TileSize, 5, 9, 4, 4, ripple);
+
+            // Rangee du haut, decalee : deux vagues ne se superposent jamais.
+            Fill(pixels, TileSize, 2, 6, 11, 11, ripple);
+            Fill(pixels, TileSize, 9, 13, 11, 11, ripple);
+
+            return pixels;
         }
 
         /// <summary>

@@ -22,6 +22,7 @@ namespace SousLaVille.EditorTools
         public const string SceneName = "Surface";
 
         private const string GroundSortingLayer = GameSortingLayers.SurfaceGround;
+        private const string WaterSortingLayer = GameSortingLayers.SurfaceWater;
         private const string EntitiesSortingLayer = GameSortingLayers.SurfaceEntities;
 
         [MenuItem("Sous La Ville/Construire la scène Surface")]
@@ -50,13 +51,15 @@ namespace SousLaVille.EditorTools
 
             Tilemap ground;
             Tilemap blocking;
-            Grid grid = CreateGrid(root, out ground, out blocking);
+            Tilemap water;
+            Grid grid = CreateGrid(root, out ground, out blocking, out water);
 
             PaintVillage(ground, blocking);
             CreateManholes(root);
             CreateTreatmentPlant(root);
 
             SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
+            AttachFloodView(root, map, water);
             AttachHouseSpawner(root, map);
             AttachSeasonAmbience(root);
             CreateBuildingDoors(root);
@@ -64,7 +67,8 @@ namespace SousLaVille.EditorTools
             SceneBuilderUtility.EndScene(scene, SceneName);
         }
 
-        private static Grid CreateGrid(GameObject root, out Tilemap ground, out Tilemap blocking)
+        private static Grid CreateGrid(GameObject root, out Tilemap ground, out Tilemap blocking,
+            out Tilemap water)
         {
             GameObject gridObject = new GameObject("Grid");
             gridObject.transform.SetParent(root.transform, false);
@@ -75,20 +79,26 @@ namespace SousLaVille.EditorTools
 
             // Le sol et la couche bloquante partagent le meme Sorting Layer : c'est l'ordre
             // qui les separe, les haies se posent par-dessus l'herbe.
-            ground = CreateTilemap(gridObject, "Tilemap_Ground", order: 0);
-            blocking = CreateTilemap(gridObject, "Tilemap_Blocking", order: 1);
+            ground = CreateTilemap(gridObject, "Tilemap_Ground", GroundSortingLayer, order: 0);
+            blocking = CreateTilemap(gridObject, "Tilemap_Blocking", GroundSortingLayer, order: 1);
+
+            // L'eau a sa propre famille, Surface_Water, creee en phase 0 pour « flaques,
+            // fontaine » et restee vide jusqu'ici. Elle se dessine au-dessus du decor et
+            // SOUS les entites : le personnage traverse l'eau, il ne passe pas dessous.
+            water = CreateTilemap(gridObject, "Tilemap_Water", WaterSortingLayer, order: 0);
 
             return grid;
         }
 
-        private static Tilemap CreateTilemap(GameObject gridObject, string name, int order)
+        private static Tilemap CreateTilemap(GameObject gridObject, string name,
+            string sortingLayer, int order)
         {
             GameObject tilemapObject = new GameObject(name);
             tilemapObject.transform.SetParent(gridObject.transform, false);
 
             Tilemap tilemap = tilemapObject.AddComponent<Tilemap>();
             TilemapRenderer renderer = tilemapObject.AddComponent<TilemapRenderer>();
-            SceneBuilderUtility.ApplySortingLayer(renderer, GroundSortingLayer, order);
+            SceneBuilderUtility.ApplySortingLayer(renderer, sortingLayer, order);
 
             return tilemap;
         }
@@ -312,6 +322,38 @@ namespace SousLaVille.EditorTools
                 PortalBuilder.Attach(door, outside, GameLayer.Surface, GameLayer.Interior,
                     inside);
             }
+        }
+
+        /// <summary>
+        /// L'eau du village : le debordement des bouches d'egout et les flaques des tuyaux
+        /// creves. Il vit ici, dans la couche de jeu, et non dans le systeme de saisons : une
+        /// couche eteinte ne repondrait pas, alors qu'un composant local se repeint a chaque
+        /// rallumage. Meme raison que SeasonAmbience depuis la phase 5.
+        ///
+        /// Les cases des bouches sont cuites depuis le plan du village plutot que lues sur
+        /// ManholeFactory : l'atelier vit dans la scene Interiors depuis la phase 9a, et
+        /// l'emplacement des bouches est une propriete de la carte, pas du catalogue.
+        /// </summary>
+        private static void AttachFloodView(GameObject root, SurfaceMap map, Tilemap water)
+        {
+            List<Vector2Int> manholes = VillageLayout.FindAll(VillageLayout.Manhole);
+
+            FloodView flood = root.AddComponent<FloodView>();
+
+            SerializedObject serialized = new SerializedObject(flood);
+            serialized.FindProperty("map").objectReferenceValue = map;
+            serialized.FindProperty("water").objectReferenceValue = water;
+            serialized.FindProperty("waterTile").objectReferenceValue =
+                LoadTile(PlaceholderArtGenerator.TileWater);
+
+            SerializedProperty cells = serialized.FindProperty("manholeCells");
+            cells.arraySize = manholes.Count;
+            for (int i = 0; i < manholes.Count; i++)
+            {
+                cells.GetArrayElementAtIndex(i).vector2IntValue = manholes[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>

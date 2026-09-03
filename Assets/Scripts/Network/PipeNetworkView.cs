@@ -144,8 +144,6 @@ namespace SousLaVille.Network
         /// </summary>
         private Color TintFor(Vector2Int cell)
         {
-            bool broken = false;
-
             foreach (PipeSegment segment in network.SegmentsAt(cell))
             {
                 if (segment.IsFrozen)
@@ -157,11 +155,11 @@ namespace SousLaVille.Network
                 {
                     return cloggedTint;
                 }
-
-                broken |= segment.Condition <= FlowSolver.MinimumCondition;
             }
 
-            if (broken)
+            // « Trop abime » vit dans le modele depuis la phase 10 : la flaque de fuite en
+            // surface lit exactement la meme regle que cette couleur.
+            if (network.IsWornOut(cell))
             {
                 return brokenTint;
             }

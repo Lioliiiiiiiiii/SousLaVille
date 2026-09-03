@@ -18,7 +18,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 8 | La réserve d'eau | Terminée |
 | 9a | Les bâtiments | Terminée |
 | 9b | L'usine à tuyaux | Terminée |
-| 10 | Les fuites | À faire |
+| 10 | Les fuites | Terminée |
 | 11 | Le parc | À faire |
 | 12 | L'usine à panneaux | À faire |
 | 13 | Le Stock, le memory | À faire |
@@ -977,20 +977,165 @@ C'est exactement la boucle voulue, et ce n'est pas un contournement : une saison
 minutes, et l'usine est à deux pas du départ. La réponse à la question ouverte de la phase 8 est
 donc « oui, mais en jouant », et non « oui, en posant les bons tuyaux une fois pour toutes ».
 
-## Prochaine étape, phase 10
+## Phase 10, ce qui est fait
 
-Les fuites. Ce que la phase 9 laisse en place :
+L'eau dans le village. Elle vient de deux endroits, et les deux ne disent pas la même chose.
 
-- **`SeasonSystem.LastBudget.Lost`** dit combien d'eau disparaît par saison : c'est l'entrée de
-  la phase 10, le débordement visible. Il reste à zéro tant que le bassin encaisse.
+- `Assets/Scripts/World/FloodView.cs` : un seul composant, une seule tilemap, deux sources
+  d'eau. Il vit dans la scène Surface, comme `SeasonAmbience` : il peint le village.
+- **Le débordement** sort des bouches d'égout et montre `LastBudget.Lost`, le seul nombre que
+  le jeu calculait depuis la phase 8 et ne montrait nulle part. Il dit « ton réseau reçoit plus
+  que la station ne traite ».
+- **La fuite** est une flaque posée dans la rue au-dessus d'un tuyau usé sous le seuil. Elle dit
+  « il y a un tuyau crevé ici, sous tes pieds », et elle épargne une descente.
+- `PipeNetwork.IsWornOut(cell)` : la règle du « trop abîmé » remonte dans le modèle. Le rendu du
+  sous-sol et la flaque de surface la lisent désormais au même endroit ; `PipeNetworkView` ne la
+  calcule plus en interne.
+- `SurfaceSceneBuilder` : une troisième tilemap, `Tilemap_Water`, sur la famille
+  **`Surface_Water` créée en phase 0 pour « flaques, fontaine » et restée vide jusqu'ici**. Elle
+  se dessine au-dessus du décor et **sous** les entités : le personnage traverse l'eau.
+- `PlaceholderArtGenerator` : une tuile d'eau **semi-transparente**. 122 textures, 65 tuiles.
+- **Rien n'est sauvegardé.** Les deux eaux sont des données dérivées.
+- **Règle 9 vérifiée** : `UnityEngine.Tilemaps` est dans le module core, aucune référence
+  d'assembly à ajouter.
+
+### Les deux eaux
+
+`Lost` plafonne à 5, et c'est vérifiable par le calcul : l'arrivant plafonne à 13, cinq maisons
+plus huit de pluie d'automne ; la station en traite 8 ; le surplus plafonne donc à 5.
+
+**Les trois bouches débordent de la même façon**, pas d'un tiers chacune : le réseau déborde,
+c'est vrai partout, et il le voit où qu'il se trouve. L'étalement croît par anneaux de Manhattan,
+et seules les cases praticables prennent l'eau.
+
+| `Lost` | Rayon | Cases mouillées, mesurées en jeu |
+|---|---|---|
+| 0 | — | 0 |
+| 1 | 0 | 3 |
+| 2 | 1 | 15 |
+| 3 | 2 | 38 |
+| 4 | 3 | 73 |
+| 5 | 4 | 118 |
+
+Au maximum 118 cases sur 1200, soit un dixième du village : un spectacle, pas une inondation qui
+cache le village.
+
+**Seule l'usure fuit.** Un tuyau gelé ou bouché est **bouché**, pas crevé : il ne laisse rien
+passer, donc rien ne sort. C'est cette distinction qui rend la flaque informative — elle ne dit
+pas « quelque chose va mal ici », elle dit « un tuyau est crevé ici ». Une fuite mouille les
+**deux** bouts du segment crevé, puisque c'est tout le tuyau qui est percé.
+
+**Une seule image d'eau pour les deux.** Une flaque est une flaque, et c'est un symbole de moins
+à apprendre. C'est la position qui raconte l'histoire : une nappe en losange autour d'une bouche,
+ou une flaque isolée au milieu d'une rue.
+
+## Phase 10, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP.
+- Menus dans l'ordre, éditeur hors play : art, ScriptableObjects, scènes. Console propre, cinq
+  scènes régénérées. **Aucun PNG existant modifié** : la tuile d'eau est neuve.
+- Scène relue par script : `Tilemap_Water` sur `Surface_Water` en ordre 0, **vide au départ** ;
+  `FloodView` câblé sur la carte, la tilemap, `Tile_Water` et les trois bouches ; six portails ;
+  200 cases bloquantes, les 192 de la phase 9a plus les huit de la seconde façade ; bornes du
+  village inchangées, centre (20, 15) d'extension (20, 15) ; aucun renderer hors de la famille
+  `Surface_*`.
+- **La tuile d'eau relue à taille réelle sur les trois sols**, herbe, chemin et dalle du parc,
+  planche à l'appui : elle se lit comme de l'eau sur les trois, la grille du sol se voit dessous,
+  et les vaguelettes se répètent sans couture.
+- Play depuis Boot, par injection clavier, `Application.isFocused` vérifié :
+  - **les cinq paliers de `Lost`, mesurés case par case** : 3, 15, 38, 73, 118, **exactement les
+    nombres calculés depuis le plan du village**. Obtenus en reliant les maisons une par une, en
+    grillagé pour que l'automne ne les bouche pas : `Lost` vaut alors exactement le nombre de
+    maisons reliées ;
+  - **le critère de fin** : bassin débranché, automne, `Lost` vaut 5 et **les trois bouches
+    débordent** ; bassin relié, automne, 13 arrivant, 8 traité, 5 absorbé, **`Lost` vaut 0 et le
+    village reste sec** ;
+  - **l'eau ne monte sur aucune case bloquante** : 118 cases mouillées, 0 sur du bloquant, et la
+    couche bloquante est restée à 200 tuiles ;
+  - **le personnage traverse l'eau** : parti de (20, 14) flèche bas maintenue, il arrive en
+    (20, 1) après **9 cases mouillées**, sans être arrêté ni ralenti ;
+  - **un tuyau usé sous le seuil fuit**, sur sa case et celle de l'autre bout du segment ;
+  - **un tuyau gelé ne fuit pas, un tuyau bouché ne fuit pas** : trois cases témoins côte à
+    côte, une usée, une gelée, une bouchée, et **seule l'usée porte une flaque** ;
+  - **réparer sous terre puis remonter efface la flaque, sans aucun tick** : c'est `OnEnable`
+    qui la sauve ;
+  - **quitter et relancer** : `Lost` repart à zéro donc **le débordement a disparu**, et **la
+    fuite est revenue tout de suite**, l'usure étant écrite dans le fichier depuis la phase 6.
+    C'est la conséquence annoncée au plan, écrite avant d'être observée ;
+  - **le fichier ne contient aucun champ d'eau**, vérifié par recherche de chaîne ;
+  - **une partie de la phase 9 se relit sans une erreur** : 80 nœuds, types conservés, isolé en
+    main, automne, bassin à 7. Rien à faire : cette phase n'ajoute aucun champ ;
+  - console **entièrement vide, tous types confondus**, sur la session complète.
+- Captures : le village qui déborde en losange autour d'une bouche avec le personnage dedans, et
+  une fuite isolée sur un chemin.
+- `git diff ProjectSettings/` : **vide**. Rien n'a bougé.
+
+### Note d'atelier : la scène ouverte décide du play
+
+Le premier « Construire toutes les scènes » de la phase a échoué sur
+`InvalidOperationException: This cannot be used during play mode`, alors que l'art et les
+ScriptableObjects, eux, s'étaient générés. L'éditeur était resté en play depuis la session
+précédente. **Le générateur d'art ne s'en plaint pas, le générateur de scènes si** : il faut donc
+vérifier `EditorApplication.isPlaying` avant les menus, et pas seulement se souvenir d'avoir
+arrêté.
+
+## Prochaine étape, phase 11
+
+Le parc. Ce que la phase 10 laisse en place :
+
+- **`Surface_Water` sert enfin**, avec sa tilemap et son composant. La fontaine du parc a donc
+  déjà sa couche, sa tilemap et son eau semi-transparente ; il ne lui manque que son nœud.
+- **`NodeType.FountainInlet` et `Buildings/Fountain`** sont dans CLAUDE.md et n'ont **toujours
+  jamais servi**. `FountainInlet` est le seul `NodeType` du modèle qui n'ait aucun usage.
+- **Le patron du nœud permanent** sert quatre fois : station, maisons, bassin, et la fontaine
+  reprendra le même.
+- **La dalle du parc**, marqueur `P`, occupe neuf cases sur six au centre du village et n'a
+  jamais rien porté.
 - **Le patron du bâtiment** : façade et porte au plan du village, pièce dans un créneau libre,
-  personnage et phrases. L'usine à panneaux de la phase 12 n'a plus qu'à ajouter un bloc à
-  `InteriorsLayout`, une façade et une porte à `VillageLayout`, et **trois** personnages dans sa
-  pièce, ce que `Villager` accepte déjà.
-- **Quatre créneaux de pièce restent libres** dans la scène Interiors.
-- **La police a ses accents et son apostrophe**, relus sur planche.
+  personnage et phrases. **Quatre créneaux de pièce restent libres** dans la scène Interiors,
+  et `Villager` accepte déjà plusieurs personnages dans une pièce, ce dont l'usine à panneaux
+  aura besoin en phase 12.
 
 ## Décisions prises
+
+### Phase 10
+
+- **Deux eaux, et elles ne disent pas la même chose.** Le débordement dit « ton réseau reçoit
+  plus que la station ne traite » ; la fuite dit « un tuyau est crevé ici, sous tes pieds ».
+  Deux messages, une seule image d'eau : c'est la position qui les distingue, et c'est un
+  symbole de moins à apprendre.
+- **L'eau sort par les bouches d'égout.** Validé le 3 septembre 2026. Victorien aime les bouches
+  d'égout, l'eau sort par là où le réseau aboutit, et elle sort de sous la plaque qu'il a
+  choisie en phase 7. La station est écartée : au fond de son enceinte murée, on ne la voit
+  presque jamais. Les rues entières sont écartées : une troisième tilemap sur tout le village
+  pour un effet qui ne se lit pas mieux.
+- **Les trois bouches débordent de la même façon**, pas d'un tiers chacune. Le réseau déborde,
+  c'est vrai partout, et il le voit où qu'il se trouve dans le village.
+- **Aucune mémoire, aucune sauvegarde.** Validé le 3 septembre 2026. Les deux eaux sont des
+  données dérivées, et le projet a la règle depuis la phase 6 : « une donnée dérivée sauvegardée
+  est une donnée qui peut mentir ». Conséquence assumée et écrite au plan avant d'être observée :
+  après une relance le village est sec jusqu'au tick suivant, mais les flaques de fuite
+  reviennent tout de suite.
+- **Seule l'usure fuit.** Gelé et bouché sont **bouchés**, pas crevés : rien n'en sort. C'est
+  cette distinction qui rend la flaque informative.
+- **La règle du « trop abîmé » remonte dans `PipeNetwork`.** Le rendu du sous-sol et la flaque de
+  surface la lisaient chacun de leur côté ; deux règles pour un même mot finiraient par diverger,
+  comme le seuil de 0,3 l'aurait fait s'il était resté en double en phase 5.
+- **`FloodView` ne s'abonne PAS à `PipeNetwork.Changed`**, et ce n'est pas un oubli. Creuser,
+  poser, enlever et réparer n'existent que **sous terre**, donc l'état des tuyaux ne peut changer
+  que pendant que la Surface est éteinte, ou à un tick. Le rallumage et le tick couvrent donc
+  tous les cas, sans s'abonner à travers une couche éteinte.
+- **Un seul composant pour les deux eaux.** Elles partagent la tilemap et le même geste de
+  repeinte ; deux composants se disputeraient la même tilemap.
+- **L'eau est semi-transparente.** Un bleu opaque ferait un carré plein qui cacherait le village ;
+  une eau qui laisse voir le sol dessous se lit tout de suite comme de l'eau.
+- **Rien ne bloque, rien ne punit.** L'eau se peint sur `Surface_Water`, jamais sur la couche
+  bloquante. Vérifié en jeu : 118 cases mouillées, 0 sur du bloquant, et le personnage traverse.
+- **Aucun changement au bilan de l'eau ni à l'ordre du tick.** La question ouverte de la phase 8
+  reste ouverte ; cette phase ne fait que montrer un nombre déjà calculé.
+- **La fontaine reste au parc.** `NodeType.FountainInlet` et `Buildings/Fountain` attendent la
+  phase 11, bien que le commentaire de la phase 0 range la fontaine avec les flaques.
 
 ### Phase 9b
 
@@ -1431,6 +1576,14 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
+- **La tuile d'eau de la phase 10** est un bleu semi-transparent avec deux trains de
+  vaguelettes. Elle se lit comme de l'eau sur les trois sols, mais elle ne bouge pas : une eau
+  qui ondule demanderait des images animées et un composant de plus. À rediscuter à l'habillage,
+  avec la teinte de l'eau des tuyaux, en attente depuis la phase 4.
+- **Une flaque de fuite posée juste sous une maison est en partie cachée** par le sprite de la
+  maison, qui déborde de huit pixels vers le haut à cause de son pivot au tiers. Sans conséquence
+  sur le jeu — la flaque est bien là — mais la première capture a dû être refaite ailleurs. Même
+  famille de problème que l'échelle qui disparaît sous le personnage, notée en phase 2.
 - **L'ouvrier des tuyaux est le personnage joueur repeint en bleu**, comme l'artisan l'est en
   vert. Les trois ne se distinguent que par la couleur.
 - **Les échantillons de tuyaux font seize pixels**, comme les tuiles posées, ce qui est voulu
