@@ -70,6 +70,22 @@ namespace SousLaVille.Buildings
             }
         }
 
+        /// <summary>
+        /// Change ce qu'il dit. Phase 12e : c'est ainsi qu'un guide SE TAIT SANS DISPARAITRE
+        /// quand sa lecon est acquise. Vider ses lignes suffit — `CanSpeak` vaut deja
+        /// `LineCount > 0`, et `PlayerInteractor.Evaluate` ne propose `Talk` que si `CanSpeak`.
+        /// Le personnage reste donc visible, sur sa case, et Espace ne fait plus rien devant
+        /// lui : aucune disparition, aucun echec puni.
+        ///
+        /// La boite en cours n'est PAS refermee : SpeechBox.Open garde sa propre reference sur
+        /// les phrases, donc une phrase commencee se termine. Couper quelqu'un au milieu d'un
+        /// mot serait la seule chose plus deroutante que de le laisser finir.
+        /// </summary>
+        public void SetLines(Sprite[] sentences)
+        {
+            lines = sentences;
+        }
+
         /// <summary>Nombre de phrases. Sert aux verifications.</summary>
         public int LineCount => lines != null ? lines.Length : 0;
 

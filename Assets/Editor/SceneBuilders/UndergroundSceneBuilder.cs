@@ -202,6 +202,7 @@ namespace SousLaVille.EditorTools
             PaintUnderground(ground, blocking);
             CreateLadders(root);
             CreateSigns(root);
+            CreateGuides(root);
             CreateHouseInlets(root);
             CreateReserve(root);
 
@@ -383,6 +384,133 @@ namespace SousLaVille.EditorTools
                     PlaceholderArtGenerator.SignFirstArrow + arrow));
                 SceneBuilderUtility.ApplySortingLayer(renderer,
                     GameSortingLayers.UndergroundEntities, UndergroundLayout.Height - cell.y);
+            }
+        }
+
+        /// <summary>
+        /// Quel guide dit quelle lecon, CASE PAR CASE. Un appariement par l'ordre du balayage
+        /// de FindAll aurait change de lecon en silence des qu'un poste bouge d'une case ; ici
+        /// un poste deplace sans etre reporte ici est REFUSE a la construction.
+        /// </summary>
+        /// Quatre guides sous terre : creuser, poser, LA PROFONDEUR, et le bassin.
+        private static readonly GuideAssignment[] Guides =
+        {
+            new GuideAssignment(new Vector2Int(11, 10), GuidePost.Lesson.Dig),
+            new GuideAssignment(new Vector2Int(5, 22), GuidePost.Lesson.PlacePipe),
+            new GuideAssignment(new Vector2Int(39, 26), GuidePost.Lesson.Depth),
+            new GuideAssignment(new Vector2Int(11, 16), GuidePost.Lesson.Reserve)
+        };
+
+        /// <summary>Un poste et la lecon qu'il tient.</summary>
+        private readonly struct GuideAssignment
+        {
+            public readonly Vector2Int Cell;
+            public readonly GuidePost.Lesson Lesson;
+
+            public GuideAssignment(Vector2Int cell, GuidePost.Lesson lesson)
+            {
+                Cell = cell;
+                Lesson = lesson;
+            }
+        }
+
+
+        /// <summary>
+        /// Les personnages-guides du SOUS-SOL, phase 12e. Un par lecon, poste sur une case VALIDEE PAR
+        /// CALCUL, qui ne parle que si sa condition est vraie et SE TAIT SANS DISPARAITRE
+        /// quand sa lecon est acquise.
+        ///
+        /// Ils BLOQUENT, et c'est voulu : on ne traverse pas quelqu'un, et surtout, debout SUR
+        /// lui on ne pourrait plus lui parler, puisque l'interacteur cherche un personnage sur
+        /// la case REGARDEE. Un guide qu'on efface en marchant dessus est pire qu'un guide un
+        /// peu mal place.
+        ///
+        /// Chacun porte un SECOND afficheur, le signal d'attention : un triangle de danger du
+        /// vocabulaire routier. Il est pilote par le guide et non par PlayerInteractor, qui
+        /// eteint sa bulle des que le joueur regarde ailleurs — or ce signal doit se voir DE
+        /// LOIN, sinon il n'appelle personne.
+        /// </summary>
+        private static void CreateGuides(GameObject root)
+        {
+            List<Vector2Int> posts = UndergroundLayout.FindAll(UndergroundLayout.GuidePost);
+
+            if (posts.Count != Guides.Length)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan porte {posts.Count} poste(s) de guide " +
+                               $"pour {Guides.Length} leçon(s) déclarée(s) : chaque poste doit " +
+                               "dire laquelle il tient.");
+                return;
+            }
+
+            GameObject parent = new GameObject("Guides");
+            parent.transform.SetParent(root.transform, false);
+
+            for (int i = 0; i < Guides.Length; i++)
+            {
+                Vector2Int cell = Guides[i].Cell;
+                int lesson = (int)Guides[i].Lesson;
+
+                if (UndergroundLayout.At(cell.x, cell.y) != UndergroundLayout.GuidePost)
+                {
+                    Debug.LogError($"[Sous la Ville] Aucun poste de guide en {cell} : la table " +
+                                   "des leçons et le plan ne disent pas la même chose. Un poste " +
+                                   "déplacé sans être reporté ici tiendrait une autre leçon, en " +
+                                   "silence.");
+                    continue;
+                }
+
+                GameObject guide = new GameObject($"Guide_{lesson:00}_{cell.x:00}_{cell.y:00}");
+                guide.transform.SetParent(parent.transform, false);
+                guide.transform.position = SurfaceSceneBuilder.CellCenter(cell);
+
+                SpriteRenderer renderer = guide.AddComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerCraftsman);
+                SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 5);
+
+                // La bulle « on peut lui parler », au-dessus de SA tete.
+                GameObject promptObject = new GameObject("Prompt");
+                promptObject.transform.SetParent(guide.transform, false);
+                promptObject.transform.localPosition = new Vector3(0f, 1.25f, 0f);
+
+                SpriteRenderer prompt = promptObject.AddComponent<SpriteRenderer>();
+                prompt.sprite = LoadSprite(PlaceholderArtGenerator.PictoTalk);
+                prompt.enabled = false;
+                SceneBuilderUtility.ApplySortingLayer(prompt, GameSortingLayers.UndergroundEntities, 12);
+
+                // LE SECOND AFFICHEUR : le signal d'attention, visible de loin. Ordre 11, entre
+                // le personnage et la bulle de l'interacteur.
+                GameObject attentionObject = new GameObject("Attention");
+                attentionObject.transform.SetParent(guide.transform, false);
+                attentionObject.transform.localPosition = new Vector3(0f, 1.9f, 0f);
+
+                SpriteRenderer attention = attentionObject.AddComponent<SpriteRenderer>();
+                attention.sprite = LoadSprite(PlaceholderArtGenerator.GuideAttention);
+                attention.enabled = false;
+                SceneBuilderUtility.ApplySortingLayer(attention, GameSortingLayers.UndergroundEntities, 11);
+
+                Villager villager = guide.AddComponent<Villager>();
+                SerializedObject serializedVillager = new SerializedObject(villager);
+                serializedVillager.FindProperty("cell").vector2IntValue = cell;
+                serializedVillager.FindProperty("prompt").objectReferenceValue = prompt;
+                serializedVillager.FindProperty("lines").arraySize = 0;
+                serializedVillager.ApplyModifiedPropertiesWithoutUndo();
+
+                GuidePost post = guide.AddComponent<GuidePost>();
+                SerializedObject serialized = new SerializedObject(post);
+                serialized.FindProperty("lesson").enumValueIndex = lesson;
+                serialized.FindProperty("attention").objectReferenceValue = attention;
+
+                string[] sentences = PlaceholderArtGenerator.GuideLines[lesson];
+                SerializedProperty lines = serialized.FindProperty("lines");
+                lines.arraySize = sentences.Length;
+
+                for (int line = 0; line < sentences.Length; line++)
+                {
+                    lines.GetArrayElementAtIndex(line).objectReferenceValue =
+                        LoadSprite(PlaceholderArtGenerator.GuideLineTexture(lesson, line));
+                }
+
+                serialized.ApplyModifiedPropertiesWithoutUndo();
             }
         }
 

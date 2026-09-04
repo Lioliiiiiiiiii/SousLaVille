@@ -33,6 +33,7 @@ namespace SousLaVille.EditorTools
     ///   R  le bassin d'orage, au centre d'une chambre de trois sur trois deja creusee
     ///   O  l'arrivee de la fontaine du parc, une alcove d'une case comme celle d'une maison
     ///   I  panneau de carrefour : une fleche vers la station, dans une galerie deja creusee
+    ///   V  alcove d'un guide : un cul-de-sac d'une case, creuse pour lui
     ///
     /// E, T, R et O sont des marqueurs : le builder peint du sol de galerie dessous et pose un
     /// GameObject par-dessus.
@@ -80,6 +81,16 @@ namespace SousLaVille.EditorTools
         /// </summary>
         public const char Sign = 'I';
 
+        /// <summary>
+        /// L'alcove d'un personnage-guide, phase 12e. Sous terre, un bloquant coute plus cher
+        /// qu'en surface : le test du Villager passe AVANT Dig et PlacePipe dans Evaluate,
+        /// donc une case de personnage devient increusable, EN SILENCE. Les guides du sous-sol
+        /// se tiennent donc dans des culs-de-sac d'une seule case, creuses pour eux, hors de
+        /// toute galerie. ValidateGuidePosts exige qu'en les retirant, toutes les destinations
+        /// restent desservables : aucune route ne peut dependre d'eux.
+        /// </summary>
+        public const char GuidePost = 'V';
+
         /// <summary>La chambre du bassin : trois cases sur trois autour du marqueur.</summary>
         public const int ReserveChamberRadius = 1;
 
@@ -107,23 +118,23 @@ namespace SousLaVille.EditorTools
             "##################A###########################.#########.#######",
             "##################.###########################.#################",
             "##############################################.#################",
-            "#####...######################################.#################",
-            "#####.T.###############################....A..I.....I.........##",
+            "#####...###############################V######.#################",
+            "#####.T.###############################....A........I.........##",
             "#####.I.###################################.##.#####.#####.##.##",
             "######.#######################################.#####.####.I.#.##",
-            "######.#######################################.#####.####.E.#.##",
+            "#####V.#######################################.#####.####.E.#.##",
             "######.#######################################.#####.####...#.##",
             "#####A########################################.#####.########.##",
             "#####.########################################.#####.########.##",
             "##############################################.#####.########.##",
             "##########.##A################################.#####A########.##",
-            "##########.##.################################.#####.########.##",
+            "##########.V#.################################.#####.########.##",
             "##########.###################################.##############.##",
             "#########.I.################O#################.##############.##",
             "#########.R.################.#################.##############.##",
             "########.I..##################################.##############.##",
             "########.E.###################################.##...#########.##",
-            "########...###################################...IE.#########.##",
+            "########...V##################################...IE.#########.##",
             "#################################################...#########.##",
             "#############################################################A##",
             "#############################################################.##",
@@ -402,6 +413,7 @@ namespace SousLaVille.EditorTools
             // decroissante. C'est la seule verification qui regarde le PLAN DES PROFONDEURS, et
             // c'est celle qui manquait depuis la phase 3.
             ok &= ValidateDepthPuzzle();
+            ok &= ValidateGuidePosts();
 
             Vector2Int plant = VillageLayout.FindSingle(VillageLayout.PlantInlet);
             if (At(plant.x, plant.y) != PlantOutlet)
@@ -453,7 +465,7 @@ namespace SousLaVille.EditorTools
                 return false;
             }
 
-            HashSet<Vector2Int> reachable = ReachableFromPlant(plants[0]);
+            HashSet<Vector2Int> reachable = ReachableFromPlant(plants[0], null);
 
             bool ok = true;
             foreach (Vector2Int destination in Destinations())
@@ -496,7 +508,8 @@ namespace SousLaVille.EditorTools
         /// n'accepte un voisin que si sa profondeur ne DEPASSE pas celle de la case courante :
         /// c'est la regle de l'ecoulement, lue a l'envers.
         /// </summary>
-        private static HashSet<Vector2Int> ReachableFromPlant(Vector2Int plant)
+        private static HashSet<Vector2Int> ReachableFromPlant(Vector2Int plant,
+            HashSet<Vector2Int> forbidden)
         {
             Vector2Int[] steps =
             {
@@ -521,6 +534,15 @@ namespace SousLaVille.EditorTools
                         continue;
                     }
 
+                    // Les cases interdites servent a rejouer le parcours SANS les postes de
+                    // guide : voir ValidateGuidePosts. Le test passe AVANT seen.Add, sinon la
+                    // case interdite entrerait quand meme dans l'ensemble rendu et se compterait
+                    // comme atteinte.
+                    if (forbidden != null && forbidden.Contains(next))
+                    {
+                        continue;
+                    }
+
                     // En remontant le courant, la profondeur ne peut que diminuer ou tenir.
                     if (DepthAt(next.x, next.y) > depth || !seen.Add(next))
                     {
@@ -532,6 +554,98 @@ namespace SousLaVille.EditorTools
             }
 
             return seen;
+        }
+
+        /// <summary>
+        /// Les postes de guide tiennent-ils ? Phase 12e.
+        ///
+        /// UN GUIDE BLOQUE, et sous terre cela coute plus cher qu'en surface : le test du
+        /// Villager passe AVANT Dig et PlacePipe dans PlayerInteractor.Evaluate, donc une case
+        /// de personnage devient increusable ET impossible a tuyauter, SANS UN MOT. Un guide
+        /// pose au milieu d'une galerie couperait donc une route sans que rien ne le dise.
+        ///
+        /// Deux exigences. LA PREUVE EST LA SECONDE, pas la premiere :
+        ///
+        /// 1. En retirant les alcoves, toutes les destinations restent desservables. C'est le
+        ///    parcours de ValidateDepthPuzzle rejoue avec les cases de guide interdites. Ce
+        ///    filet est FAIBLE et il faut le savoir : le parcours ignore ce qui est creuse,
+        ///    puisque n'importe quelle case peut l'etre, donc une case bloquee se contourne
+        ///    presque toujours d'un pas. Verifie par sabotage : un guide plante au bout du
+        ///    collecteur n'a pas fait tomber une seule destination.
+        /// 2. CHAQUE ALCOVE EST UN CUL-DE-SAC : exactement une voisine ouverte. C'est la vraie
+        ///    preuve, et elle est complete : une case de degre un ne peut etre la case
+        ///    INTERMEDIAIRE d'aucun chemin, puisqu'il faudrait y entrer et en sortir par la
+        ///    meme voisine. Comme elle n'est jamais une destination, aucune route ne peut en
+        ///    avoir besoin. Verifie par sabotage : le meme guide plante sur le carrefour du
+        ///    collecteur, quatre voisines ouvertes, est refuse en nommant la case.
+        ///
+        /// La contrepartie en surface est bien plus legere, et ValidateVillage la couvre deja :
+        /// un guide y est une case bloquante comme un arbre, et la connexite complete refuse
+        /// tout ce qui enfermerait quoi que ce soit.
+        /// </summary>
+        public static bool ValidateGuidePosts()
+        {
+            List<Vector2Int> posts = FindAll(GuidePost);
+            List<Vector2Int> plants = FindAll(PlantOutlet);
+
+            if (plants.Count != 1)
+            {
+                return false;
+            }
+
+            bool ok = true;
+
+            // 1. Aucune route ne depend d'un guide.
+            HashSet<Vector2Int> forbidden = new HashSet<Vector2Int>(posts);
+            HashSet<Vector2Int> reachable = ReachableFromPlant(plants[0], forbidden);
+
+            foreach (Vector2Int destination in Destinations())
+            {
+                if (reachable.Contains(destination))
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] Un poste de guide coupe la destination " +
+                               $"{destination} : sans les alcôves, plus aucun chemin à " +
+                               "profondeur non décroissante ne la relie à la station. Une case " +
+                               "de personnage est increusable ET impossible à tuyauter.");
+                ok = false;
+            }
+
+            // 2. Chaque alcove est un cul-de-sac.
+            Vector2Int[] steps =
+            {
+                Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left
+            };
+
+            foreach (Vector2Int post in posts)
+            {
+                int open = 0;
+
+                foreach (Vector2Int step in steps)
+                {
+                    if (IsOpen(post.x + step.x, post.y + step.y))
+                    {
+                        open++;
+                    }
+                }
+
+                if (open == 1)
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] L'alcôve de guide {post} a {open} voisine(s) " +
+                               "ouverte(s), il en faut exactement une : un guide posé dans un " +
+                               "couloir de passage stériliserait ce passage.");
+                ok = false;
+            }
+
+            Debug.Log($"[Sous la Ville] Postes de guide au sous-sol : {posts.Count} alcôve(s), " +
+                      $"{reachable.Count} case(s) vivante(s) sans elles.");
+
+            return ok;
         }
 
         /// <summary>Toutes les destinations du monde : maisons, fontaine, bassin.</summary>

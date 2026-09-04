@@ -1,4 +1,5 @@
 using System;
+using SousLaVille.UI;
 using UnityEngine;
 
 namespace SousLaVille.Core
@@ -53,6 +54,16 @@ namespace SousLaVille.Core
         private void Update()
         {
             if (seasonDuration <= 0f)
+            {
+                return;
+            }
+
+            // L'HORLOGE S'ARRETE PENDANT QU'ON PARLE, phase 12e. Elle ne se mettait jamais en
+            // pause : une saison dure 600 secondes, et un tick pouvait donc tomber au milieu
+            // d'une phrase — geler la route qu'on venait d'expliquer, faire disparaitre le
+            // picto que le guide montrait, pendant que sa boite restait ouverte. Le jeu n'a
+            // aucune raison de tourner quand le joueur lit.
+            if (SpeechBox.AnyOpen)
             {
                 return;
             }

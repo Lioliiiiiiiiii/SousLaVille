@@ -19,6 +19,7 @@ namespace SousLaVille.EditorTools
     ///   G  facade de l'usine a tuyaux (bloquant)                   E  sa porte
     ///   O  fontaine du parc (bloquant)   Y  arbre (bloquant)
     ///   I  panneau de signalisation (NE bloque PAS : c'est un repere)
+    ///   V  poste de guide (bloquant : on ne traverse pas quelqu'un)
     ///
     /// M, X, T, A, F, D, G et E sont des marqueurs : le builder peint le sol correspondant dessous
     /// et pose un GameObject par-dessus. Une maison et une facade sont en plus bloquantes :
@@ -80,6 +81,14 @@ namespace SousLaVille.EditorTools
         public const char Tree = 'Y';
         public const char Sign = 'I';
 
+        /// <summary>
+        /// Le poste d'un personnage-guide, phase 12e. BLOQUANT, et c'est voulu : on ne traverse
+        /// pas quelqu'un, et surtout, debout SUR lui on ne pourrait plus lui parler, puisque
+        /// l'interacteur cherche un personnage sur la case REGARDEE. Un guide qu'on efface en
+        /// marchant dessus est pire qu'un guide un peu mal place.
+        /// </summary>
+        public const char GuidePost = 'V';
+
         /// <summary>Les facades des batiments, dans l'ordre des pieces d'InteriorsLayout.</summary>
         public static readonly char[] Facades = { Facade, PipeFacade };
 
@@ -101,13 +110,13 @@ namespace SousLaVille.EditorTools
             "H.........####I####....#...A..................##I#M............H",
             "H..Y......A.......#....#...#..................#................H",
             "H.......#M######I##########M####...........Y..#................H",
-            "H.......#.........#....#...#...#......Y.......#................H",
+            "H.......#.........#....#...#V..#......Y.......#................H",
             "H.......#.........#....I...#...#..............#.............YY.H",
             "H.......#.........#....#...#...#.Y............##I#######A...YY.H",
             "H.YY....#.........A....#...#...#..............#................H",
             "H.YY....#..............#...#...#..............#................H",
             "H.BBBBBBBBB...........FFFF.#..GGGG..YYY.......#.....YYY........H",
-            "H.BSSSSSSSB......YY...FFYF.#..GGGG..YYY.......#.....YYY.Y......H",
+            "H.BSSSSSSSB......YY...FFYFV#..GGGG..YYY.......#.....YYY.Y......H",
             "H.BSSSTSSSB......YY....D.......E...........AI##.........I......H",
             "H.BSSSSSSSB...................................#................H",
             "H.YSSSSSSSB....HHHHHHHHHHHHHPHHHHHHHHHHHHH....#................H",
@@ -117,12 +126,12 @@ namespace SousLaVille.EditorTools
             "H.....#.#......HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
             "H.YY..#.##I###.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.............YYYH",
             "H.YY..###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY#I####AY......YYYH",
-            "H.....I.I.....XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
+            "H.....I.I...V.XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
             "H.....#.#...Y..HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
             "H.....#.#......HPHPHPHPHPHPHOPPPPHPHPHPHPP....#................H",
             "H.....#.#......HPHPHPHPHHHPHHHHHHHHHPHPHPH....#............Y...H",
             "H.....#.#......HPHPHPHPPPPPPPPPPPPPPPHPHPH....#................H",
-            "H.....#.#M.....HPHPHHHHHPHHHHHPHHHHHHHPHPH....#................H",
+            "H.....#.#MV....HPHPHHHHHPHHHHHPHHHHHHHPHPH....#................H",
             "H.Y...#........HPHPPPPPPPPPPPPPPPPPPPPPPPH....####M###########.H",
             "H.....#........HPHHHHHPHHHPHHHHHPHHHPHHHPH...................#.H",
             "H.....#........HPPPPPPPPPPPPPPPPPPPPPPPPPH...........YYY.....AYH",
@@ -176,6 +185,10 @@ namespace SousLaVille.EditorTools
                     return Grass;
                 case Tree:
                     // De l'herbe sous l'arbre : sa tuile bloquante se pose par-dessus.
+                    return Grass;
+                case GuidePost:
+                    // De l'herbe sous le guide : il est un GameObject, pas une tuile, et c'est
+                    // lui-meme qui bloque en occupant sa case.
                     return Grass;
                 case Sign:
                     // Un socle de chemin sous le panneau. Les panneaux de rue sont poses sur
@@ -414,8 +427,8 @@ namespace SousLaVille.EditorTools
 
         /// <summary>
         /// Vrai si le personnage peut se tenir sur cette case, d'apres le seul plan. Les
-        /// haies, les maisons, les murs de la station, les facades, la fontaine et les ARBRES
-        /// bloquent. Un PANNEAU ne bloque pas : c'est un repere, pas un obstacle, et le mettre
+        /// haies, les maisons, les murs de la station, les facades, la fontaine, les ARBRES et
+        /// les POSTES DE GUIDE bloquent. Un PANNEAU ne bloque pas : c'est un repere, pas un obstacle, et le mettre
         /// en travers d'un chemin serait un echec puni au sens de CLAUDE.md.
         /// </summary>
         public static bool IsWalkable(Vector2Int cell)
@@ -428,7 +441,7 @@ namespace SousLaVille.EditorTools
             char marker = At(cell.x, cell.y);
             return marker != Hedge && marker != House && marker != PlantWall
                 && marker != Facade && marker != PipeFacade && marker != Fountain
-                && marker != Tree;
+                && marker != Tree && marker != GuidePost;
         }
 
         /// <summary>Vrai si la carte fait bien 45 lignes de 64 caracteres.</summary>

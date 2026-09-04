@@ -113,6 +113,19 @@ C'est la méthode du projet.
 **Un validateur qui dit toujours oui ne vaut rien.** Le vérifier **par sabotage** : casser le
 monde exprès, reconstruire, et exiger qu'il refuse en nommant la case et la raison.
 
+**Un appariement par l'ORDRE d'un balayage ment en silence.** Huit guides appariés à leur leçon
+par l'ordre de `FindAll` : un poste déplacé d'une case change de leçon sans un mot. Écrire
+l'appariement case par case, et refuser ce que la table ne connaît pas.
+
+**Un Sorting Layer supérieur recouvre tout, quel que soit l'ordre de tri.** La goutte d'une
+maison vit sur `Surface_Overlay` et effaçait le signal d'attention d'un guide posé juste dessous,
+en ordre 11. L'ordre ne départage que DANS un layer.
+
+**Sous terre, une case de personnage devient increusable en silence.** Le test du `Villager`
+passe avant `Dig` et `PlacePipe` dans `Evaluate`. Un personnage posé dans une galerie stérilise
+sa case. Les guides du sous-sol se tiennent donc dans des culs-de-sac d'une case : une case de
+degré un ne peut être l'intermédiaire d'aucun chemin.
+
 **Une donnée dérivée sauvegardée est une donnée qui peut mentir.** Les maisons desservies, l'eau
 du village, l'état de la fontaine : tout se recalcule. On sauvegarde des **gestes**, pas un état.
 

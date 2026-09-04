@@ -113,6 +113,54 @@ namespace SousLaVille.EditorTools
         public const int SignCount = 8;
 
         /// <summary>
+        /// LES HUIT LECONS, phase 12e. Un guide par lecon, et rien de plus : le jeu entier
+        /// comptait sept phrases avant celle-ci, toutes derriere les portes de deux boutiques,
+        /// et toutes sur le choix des plaques et des tuyaux. Rien ne disait le but, rien ne
+        /// disait qu'on creuse, et rien ne disait LA REGLE DE PROFONDEUR, qui EST le puzzle
+        /// selon CLAUDE.md : `grep "Depth"` dans toute l'UI et tout le code du joueur ne rendait
+        /// rien.
+        ///
+        /// Moins de six mots par phrase, en francais, majuscules : CLAUDE.md. Victorien sait
+        /// lire, decision du 3 septembre, et le pictogramme reste le premier choix partout
+        /// ailleurs.
+        ///
+        /// L'ordre est celui des postes, et il ne change pas : GuideSceneOrder l'appareille.
+        /// </summary>
+        public static readonly string[][] GuideLines =
+        {
+            // 1. LE BUT. Au depart du village.
+            new[] { "RELIE LES MAISONS", "LA STATION LES ATTEND" },
+            // 2. LA BOUCHE. Pres d'une bouche.
+            new[] { "ON DESCEND PAR LA BOUCHE" },
+            // 3. LES SAISONS. En surface.
+            new[] { "L'AUTOMNE BOUCHE LES TUYAUX", "L'HIVER GELE LES PEU PROFONDS" },
+            // 4. REPARER. Pres d'une flaque.
+            new[] { "UNE FLAQUE ? UN TUYAU FUIT", "DESCENDS LE REPARER" },
+            // 5. CREUSER. Sous terre, devant la terre pleine.
+            new[] { "APPUIE POUR CREUSER LA TERRE" },
+            // 6. POSER. Sous terre, devant une galerie.
+            new[] { "PUIS POSE UN TUYAU" },
+            // 7. LA PROFONDEUR. La lecon centrale, et la seule que rien n'affichait.
+            new[] { "L'EAU NE REMONTE JAMAIS", "CREUSE TOUJOURS PLUS PROFOND", "CHERCHE LE PASSAGE" },
+            // 8. LE BASSIN. Pres de sa chambre.
+            new[] { "L'ORAGE REMPLIT LE BASSIN", "RELIE-LE AUSSI" }
+        };
+
+        /// <summary>Image d'une phrase d'un guide.</summary>
+        public static string GuideLineTexture(int guide, int line)
+        {
+            return $"{SpritesFolder}/line_guide_{guide:00}_{line:00}.png";
+        }
+
+        /// <summary>
+        /// Le signal d'attention d'un guide, phase 12e : un triangle de danger du vocabulaire
+        /// routier, la passion de Victorien. Il est pilote par le GUIDE et non par
+        /// PlayerInteractor, qui eteint sa bulle des que le joueur regarde ailleurs : il faut
+        /// que le signal se voie DE LOIN, sinon il n'appelle personne.
+        /// </summary>
+        public const string GuideAttention = PictosFolder + "/picto_attention.png";
+
+        /// <summary>
         /// Phase 12d. Le picto d'agrandissement de la station, et le bassin de traitement qui
         /// se pose sur son sol : la station GROSSIT A L'ECRAN d'un bassin a chaque
         /// agrandissement, sinon le progres ne se verrait nulle part.
@@ -452,6 +500,16 @@ namespace SousLaVille.EditorTools
                     WriteWord(WorkerLineTexture(index), WorkerLines[index]);
                 }
 
+                for (int guide = 0; guide < GuideLines.Length; guide++)
+                {
+                    for (int line = 0; line < GuideLines[guide].Length; line++)
+                    {
+                        WriteWord(GuideLineTexture(guide, line), GuideLines[guide][line]);
+                    }
+                }
+
+                WriteTexture(GuideAttention, BuildAttentionPicto());
+
                 for (int index = 0; index < PipeNames.Length; index++)
                 {
                     WriteWord(PipeNameTexture(index), PipeNames[index]);
@@ -538,6 +596,16 @@ namespace SousLaVille.EditorTools
             {
                 ConfigureImporter(WorkerLineTexture(index), null);
             }
+
+            for (int guide = 0; guide < GuideLines.Length; guide++)
+            {
+                for (int line = 0; line < GuideLines[guide].Length; line++)
+                {
+                    ConfigureImporter(GuideLineTexture(guide, line), null);
+                }
+            }
+
+            ConfigureImporter(GuideAttention, null);
 
             for (int index = 0; index < PipeNames.Length; index++)
             {
@@ -703,7 +771,7 @@ namespace SousLaVille.EditorTools
                 PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
-                FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture
+                FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention
             };
 
             foreach (string path in sprites)
@@ -1613,6 +1681,45 @@ namespace SousLaVille.EditorTools
         /// Le picto d'agrandissement de la station, phase 12d : une cuve, et une croix qui
         /// dit « une de plus ». Pas de mot, pas de chiffre : le picto d'abord, comme partout.
         /// </summary>
+        /// <summary>
+        /// Le signal d'attention d'un guide : un triangle de danger, borde de rouge, avec son
+        /// point d'exclamation. Vocabulaire du Code de la route, comme les panneaux de la
+        /// phase 12c, et il se lit de loin sans un mot.
+        /// </summary>
+        private static Color32[] BuildAttentionPicto()
+        {
+            Color32 red = new Color32(0xC8, 0x2F, 0x2F, 0xFF);
+            Color32 white = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // La POINTE EN HAUT : c'est un danger. Un triangle pointe en bas serait un cedez
+            // le passage, qui dit tout autre chose. En espace de texture y monte, donc la base
+            // large est en bas et la pointe en haut.
+            for (int row = 0; row < 14; row++)
+            {
+                int half = (13 - row) * 8 / 14;
+                Fill(pixels, TileSize, 8 - half, 7 + half, 1 + row, 1 + row, red);
+            }
+
+            for (int row = 1; row < 11; row++)
+            {
+                int half = (13 - row) * 8 / 14 - 2;
+                if (half <= 0)
+                {
+                    continue;
+                }
+
+                Fill(pixels, TileSize, 8 - half, 7 + half, 1 + row, 1 + row, white);
+            }
+
+            // Le point d'exclamation, en creux dans le blanc : la barre puis le point.
+            Fill(pixels, TileSize, 7, 8, 4, 9, red);
+            Fill(pixels, TileSize, 7, 8, 2, 2, red);
+
+            return pixels;
+        }
+
         private static Color32[] BuildGrowPicto()
         {
             Color32 tank = new Color32(0x6E, 0x7B, 0x8B, 0xFF);

@@ -38,6 +38,24 @@ namespace SousLaVille.UI
         /// <summary>Vrai tant qu'un personnage parle. L'interacteur s'en sert pour se taire.</summary>
         public bool IsOpen { get; private set; }
 
+        /// <summary>
+        /// Vrai si UNE boite quelconque est ouverte. Phase 12e : GameClock s'en sert pour
+        /// s'arreter pendant qu'on lit, et il ne doit pas avoir a chercher la boite — elle vit
+        /// dans Persistent, lui aussi, mais un FindAnyObjectByType par image serait absurde.
+        /// Un compteur statique remis a zero au chargement de domaine.
+        /// </summary>
+        public static bool AnyOpen => openCount > 0;
+
+        private static int openCount;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            // Le rechargement de domaine desactive ne remet pas les statiques a zero : une
+            // boite laissee ouverte a l'arret figerait l'horloge de la session suivante.
+            openCount = 0;
+        }
+
         /// <summary>Leve a la fermeture. Le personnage joueur se rallume la-dessus.</summary>
         public event Action Closed;
 
@@ -58,6 +76,14 @@ namespace SousLaVille.UI
         private void OnDisable()
         {
             input?.Gameplay.Disable();
+
+            // Une boite eteinte avec sa couche doit relacher son compte, sinon l'horloge
+            // resterait figee pour toujours.
+            if (IsOpen)
+            {
+                IsOpen = false;
+                openCount--;
+            }
         }
 
         private void OnDestroy()
@@ -90,6 +116,11 @@ namespace SousLaVille.UI
             // L'appui qui ouvre le dialogue ne doit pas passer a la phrase suivante dans la
             // foulee : l'interacteur et cette boite lisent la meme touche.
             openedFrame = Time.frameCount;
+
+            if (!IsOpen)
+            {
+                openCount++;
+            }
 
             IsOpen = true;
             panel.SetActive(true);
@@ -167,6 +198,11 @@ namespace SousLaVille.UI
 
         private void Close()
         {
+            if (IsOpen)
+            {
+                openCount--;
+            }
+
             Hide();
             Closed?.Invoke();
         }

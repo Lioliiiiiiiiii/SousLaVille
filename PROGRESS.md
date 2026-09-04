@@ -24,7 +24,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 12b | La carte 64x45 et le grand labyrinthe | Terminée |
 | 12c | Le décor | Terminée |
 | 12d | La station qui s'agrandit | Terminée |
-| 12e | Les huit guides | À faire |
+| 12e | Les huit guides | Terminée |
 | 13 | L'usine à panneaux | À faire |
 | 14 | Le Stock, le memory | À faire |
 | 15 | La Fabrique | À faire |
@@ -1661,6 +1661,110 @@ de marge, pointe de 5 pour un bassin de 10. Station de 3 à 16 par saison, soit 
 construire. »
 
 - `git diff ProjectSettings/` : **vide**.
+
+## Phase 12e, ce qui est fait
+
+Huit personnages-guides, un par leçon. C'était le trou le plus large du jeu : `grep "Depth"` dans
+toute l'UI et tout le code du joueur ne rendait **rien**, alors que la règle de profondeur *est*
+le puzzle selon CLAUDE.md. Le jeu comptait sept phrases en tout, toutes derrière les portes de
+deux boutiques, et toutes sur le choix des plaques et des tuyaux.
+
+| # | Leçon | Où | Il parle tant que |
+|---|---|---|---|
+| 1 | Relie les maisons | (12, 16), au départ | aucune maison n'est desservie |
+| 2 | On descend par une bouche | (10, 11), près d'une bouche | rien n'a été creusé |
+| 3 | Les saisons abîment | (26, 26), en surface | la saison bouche ou gèle |
+| 4 | Une flaque, un tuyau fuit | (28, 32), près d'une bouche | un tuyau demande réparation |
+| 5 | On creuse la terre | (11, 10), sous terre | rien n'a été creusé |
+| 6 | Puis pose un tuyau | (5, 22), sous terre | aucun tuyau n'est posé |
+| 7 | **L'eau ne remonte jamais** | (39, 26), sous terre | de l'eau morte s'arrête quelque part |
+| 8 | L'orage remplit le bassin | (11, 16), sous terre | le bassin n'est pas relié |
+
+**Aucune condition n'invente d'état.** Toutes se lisent sur le monde et redeviennent vraies si le
+joueur défait ce qu'il a fait. **Sans mémoire**, décision du 4 septembre : réexpliquer à un
+relancement ne punit rien, ne coûte aucun champ de sauvegarde, et évite d'avoir à donner au
+`Villager` un identifiant stable puis à le faire entrer dans le ET des quatre de
+`SaveSystem.TryLoad`, où il aurait pu n'être jamais relu en silence, comme les plaques en 9a.
+
+**Se taire sans disparaître était gratuit.** `Villager.CanSpeak` valait déjà `LineCount > 0`, et
+`Evaluate` ne propose `Talk` que si `CanSpeak` : `SetLines(null)` laisse donc le guide visible,
+sur sa case, et Espace ne fait plus rien devant lui.
+
+### La leçon 7 tient à l'eau morte
+
+Le guide de la profondeur parle exactement quand une **route commencée ne rejoint pas la
+station** — la frontière que le solveur publie depuis la phase 12a. C'est ce qui rend cette leçon
+enseignable : on ne peut pas dire *où* ça casse tant que le jeu l'ignore.
+
+**Le seuil compte.** À `StrandedCount > 0`, il parlait dès le premier lancement, avant qu'une
+seule case soit creusée : sans tuyau, chaque destination est déjà sa propre frontière. Le seuil
+est donc `> destinations + bassins`, et vérifié en jeu — muet au départ, il parle après cinq
+tuyaux posés en aveugle.
+
+### Le coût d'un bloquant n'est pas le même en surface et sous terre
+
+Les guides **bloquent**, recommandation de l'audit : on ne traverse pas quelqu'un, et surtout,
+debout **sur** lui on ne pourrait plus lui parler, l'interacteur cherchant un personnage sur la
+case **regardée**.
+
+Mais sous terre le prix est plus lourd : le test du `Villager` passe **avant** `Dig` et
+`PlacePipe` dans `Evaluate`, donc une case de personnage devient increusable **et** impossible à
+tuyauter, **sans un mot**. Les quatre guides du sous-sol se tiennent donc dans des **alcôves en
+cul-de-sac** creusées pour eux.
+
+`ValidateGuidePosts` le prouve, et **la preuve est le cul-de-sac, pas la connexité** : une case
+de degré un ne peut être la case intermédiaire d'aucun chemin, puisqu'il faudrait y entrer et en
+sortir par la même voisine ; comme elle n'est jamais une destination, aucune route ne peut en
+avoir besoin.
+
+### Deux réparations que l'audit demandait
+
+- **L'horloge s'arrête pendant qu'on parle.** `GameClock` ne se mettait **jamais** en pause :
+  une saison dure 600 secondes, et un tick pouvait tomber au milieu d'une phrase — geler la route
+  qu'on venait d'expliquer pendant que la boîte restait ouverte. Un compteur statique sur
+  `SpeechBox` suffit ; il se relâche aussi quand la couche s'éteint, sinon l'horloge resterait
+  figée pour toujours.
+- **Un second afficheur d'attention**, un triangle de danger du vocabulaire routier — la passion
+  de Victorien. Il est piloté par **le guide** et non par `PlayerInteractor`, qui éteint sa bulle
+  dès que le joueur regarde ailleurs : ce signal doit se voir **de loin**, sinon il n'appelle
+  personne.
+
+## Phase 12e, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors celui du package MCP.
+- Les huit guides existent, chacun avec la bonne leçon sur la bonne case, et leurs conditions
+  sont justes au premier lancement : le but, la bouche, creuser, poser et le bassin parlent ; les
+  saisons se taisent au printemps ; la fuite se tait sur un réseau neuf ; **la profondeur se
+  tait** tant qu'aucune route n'est commencée.
+- **Se taire quand la leçon est acquise, vérifié en jeu** : quatre cases creusées et cinq tuyaux
+  posés, puis retour sous terre — creuser et poser **se taisent**, la profondeur **parle**
+  (18 cases d'eau morte contre 14 au départ). Les guides du sous-sol étaient éteints avec leur
+  couche pendant les gestes : c'est le rallumage qui a tout rattrapé, comme la règle du projet
+  l'exige depuis la phase 1.
+- **L'horloge s'arrête, mesuré** : horloge à 4 secondes par saison, boîte ouverte, **zéro tick en
+  douze secondes** ; boîte refermée, l'horloge repart.
+- **Sabotage de `ValidateGuidePosts`** : le guide de la profondeur déplacé de son alcôve au
+  carrefour du collecteur → « L'alcôve de guide (46, 25) a 4 voisine(s) ouverte(s), il en faut
+  exactement une : un guide posé dans un couloir de passage stériliserait ce passage », et
+  `BuildAllScenes` **s'arrête**.
+- **Un filet dont j'ai mesuré la faiblesse plutôt que de la supposer.** Le premier sabotage —
+  guide planté au bout du collecteur — n'a **pas** été attrapé par le contrôle de desservabilité :
+  le parcours ignore ce qui est creusé, puisque n'importe quelle case peut l'être, donc une case
+  bloquée se contourne d'un pas. Le commentaire du code le dit maintenant, au lieu de laisser
+  croire que ce filet prouve quelque chose qu'il ne prouve pas.
+- **Deux défauts vus à l'écran et corrigés** : le triangle d'attention pointait vers le **bas**,
+  ce qui en faisait un « cédez le passage » et non un danger ; et le guide du but se tenait
+  directement **sous une maison**, dont la goutte vit sur `Surface_Overlay`, un Sorting Layer
+  au-dessus de `Surface_Entities`, et recouvrait donc son signal quel que soit son ordre de tri.
+  Un signal qu'on ne voit pas n'appelle personne.
+- `git diff ProjectSettings/` : **vide**.
+
+### Note d'atelier : un appariement par l'ordre de balayage ment en silence
+
+Les guides ont d'abord été appariés à leur leçon par **l'ordre de `FindAll`**, du bas vers le
+haut. Un poste déplacé d'une case aurait changé de leçon sans que rien ne le dise. L'appariement
+est désormais écrit **case par case**, et le builder **refuse** un poste que la table ne connaît
+pas.
 
 ## Les documents du projet
 
