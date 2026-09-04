@@ -23,7 +23,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 12a | Les filets | Terminée |
 | 12b | La carte 64x45 et le grand labyrinthe | Terminée |
 | 12c | Le décor | Terminée |
-| 12d | La station qui s'agrandit | À faire |
+| 12d | La station qui s'agrandit | Terminée |
 | 12e | Les huit guides | À faire |
 | 13 | L'usine à panneaux | À faire |
 | 14 | Le Stock, le memory | À faire |
@@ -1571,6 +1571,95 @@ refusé par construction, ce qu'aucune version précédente n'aurait vu.
 - Captures relues : le labyrinthe se lit comme un mur continu et non comme un damier, les routes
   ont leurs virages et leurs carrefours, la fontaine a son jet, et les douze flèches du sous-sol
   pointent toutes vers la station.
+- `git diff ProjectSettings/` : **vide**.
+
+## Phase 12d, ce qui est fait
+
+La capacité de la station cesse d'être un nombre écrit à la main. Elle vaut
+`baseCapacity + bassins`, et **le joueur construit ses bassins en appuyant sur Espace devant
+l'arrivée de la station, sous terre**.
+
+### Pourquoi, et pas seulement comment
+
+- **Le débordement redevient un retour permanent.** À capacité écrite à la main et réglée sur
+  `D + 3`, une fois le bassin d'orage relié, `Lost` valait zéro **pour toujours** : le
+  débordement n'apprenait plus rien, et sa fenêtre de visibilité se refermait d'autant plus tôt
+  que le village était grand. Mesuré en jeu : station à **zéro bassin**, l'automne perd **5** ;
+  à **trois bassins**, il n'en perd plus que **2**. Chaque bassin se voit dans la flaque.
+- **La règle est dérivée, pas inventée.** Sur l'année, `4S + 11 ≤ 4C` a pour minimum entier
+  `C = S + 3`. Avec `baseCapacity = 3` — la pluie annuelle divisée par quatre, arrondie
+  au-dessus — cela fait **exactement un bassin par destination reliée**. La station livrée
+  encaisse la pluie et rien d'autre.
+- **Rien ne se paie.** Il n'y a pas de monnaie dans ce jeu et il n'y en aura pas. La difficulté
+  est de **comprendre** qu'il faut agrandir, pas d'amasser de quoi le faire.
+- **Le créneau était libre.** Le nœud `PlantInlet` n'offrait aucune action tant qu'il n'était pas
+  abîmé. C'est le seul endroit du monde où ce geste a un sens.
+
+### La station grossit à l'écran
+
+Treize cuves sont posées une fois pour toutes sur le sol de l'enceinte, **éteintes**, et
+`PlantBasinsView` en allume autant qu'il y a de bassins. Rien ne s'instancie en jeu.
+
+Elle vit dans la scène **Surface** alors que le geste se fait **sous terre** : la couche est donc
+éteinte au moment où le bassin s'ajoute. Le composant s'abonne dans `OnEnable`, se désabonne dans
+`OnDisable`, et **se réapplique au rallumage** — la règle du projet depuis la phase 1, et c'est
+ici qu'elle compte le plus, puisqu'on remonte exactement pour voir ce qu'on vient de construire.
+
+Les emplacements sont les cases de sol dont les **quatre** voisines appartiennent encore à la
+station : le premier jet posait une cuve dans l'ouverture de l'enceinte, où elle bouchait
+visuellement la porte sans rien bloquer.
+
+### Ce qui se sauvegarde
+
+`plantBasins`, ajouté **à la fin** de `SaveData`. C'est du **progrès de joueur** et non une donnée
+dérivée : les maisons desservies, l'eau du village et l'état de la fontaine se recalculent, les
+bassins non. `CurrentVersion` reste à **2** : un champ ajouté se relit sans rien casser, et une
+partie d'avant arrive avec zéro bassin — ce qui est exactement l'état de départ voulu.
+
+## Phase 12d, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors celui du package MCP.
+- **Un appui réel sur Espace = un bassin.** Injection clavier vraie, `Application.isFocused`
+  vérifié, temps figé pour n'obtenir qu'un changement d'orientation : le personnage en (6, 24)
+  regarde l'arrivée en (6, 25), un Espace, et la capacité passe de **3 à 4**.
+- **Le plafond tient** : 20 tentatives de plus donnent 13 bassins, capacité 16, **8 refus**, et
+  `CanGrow` passe à faux — le picto disparaît alors, et Espace ne fait plus rien devant
+  l'arrivée. Aucun échec puni : on ne peut simplement plus agrandir ce qui est complet.
+- **La sauvegarde fait l'aller-retour** : trois bassins écrits dans `partie.json`, relus après
+  un arrêt et une reprise, capacité 6, et **trois cuves allumées** — donc la vue s'est bien
+  réappliquée au rallumage de la couche.
+- **Une année saison par saison, à deux capacités** :
+
+  | | à 0 bassin (capacité 3) | à 3 bassins (capacité 6) |
+  |---|---|---|
+  | Automne : arrivant | 8 | 8 |
+  | Automne : traité | 3 | 6 |
+  | **Automne : perdu** | **5** | **2** |
+
+### Un validateur qui ne pouvait plus dire non
+
+`ValidateWaterBudget` comparait `4D + R` à `4C`. Depuis que `C` vaut `D + 3` et **se dérive du
+plan**, le traité vaut `4D + 12` et l'arrivant `4D + 11` : la comparaison est vraie **quel que
+soit le nombre de maisons**. Le validateur était devenu inutile sans que rien ne le dise, exactement
+comme le bilan des profondeurs qui annonçait « 14 destinations atteignables » sur la ligne suivant
+neuf refus.
+
+Réécrit sur ce qui peut réellement casser :
+
+1. **La pluie passe la marge de la règle.** `C = D + 3` laisse 12 unités par an à la pluie ; elle
+   en vaut 11. C'est un champ sérialisé sur un ScriptableObject, modifiable d'un clic.
+2. **Le bassin n'encaisse plus la pointe** de la pire saison.
+3. **La rangée de gouttes déborde de l'écran** au-delà de treize destinations.
+
+**Vérifié par sabotage** : pluie d'automne portée de 8 à 10 → « Pluie INSOUTENABLE : 13 sur
+l'année alors que la règle « capacité = destinations + 3 » n'en laisse que 12. Le bassin
+dériverait de 1 par an, saturerait, et le village déborderait pour toujours. Baisse une saison, ou
+relève la constante 3 de PlantBaseCapacity. » Remise à 8, il repasse.
+
+Le journal dit maintenant ce qu'il a prouvé : « 13 destinations, 11 de pluie sur l'année pour 12
+de marge, pointe de 5 pour un bassin de 10. Station de 3 à 16 par saison, soit 13 bassins à
+construire. »
+
 - `git diff ProjectSettings/` : **vide**.
 
 ## Les documents du projet

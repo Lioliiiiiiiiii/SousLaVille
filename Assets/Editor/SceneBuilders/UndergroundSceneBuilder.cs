@@ -34,19 +34,49 @@ namespace SousLaVille.EditorTools
         // PHASE 12B : treize destinations, donc SEIZE. Le nombre reste ecrit a la main ici ;
         // c'est la phase 12d qui fera grandir la station en jeu, bassin par bassin, et qui
         // rendra au debordement son role de retour permanent.
-        private const int PlantCapacityPerSeason = 16;
+        // PHASE 12D : la capacite cesse d'etre un nombre unique. La station part de
+        // PlantBaseCapacity et le joueur la porte jusqu'a `destinations + 3` en construisant un
+        // bassin par appui sur Espace devant son arrivee. Trois, c'est exactement la pluie
+        // annuelle divisee par quatre, arrondie au-dessus : la station livree encaisse la pluie
+        // et RIEN d'autre. Chaque maison reliee demande donc son bassin, et la regle se voit en
+        // jouant.
+        private const int PlantBaseCapacity = 3;
         private const int ReserveCapacity = 10;
 
         /// <summary>
-        /// L'economie de l'eau est-elle tenable ? Sur une annee, l'arrivant vaut
-        /// 4 x destinations + la pluie annuelle, et la station traite 4 x sa capacite. La
-        /// condition est donc `4D + R &lt;= 4C`, dont le minimum entier est `C = D + 3` avec
-        /// R = 11.
+        /// La capacite que la station peut ATTEINDRE, bassins compris : `D + 3`, la regle
+        /// derivee en phase 12 puis confirmee par simulation sur six annees. Elle se deduit du
+        /// plan et ne s'ecrit plus a la main : ajouter une maison la releve toute seule.
+        /// </summary>
+        private static int MaxPlantCapacity()
+        {
+            int destinations = VillageLayout.FindAll(VillageLayout.House).Count
+                             + VillageLayout.FindAll(VillageLayout.Fountain).Count;
+
+            return destinations + 3;
+        }
+
+        /// <summary>
+        /// L'economie de l'eau tient-elle ? Trois choses peuvent casser, et aucune n'est celle
+        /// que cette methode verifiait jusqu'ici.
         ///
-        /// Ajoute en phase 12a. Le reglage a ete refait a la main deux fois, en phase 8 puis en
-        /// phase 11, chaque fois en decouvrant apres coup qu'une destination de plus faisait
-        /// saturer le bassin et deborder le village a chaque automne, pour toujours. Cette
-        /// verification refuse de construire un monde insoutenable, et dit la capacite attendue.
+        /// LA VERSION DE LA PHASE 12A NE PEUT PLUS DIRE NON. Elle comparait `4D + R` a `4C` ;
+        /// depuis la phase 12d, `C` vaut `D + 3` et se DERIVE du plan, donc le traite vaut
+        /// `4D + 12` et l'arrivant `4D + 11` : la comparaison est vraie quel que soit le nombre
+        /// de maisons. Un validateur qui dit toujours oui ne vaut rien, et celui-ci l'etait
+        /// devenu sans que rien ne le dise — c'est le meme piege que le bilan des profondeurs,
+        /// qui annoncait « 14 destinations atteignables » sur la ligne suivant neuf refus.
+        ///
+        /// Ce qui peut reellement casser :
+        ///
+        /// 1. LA PLUIE PASSE LA MARGE DE LA REGLE. `C = D + 3` laisse `4 x 3 = 12` unites par
+        ///    an pour la pluie. Elle en vaut 11 aujourd'hui. Relever une saison d'une seule
+        ///    unite rend le village insoutenable POUR TOUJOURS, et c'est un champ serialise sur
+        ///    un ScriptableObject, donc modifiable d'un clic.
+        /// 2. LE BASSIN N'ENCAISSE PLUS LA POINTE. L'automne apporte `D + pluie d'automne` d'un
+        ///    coup ; la station en traite `C`, le bassin doit absorber le reste. Sa capacite est
+        ///    ecrite a la main.
+        /// 3. LA RANGEE DE GOUTTES DEBORDE DE L'ECRAN au-dela de treize destinations.
         /// </summary>
         private static bool ValidateWaterBudget()
         {
@@ -54,6 +84,8 @@ namespace SousLaVille.EditorTools
                              + VillageLayout.FindAll(VillageLayout.Fountain).Count;
 
             int rain = 0;
+            int peakRain = 0;
+
             foreach (string path in ScriptableObjectSetup.SeasonCycle)
             {
                 SeasonDefinition season = AssetDatabase.LoadAssetAtPath<SeasonDefinition>(path);
@@ -64,30 +96,60 @@ namespace SousLaVille.EditorTools
                 }
 
                 rain += season.RainVolume;
+                peakRain = Mathf.Max(peakRain, season.RainVolume);
             }
 
             int seasons = ScriptableObjectSetup.SeasonCycle.Length;
-            int inflow = seasons * destinations * SeasonSystem.HouseVolumePerSeason + rain;
-            int treated = seasons * PlantCapacityPerSeason;
+            int capacity = MaxPlantCapacity();
+            int margin = seasons * (capacity - destinations * SeasonSystem.HouseVolumePerSeason);
+            bool ok = true;
 
-            if (inflow <= treated)
+            // 1. La marge annuelle que la regle C = D + 3 laisse a la pluie.
+            if (rain > margin)
             {
-                Debug.Log($"[Sous la Ville] Bilan de l'eau tenable : {destinations} destination(s), " +
-                          $"{inflow} arrivant sur l'année contre {treated} traités, station à " +
-                          $"{PlantCapacityPerSeason} par saison.");
-                return true;
+                Debug.LogError($"[Sous la Ville] Pluie INSOUTENABLE : {rain} sur l'année alors " +
+                               $"que la règle « capacité = destinations + 3 » n'en laisse que " +
+                               $"{margin}. Le bassin dériverait de {rain - margin} par an, " +
+                               "saturerait, et le village déborderait pour toujours. Baisse une " +
+                               "saison, ou relève la constante 3 de PlantBaseCapacity.");
+                ok = false;
             }
 
-            int needed = Mathf.CeilToInt((destinations * SeasonSystem.HouseVolumePerSeason * seasons
-                                          + rain) / (float)seasons);
+            // 2. La pointe d'automne, que le bassin doit pouvoir encaisser d'un seul coup.
+            int peak = destinations * SeasonSystem.HouseVolumePerSeason + peakRain - capacity;
+            if (peak > ReserveCapacity)
+            {
+                Debug.LogError($"[Sous la Ville] La pointe de la pire saison vaut {peak} unités " +
+                               $"quand le bassin n'en contient que {ReserveCapacity} : il " +
+                               "saturerait et le village déborderait même station pleine.");
+                ok = false;
+            }
 
-            Debug.LogError($"[Sous la Ville] Bilan de l'eau INSOUTENABLE : {destinations} " +
-                           $"destination(s) apportent {inflow} sur l'année, la station n'en traite " +
-                           $"que {treated}. Le bassin gagnerait {(inflow - treated)} par an, " +
-                           $"saturerait, et le village déborderait à chaque automne pour toujours. " +
-                           $"Capacité attendue : {needed} par saison (règle C = D + 3).");
-            return false;
+            // 3. La rangee de gouttes du HUD : 318 - 18N doit rester au-dessus de 72.
+            if (destinations > MaxDrops)
+            {
+                Debug.LogError($"[Sous la Ville] {destinations} destinations : la rangée de " +
+                               $"gouttes en chevauche le picto de saison au-delà de {MaxDrops}.");
+                ok = false;
+            }
+
+            if (ok)
+            {
+                Debug.Log($"[Sous la Ville] Bilan de l'eau tenable : {destinations} " +
+                          $"destination(s), {rain} de pluie sur l'année pour {margin} de marge, " +
+                          $"pointe de {peak} pour un bassin de {ReserveCapacity}. Station de " +
+                          $"{PlantBaseCapacity} à {capacity} par saison, soit " +
+                          $"{capacity - PlantBaseCapacity} bassin(s) à construire.");
+            }
+
+            return ok;
         }
+
+        /// <summary>
+        /// Le plafond de la rangee de gouttes du HUD. Une goutte fait 16 px et l'espacement 2,
+        /// la marge droite 4 : au-dela de treize, la rangee chevauche le picto de saison.
+        /// </summary>
+        private const int MaxDrops = 13;
 
         [MenuItem("Sous La Ville/Construire la scène Underground")]
         public static bool Build()
@@ -262,7 +324,8 @@ namespace SousLaVille.EditorTools
                 // saison. Sur l'arrivee, a cote de son noeud.
                 TreatmentPlant plant = outlet.AddComponent<TreatmentPlant>();
                 SerializedObject serialized = new SerializedObject(plant);
-                serialized.FindProperty("capacityPerSeason").intValue = PlantCapacityPerSeason;
+                serialized.FindProperty("baseCapacity").intValue = PlantBaseCapacity;
+                serialized.FindProperty("maxCapacity").intValue = MaxPlantCapacity();
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
         }

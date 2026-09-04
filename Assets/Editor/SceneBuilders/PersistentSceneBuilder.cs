@@ -190,6 +190,8 @@ namespace SousLaVille.EditorTools
                 LoadSprite(PlaceholderArtGenerator.PictoRepair);
             serialized.FindProperty("promptRemove").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoRemove);
+            serialized.FindProperty("promptGrow").objectReferenceValue =
+                LoadSprite(PlaceholderArtGenerator.PictoGrow);
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

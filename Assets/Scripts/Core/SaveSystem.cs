@@ -40,6 +40,7 @@ namespace SousLaVille.Core
         private ManholeFactory factory;
         private PipeFactory pipeFactory;
         private WaterReserve reserve;
+        private TreatmentPlant plant;
 
         private bool loaded;
         private bool restoring;
@@ -151,6 +152,10 @@ namespace SousLaVille.Core
             // Le bassin vit dans la meme scene que le reseau : s'il repond, le bassin est la.
             reserve = FindAnyObjectByType<WaterReserve>(FindObjectsInactive.Include);
 
+            // La station aussi, phase 12d, et pour la meme raison : elle est posee sur son
+            // arrivee, dans la scene Underground, a cote du noeud.
+            plant = FindAnyObjectByType<TreatmentPlant>(FindObjectsInactive.Include);
+
             // Marque pose avant la lecture : rien ne doit s'ecrire tant que la partie n'est
             // pas chargee, sinon un monde vide ecraserait un bon fichier.
             loaded = true;
@@ -182,6 +187,11 @@ namespace SousLaVille.Core
             if (reserve != null)
             {
                 reserve.Changed += MarkDirty;
+            }
+
+            if (plant != null)
+            {
+                plant.Changed += MarkDirty;
             }
         }
 
@@ -215,6 +225,11 @@ namespace SousLaVille.Core
             if (reserve != null)
             {
                 reserve.Changed -= MarkDirty;
+            }
+
+            if (plant != null)
+            {
+                plant.Changed -= MarkDirty;
             }
         }
 
@@ -376,6 +391,11 @@ namespace SousLaVille.Core
                     reserve.Restore(data.reserveLevel);
                 }
 
+                if (plant != null)
+                {
+                    plant.Restore(data.plantBasins);
+                }
+
                 if (seasons != null)
                 {
                     seasons.Restore(data.seasonIndex);
@@ -469,6 +489,7 @@ namespace SousLaVille.Core
             data.seasonIndex = seasons != null ? seasons.CurrentIndex : 0;
             data.seasonProgress = clock != null ? clock.SeasonProgress : 0f;
             data.reserveLevel = reserve != null ? reserve.Level : 0;
+            data.plantBasins = plant != null ? plant.Basins : 0;
             data.pipeInHand = pipeFactory != null ? pipeFactory.CurrentIndex : 0;
 
             foreach (Vector2Int cell in map.DugCells)

@@ -40,7 +40,11 @@ namespace SousLaVille.Player
             Dig,
             PlacePipe,
             RepairPipe,
-            RemovePipe
+            RemovePipe,
+
+            // AJOUTE A LA FIN, phase 12d. Un rang d'enum se serialise par sa VALEUR : inserer
+            // au milieu decalerait tout ce que les scenes ont deja ecrit.
+            GrowPlant
         }
 
         [Tooltip("Picto affiche au-dessus de la tete. Annonce toujours ce que fera Espace.")]
@@ -54,6 +58,10 @@ namespace SousLaVille.Player
         [SerializeField] private Sprite promptRepair;
         [SerializeField] private Sprite promptRemove;
 
+        [Tooltip("Picto d'agrandissement de la station, phase 12d : un bassin de plus.")]
+        [SerializeField] private Sprite promptGrow;
+
+        private TreatmentPlant plant;
         private SousLaVilleInputActions input;
         private PlayerController controller;
         private PipeNetwork network;
@@ -247,7 +255,18 @@ namespace SousLaVille.Player
                 return InteractionKind.RepairPipe;
             }
 
-            // 8. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
+            // 8. L'ARRIVEE DE LA STATION : l'agrandir d'un bassin, phase 12d. Le noeud
+            // PlantInlet n'offrait AUCUNE action tant qu'il n'etait pas abime — le creneau
+            // etait libre, et c'est le seul endroit du monde ou ce geste a un sens.
+            if (node.Type == NodeType.PlantInlet)
+            {
+                TreatmentPlant plant = ResolvePlant();
+                return plant != null && plant.CanGrow
+                    ? InteractionKind.GrowPlant
+                    : InteractionKind.None;
+            }
+
+            // 9. Un tuyau sain : enlever. Un noeud pose par le monde, la station ou une
             // maison, ne s'annonce pas : il ne s'enleve pas.
             return node.IsPermanent ? InteractionKind.None : InteractionKind.RemovePipe;
         }
@@ -291,6 +310,10 @@ namespace SousLaVille.Player
 
                 case InteractionKind.RemovePipe:
                     ResolveNetwork().RemovePipe(controller.FacingCell);
+                    return;
+
+                case InteractionKind.GrowPlant:
+                    ResolvePlant().AddBasin();
                     return;
             }
         }
@@ -429,6 +452,22 @@ namespace SousLaVille.Player
         /// Le reseau vit dans la scene Underground : il ne repond que quand cette couche est
         /// allumee, comme les cartes.
         /// </summary>
+        /// <summary>
+        /// La station, phase 12d. Elle vit dans la meme scene que le reseau, et on ne
+        /// l'interroge que sous terre : elle est donc allumee quand on la cherche. On la garde
+        /// une fois trouvee, comme le reseau.
+        /// </summary>
+        private TreatmentPlant ResolvePlant()
+        {
+            if (plant != null && plant.isActiveAndEnabled)
+            {
+                return plant;
+            }
+
+            plant = FindAnyObjectByType<TreatmentPlant>(FindObjectsInactive.Include);
+            return plant;
+        }
+
         private PipeNetwork ResolveNetwork()
         {
             if (network != null && network.isActiveAndEnabled)
@@ -607,6 +646,7 @@ namespace SousLaVille.Player
                 case InteractionKind.Dig: return promptDig;
                 case InteractionKind.RepairPipe: return promptRepair;
                 case InteractionKind.RemovePipe: return promptRemove;
+                case InteractionKind.GrowPlant: return promptGrow;
                 default: return null;
             }
         }

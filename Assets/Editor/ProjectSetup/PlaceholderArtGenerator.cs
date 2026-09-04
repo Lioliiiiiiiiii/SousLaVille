@@ -112,6 +112,14 @@ namespace SousLaVille.EditorTools
         /// </summary>
         public const int SignCount = 8;
 
+        /// <summary>
+        /// Phase 12d. Le picto d'agrandissement de la station, et le bassin de traitement qui
+        /// se pose sur son sol : la station GROSSIT A L'ECRAN d'un bassin a chaque
+        /// agrandissement, sinon le progres ne se verrait nulle part.
+        /// </summary>
+        public const string PictoGrow = PictosFolder + "/picto_grow.png";
+        public const string PlantBasinTexture = SpritesFolder + "/plant_basin.png";
+
         /// <summary>Rang du premier panneau de direction. Les quatre suivants : nord, est, sud, ouest.</summary>
         public const int SignFirstArrow = 4;
 
@@ -395,6 +403,8 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoDropFull, BuildDrop(full: true));
                 WriteTexture(PictoDropEmpty, BuildDrop(full: false));
                 WriteTexture(PictoRepair, BuildRepairPicto());
+                WriteTexture(PictoGrow, BuildGrowPicto());
+                WriteTexture(PlantBasinTexture, BuildPlantBasin());
 
                 WriteTexture(PictoSpring, BuildSpringPicto(), PictoSize);
                 WriteTexture(PictoSummer, BuildSummerPicto(), PictoSize);
@@ -559,8 +569,8 @@ namespace SousLaVille.EditorTools
 
             foreach (string path in new[] { PictoSurface, PictoUnderground, PictoDown, PictoUp,
                          PictoDig, PictoRemove, CursorTarget, PictoDropFull,
-                         PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn,
-                         PictoWinter })
+                         PictoDropEmpty, PictoRepair, PictoGrow, PlantBasinTexture,
+                         PictoSpring, PictoSummer, PictoAutumn, PictoWinter })
             {
                 ConfigureImporter(path, null);
             }
@@ -693,7 +703,7 @@ namespace SousLaVille.EditorTools
                 PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
-                FountainSprite, TreeTexture
+                FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture
             };
 
             foreach (string path in sprites)
@@ -1599,6 +1609,48 @@ namespace SousLaVille.EditorTools
         /// deux cent quarante-deux carres verts identiques separes par un lisere : on ne lit
         /// plus un mur, on lit un damier, et le labyrinthe cesse d'etre lisible.
         /// </summary>
+        /// <summary>
+        /// Le picto d'agrandissement de la station, phase 12d : une cuve, et une croix qui
+        /// dit « une de plus ». Pas de mot, pas de chiffre : le picto d'abord, comme partout.
+        /// </summary>
+        private static Color32[] BuildGrowPicto()
+        {
+            Color32 tank = new Color32(0x6E, 0x7B, 0x8B, 0xFF);
+            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
+            Color32 plus = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            Fill(pixels, TileSize, 1, 10, 2, 12, tank);
+            Fill(pixels, TileSize, 2, 9, 3, 9, water);
+
+            // La croix, en haut a droite : « une cuve de plus ».
+            Fill(pixels, TileSize, 11, 15, 11, 12, plus);
+            Fill(pixels, TileSize, 12, 13, 9, 14, plus);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Un bassin de traitement pose sur le sol de la station, phase 12d. Un par
+        /// agrandissement : la station grossit a l'ecran, et le progres du joueur se voit sans
+        /// jauge et sans compteur au HUD.
+        /// </summary>
+        private static Color32[] BuildPlantBasin()
+        {
+            Color32 wall = new Color32(0x8C, 0x99, 0xA8, 0xFF);
+            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
+            Color32 glint = new Color32(0x7C, 0xB8, 0xE8, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            Fill(pixels, TileSize, 1, 14, 1, 14, wall);
+            Fill(pixels, TileSize, 3, 12, 3, 12, water);
+            Fill(pixels, TileSize, 4, 7, 9, 10, glint);
+
+            return pixels;
+        }
+
         private static Color32[] BuildHedge(int mask)
         {
             Color32 leaf = new Color32(0x1F, 0x5C, 0x2E, 0xFF);

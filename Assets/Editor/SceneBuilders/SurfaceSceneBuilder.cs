@@ -363,6 +363,106 @@ namespace SousLaVille.EditorTools
 
             // La station est un passage comme les autres : on y descend et on en remonte.
             PortalBuilder.Attach(plant, cell, GameLayer.Surface, GameLayer.Underground);
+
+            CreatePlantBasins(plant);
+        }
+
+        /// <summary>
+        /// Les cuves de la station, phase 12d. Une par agrandissement possible, posee une fois
+        /// pour toutes sur le sol de l'enceinte et ETEINTE : PlantBasinsView les allume au fur
+        /// et a mesure. Rien ne s'instancie en jeu.
+        ///
+        /// Les emplacements sont les cases de sol de l'INTERIEUR STRICT de l'enceinte, remplies
+        /// du fond vers l'avant. Le sol de la station comprend son ouverture, ou un bassin
+        /// boucherait visuellement la porte alors qu'il ne bloque rien : on ne pose donc que
+        /// sur les cases entierement cernees par la station.
+        ///
+        /// S'il n'y avait pas assez de place, le builder le DIRAIT au lieu de poser en silence
+        /// autant de cuves qu'il peut.
+        /// </summary>
+        /// <summary>
+        /// Les cases ou une cuve peut se poser : le sol de la station dont les QUATRE voisines
+        /// appartiennent encore a la station. L'ouverture de l'enceinte en est donc exclue, et
+        /// la liste se remplit du fond vers l'avant.
+        /// </summary>
+        private static List<Vector2Int> PlantBasinSlots()
+        {
+            List<Vector2Int> slots = new List<Vector2Int>();
+
+            Vector2Int[] steps =
+            {
+                Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left
+            };
+
+            foreach (Vector2Int cell in VillageLayout.FindAll(VillageLayout.PlantFloor))
+            {
+                bool inside = true;
+
+                foreach (Vector2Int step in steps)
+                {
+                    char neighbour = VillageLayout.At(cell.x + step.x, cell.y + step.y);
+                    inside &= neighbour == VillageLayout.PlantFloor
+                           || neighbour == VillageLayout.PlantWall
+                           || neighbour == VillageLayout.PlantInlet;
+                }
+
+                if (inside)
+                {
+                    slots.Add(cell);
+                }
+            }
+
+            // Du fond vers l'avant : la station pousse vers le joueur, et non l'inverse.
+            slots.Reverse();
+            return slots;
+        }
+
+        private static void CreatePlantBasins(GameObject plant)
+        {
+            int wanted = VillageLayout.FindAll(VillageLayout.House).Count
+                       + VillageLayout.FindAll(VillageLayout.Fountain).Count;
+
+            List<Vector2Int> floor = PlantBasinSlots();
+            if (floor.Count < wanted)
+            {
+                Debug.LogError($"[Sous la Ville] La station n'a que {floor.Count} case(s) de sol " +
+                               $"pour {wanted} bassin(s) : elle ne pourra pas grandir jusqu'au " +
+                               "bout. Agrandis son enceinte dans le plan du village.");
+                return;
+            }
+
+            Sprite sprite = LoadSprite(PlaceholderArtGenerator.PlantBasinTexture);
+
+            GameObject parent = new GameObject("Basins");
+            parent.transform.SetParent(plant.transform, false);
+
+            List<SpriteRenderer> renderers = new List<SpriteRenderer>(wanted);
+
+            for (int i = 0; i < wanted; i++)
+            {
+                GameObject basin = new GameObject($"Basin_{i + 1:00}");
+                basin.transform.SetParent(parent.transform, false);
+                basin.transform.position = CellCenter(floor[i]);
+
+                SpriteRenderer renderer = basin.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                renderer.enabled = false;          // PlantBasinsView les allume
+                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+
+                renderers.Add(renderer);
+            }
+
+            PlantBasinsView view = plant.AddComponent<PlantBasinsView>();
+            SerializedObject serialized = new SerializedObject(view);
+            SerializedProperty property = serialized.FindProperty("basins");
+            property.arraySize = renderers.Count;
+
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = renderers[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static SurfaceMap AttachSurfaceMap(GameObject root, Grid grid, Tilemap ground,

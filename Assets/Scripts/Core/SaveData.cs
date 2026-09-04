@@ -144,5 +144,17 @@ namespace SousLaVille.Core
         /// pas de surprises.
         /// </summary>
         public int pipeInHand;
+
+        /// <summary>
+        /// Les bassins de traitement construits par le joueur, phase 12d. Champ ajoute a la
+        /// FIN, meme regle que covers, reserveLevel et pipeTypes : une partie ecrite avant lui
+        /// se relit avec zero bassin, donc une station a sa capacite de base — ce qui est
+        /// exactement l'etat de depart voulu. CurrentVersion reste a 2.
+        ///
+        /// C'est du PROGRES DE JOUEUR et non une donnee derivee : les maisons desservies, l'eau
+        /// du village et l'etat de la fontaine se recalculent, les bassins non. On sauvegarde
+        /// un geste, « il en a construit n », pas un etat.
+        /// </summary>
+        public int plantBasins;
     }
 }
