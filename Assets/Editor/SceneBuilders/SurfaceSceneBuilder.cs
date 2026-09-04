@@ -29,7 +29,7 @@ namespace SousLaVille.EditorTools
         [MenuItem("Sous La Ville/Construire la scène Surface")]
         public static bool Build()
         {
-            if (!VillageLayout.IsWellFormed() || !VillageLayout.ValidatePark())
+            if (!VillageLayout.IsWellFormed() || !VillageLayout.ValidateVillage())
             {
                 return false;
             }
@@ -57,6 +57,8 @@ namespace SousLaVille.EditorTools
 
             PaintVillage(ground, blocking);
             CreateManholes(root);
+            CreateTrees(root);
+            CreateSigns(root);
             CreateTreatmentPlant(root);
             CreateFountain(root);
 
@@ -113,14 +115,24 @@ namespace SousLaVille.EditorTools
         private static void PaintVillage(Tilemap ground, Tilemap blocking)
         {
             Tile grass = LoadTile(PlaceholderArtGenerator.TileGrass);
-            Tile road = LoadTile(PlaceholderArtGenerator.TilePath);
             Tile park = LoadTile(PlaceholderArtGenerator.TilePark);
             Tile plantFloor = LoadTile(PlaceholderArtGenerator.TilePlantFloor);
-            Tile hedge = LoadTile(PlaceholderArtGenerator.TileHedge);
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
             Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
             Tile facade = LoadTile(PlaceholderArtGenerator.TileFacade);
             Tile fountainTile = LoadTile(PlaceholderArtGenerator.TileFountain);
+            Tile tree = LoadTile(PlaceholderArtGenerator.TileTree);
+
+            // PHASE 12C : seize tuiles par famille, choisies par un masque de raccord, sur le
+            // patron exact des canalisations de la phase 3.
+            Tile[] roads = new Tile[PlaceholderArtGenerator.DecorMaskCount];
+            Tile[] hedges = new Tile[PlaceholderArtGenerator.DecorMaskCount];
+
+            for (int mask = 0; mask < PlaceholderArtGenerator.DecorMaskCount; mask++)
+            {
+                roads[mask] = LoadTile(PlaceholderArtGenerator.TileRoadMasked(mask));
+                hedges[mask] = LoadTile(PlaceholderArtGenerator.TileHedgeMasked(mask));
+            }
 
             int width = VillageLayout.Width;
             int height = VillageLayout.Height;
@@ -138,7 +150,7 @@ namespace SousLaVille.EditorTools
                     switch (cell)
                     {
                         case VillageLayout.Road:
-                            groundTiles[index] = road;
+                            groundTiles[index] = roads[GroundMask(x, y, VillageLayout.Road)];
                             break;
                         case VillageLayout.Park:
                             groundTiles[index] = park;
@@ -151,6 +163,7 @@ namespace SousLaVille.EditorTools
                             groundTiles[index] = plantFloor;
                             break;
                         case VillageLayout.Hedge:
+                            // De l'herbe sous la haie : sa tuile de raccord se pose dessus.
                             groundTiles[index] = grass;
                             break;
                         default:
@@ -173,10 +186,11 @@ namespace SousLaVille.EditorTools
                         blockingTiles[index] =
                             marker == VillageLayout.House ? house
                             : marker == VillageLayout.Fountain ? fountainTile
+                            : marker == VillageLayout.Tree ? tree
                             : marker == VillageLayout.Facade
                               || marker == VillageLayout.PipeFacade ? facade
                             : marker == VillageLayout.PlantWall ? plantWall
-                            : hedge;
+                            : hedges[BlockingMask(x, y, VillageLayout.Hedge)];
                     }
                 }
             }
@@ -186,6 +200,43 @@ namespace SousLaVille.EditorTools
             blocking.SetTilesBlock(bounds, blockingTiles);
             ground.CompressBounds();
             blocking.CompressBounds();
+        }
+
+        /// <summary>
+        /// Le masque de raccord d'une case de SOL : bit 0 nord, 1 est, 2 sud, 3 ouest, la
+        /// convention des canalisations de la phase 3. On interroge GroundAt et non le
+        /// marqueur : une bouche d'egout, une porte ou un panneau posent du chemin sous eux,
+        /// et la route doit donc les traverser sans se couper.
+        ///
+        /// Hors carte, on considere qu'il n'y a rien : une route se termine proprement au bord.
+        /// </summary>
+        private static int GroundMask(int x, int y, char kind)
+        {
+            int mask = 0;
+
+            if (VillageLayout.GroundAt(x, y + 1) == kind) mask |= 1;
+            if (VillageLayout.GroundAt(x + 1, y) == kind) mask |= 2;
+            if (VillageLayout.GroundAt(x, y - 1) == kind) mask |= 4;
+            if (VillageLayout.GroundAt(x - 1, y) == kind) mask |= 8;
+
+            return mask;
+        }
+
+        /// <summary>
+        /// Le masque de raccord d'une case BLOQUANTE. Hors carte, At rend Hedge : une haie se
+        /// prolonge donc au-dela du bord au lieu de s'y interrompre, ce qui est exactement ce
+        /// qu'il faut pour la bordure du village.
+        /// </summary>
+        private static int BlockingMask(int x, int y, char kind)
+        {
+            int mask = 0;
+
+            if (VillageLayout.At(x, y + 1) == kind) mask |= 1;
+            if (VillageLayout.At(x + 1, y) == kind) mask |= 2;
+            if (VillageLayout.At(x, y - 1) == kind) mask |= 4;
+            if (VillageLayout.At(x - 1, y) == kind) mask |= 8;
+
+            return mask;
         }
 
         private static void CreateManholes(GameObject root)
@@ -223,6 +274,78 @@ namespace SousLaVille.EditorTools
                 serializedCover.FindProperty("view").objectReferenceValue = renderer;
                 serializedCover.FindProperty("defaultCover").objectReferenceValue = sprite;
                 serializedCover.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Les arbres, phase 12c. Ils BLOQUENT : leur tuile est deja posee par PaintVillage,
+        /// et l'objet ne porte que le sprite, plus haut que sa case. Rien d'autre : un arbre
+        /// n'a aucun etat, aucune action, aucun composant.
+        ///
+        /// L'ordre de tri suit la ligne : un arbre plante plus bas passe devant celui d'au
+        /// dessus, sinon une cime recouvrirait le tronc de son voisin du dessous.
+        /// </summary>
+        private static void CreateTrees(GameObject root)
+        {
+            List<Vector2Int> cells = VillageLayout.FindAll(VillageLayout.Tree);
+            if (cells.Count == 0)
+            {
+                return;
+            }
+
+            Sprite sprite = LoadSprite(PlaceholderArtGenerator.TreeTexture);
+
+            GameObject parent = new GameObject("Trees");
+            parent.transform.SetParent(root.transform, false);
+
+            foreach (Vector2Int cell in cells)
+            {
+                GameObject tree = new GameObject($"Tree_{cell.x:00}_{cell.y:00}");
+                tree.transform.SetParent(parent.transform, false);
+                tree.transform.position = CellCenter(cell);
+
+                SpriteRenderer renderer = tree.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer,
+                    VillageLayout.Height - cell.y);
+            }
+        }
+
+        /// <summary>
+        /// Les panneaux de signalisation, phase 12c. Ils NE BLOQUENT PAS : ce sont des reperes,
+        /// et un repere en travers d'un chemin serait un echec puni au sens de CLAUDE.md.
+        /// ValidateVillage le verifie a chaque construction.
+        ///
+        /// Le catalogue vient de PlaceholderArtGenerator et sera REPRIS par l'usine a panneaux
+        /// de la phase 13 : les panneaux ne sont dessines qu'une fois.
+        ///
+        /// Le type est choisi par la case, sans hasard : deux constructions du meme plan
+        /// donnent le meme village. Les rues portent les quatre panneaux de rue, jamais les
+        /// panneaux de direction, qui sont reserves aux carrefours de galeries.
+        /// </summary>
+        private static void CreateSigns(GameObject root)
+        {
+            List<Vector2Int> cells = VillageLayout.FindAll(VillageLayout.Sign);
+            if (cells.Count == 0)
+            {
+                return;
+            }
+
+            GameObject parent = new GameObject("Signs");
+            parent.transform.SetParent(root.transform, false);
+
+            foreach (Vector2Int cell in cells)
+            {
+                int kind = (cell.x + cell.y) % PlaceholderArtGenerator.SignFirstArrow;
+
+                GameObject sign = new GameObject($"Sign_{cell.x:00}_{cell.y:00}");
+                sign.transform.SetParent(parent.transform, false);
+                sign.transform.position = CellCenter(cell);
+
+                SpriteRenderer renderer = sign.AddComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(kind));
+                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer,
+                    VillageLayout.Height - cell.y);
             }
         }
 
@@ -339,6 +462,10 @@ namespace SousLaVille.EditorTools
         /// La fontaine, au centre du labyrinthe de haies. Elle bloque le passage comme une
         /// maison : on l'atteint, on n'entre pas dedans.
         ///
+        /// PHASE 12C : son sprite et sa tuile bloquante sont DEUX images. Elles sortaient du
+        /// meme fichier de seize sur seize, ce qui la clouait a la taille d'une case ; elle
+        /// fait maintenant seize sur vingt-quatre et deborde vers le haut, comme une maison.
+        ///
         /// Elle n'a aucun etat propre : c'est le solveur qui dit si elle est desservie, et
         /// FloodView qui pose son eau. Le composant ne porte que sa case.
         /// </summary>
@@ -351,7 +478,7 @@ namespace SousLaVille.EditorTools
             fountain.transform.position = CellCenter(cell);
 
             SpriteRenderer renderer = fountain.AddComponent<SpriteRenderer>();
-            renderer.sprite = LoadSprite(PlaceholderArtGenerator.FountainTexture);
+            renderer.sprite = LoadSprite(PlaceholderArtGenerator.FountainSprite);
             SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
 
             Fountain component = fountain.AddComponent<Fountain>();

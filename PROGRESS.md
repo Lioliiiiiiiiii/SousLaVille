@@ -22,7 +22,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 11 | Le parc | Terminée |
 | 12a | Les filets | Terminée |
 | 12b | La carte 64x45 et le grand labyrinthe | Terminée |
-| 12c | Le décor | À faire |
+| 12c | Le décor | Terminée |
 | 12d | La station qui s'agrandit | À faire |
 | 12e | Les huit guides | À faire |
 | 13 | L'usine à panneaux | À faire |
@@ -1483,6 +1483,95 @@ est de relâcher **avant** l'arrivée, à une demi-case du centre, le pas étant
 
 Cela ne concerne que le pilotage automatique — un humain relâche la flèche quand il voit qu'il est
 arrivé, une image plus tard, et la case suivante est de toute façon celle qu'il voulait.
+
+## Phase 12c, ce qui est fait
+
+Le décor. Aucun changement de règle : la carte, les profondeurs, le pré-creusement et le bilan
+de l'eau sont ceux de la phase 12b, au chiffre près.
+
+### Seize tuiles par famille, sur le patron exact des canalisations
+
+Un labyrinthe de **242 cases de haie** peint avec une seule tuile, ce sont 242 carrés verts
+identiques séparés d'un liseré : on ne lit plus un mur, on lit un damier. Idem pour les
+**245 cases de route**, qui formaient une nappe beige sans direction.
+
+Les deux familles reçoivent donc un **masque de raccord** — bit 0 nord, 1 est, 2 sud, 3 ouest,
+la convention de `BuildPipe` depuis la phase 3, et désormais la seule convention de direction du
+projet. La haie pousse vers ses voisines et montre sa tranche sur ses côtés libres ; la chaussée
+s'étend vers les siennes et se borde d'un accotement. La bande blanche ne se pose que sur une
+portion **droite** : un virage et un carrefour n'en portent pas, comme en vrai.
+
+Deux calculs de masque, et la distinction compte : `GroundMask` interroge `GroundAt`, si bien
+qu'une bouche d'égout, une porte ou un panneau — qui posent tous du chemin sous eux — ne coupent
+pas la route ; `BlockingMask` interroge `At`, dont le hors-carte rend `Hedge`, si bien que la
+bordure de haies se prolonge au-delà du bord au lieu de s'y interrompre.
+
+### La fontaine, séparée en deux images
+
+Sa tuile bloquante et son sprite sortaient du **même fichier de 16x16**, ce qui la clouait à la
+taille d'une case : elle ne pouvait pas grandir sans que le mur du parc grandisse avec elle.
+Séparées sur le patron exact de `house.png` / `tile_house.png`, elle fait maintenant 16x24, avec
+bassin, colonne, vasque et jet, et déborde vers le haut comme une maison.
+
+### Les arbres bloquent, et c'est une contrainte de jeu
+
+131 arbres, en bosquets et isolés. Ils **bloquent**, recommandation de l'audit : un décor qu'on
+traverse n'est pas un décor, c'est un motif de sol. Deux règles, vérifiées à chaque construction
+par `ValidateDecor` :
+
+- **Aucun arbre à moins de cinq pas d'une bouche d'égout.** Le rayon de la flaque vaut
+  `Lost - 1` et `Lost` plafonne à 5 : une case bloquante ne prend pas l'eau, donc un arbre planté
+  plus près retirerait des cases au débordement **sans que rien ne le dise**. Le débordement est
+  le seul retour permanent du jeu ; on ne le rogne pas pour un arbre. Mesure : la table
+  d'étalement est **inchangée jusqu'à Lost = 5** malgré 96 cases bloquantes de plus.
+- **Rien n'est enfermé, nulle part.** C'est ce que la phase 12c a demandé au validateur en
+  l'élargissant.
+
+### Les panneaux sont des repères, et ils ne bloquent jamais
+
+Le catalogue compte **huit panneaux** dessinés par code : danger, stop, sens interdit, cédez le
+passage, et quatre panneaux de direction, un par point cardinal. Seize en rue, **douze aux
+carrefours de galeries**.
+
+**Les panneaux de galerie règlent un vrai manque.** Le sous-sol n'avait aucun repère : trois
+nuances de brun, des galeries qui se ressemblent toutes, et une carte passée de 1200 à
+2880 cases. La flèche montre **la station**, calculée une fois à la construction depuis le plan.
+Un panneau de direction ne dit pas le chemin, il dit la direction : le puzzle des profondeurs
+reste entier. Les douze carrefours ont été relevés **par calcul** sur le plan — 44 candidats —
+puis choisis à la main, un par secteur.
+
+**Décision, à ta demande : ce catalogue est le PREMIER dessin des panneaux, pas le troisième.**
+L'usine à panneaux de la phase 13 le reprend au lieu d'en créer un second, ce qui conserve la
+décision du 3 septembre — un seul passage d'art, règle 4 de CLAUDE.md.
+
+### `ValidatePark` devient `ValidateVillage`
+
+Elle ne prouvait plus seulement le parc. Sa composante connexe depuis le départ doit maintenant
+contenir **toute** case praticable de la carte : un arbre qui détache un coin de plaine est
+refusé par construction, ce qu'aucune version précédente n'aurait vu.
+
+## Phase 12c, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors celui du package MCP.
+- `ValidateVillage` passe et journalise : « 2245 cases praticables, toutes reliées ; 131 arbres,
+  16 panneaux ». Les trois autres validateurs sont inchangés et passent.
+- **Sabotage du décor, trois façons, trois refus nommés** :
+  - un arbre planté en (11, 11) → « L'arbre (11, 11) est à 2 pas de la bouche (9, 11) : il mange
+    une case de flaque. Le rayon du débordement plafonne à 4 » ;
+  - deux arbres cernant le coin sud-est → « La case (62, 1), « . », est enfermée » ;
+  - un panneau muré au cœur du labyrinthe → « Le panneau (27, 15) n'est atteignable depuis aucune
+    case accessible : personne ne le lira jamais ».
+- **Un contrôle qui ne pouvait pas dire non, remplacé.** La première version vérifiait qu'un
+  panneau ne bloque pas — mais « I » n'est pas dans la liste de blocage, donc la réponse était
+  oui quoi qu'il arrive. Il vérifie désormais qu'il est **atteignable**, ce qui peut échouer et
+  vient d'échouer.
+- **Le compte de l'art est mesuré, plus écrit à la main.** Le journal annonçait « 123 textures,
+  66 tuiles » quelle que soit la réalité : la phase 12c en a ajouté quarante-deux sans que le
+  nombre bouge d'une unité. Il compte maintenant les fichiers sur le disque.
+- Captures relues : le labyrinthe se lit comme un mur continu et non comme un damier, les routes
+  ont leurs virages et leurs carrefours, la fontaine a son jet, et les douze flèches du sous-sol
+  pointent toutes vers la station.
+- `git diff ProjectSettings/` : **vide**.
 
 ## Les documents du projet
 

@@ -139,6 +139,7 @@ namespace SousLaVille.EditorTools
 
             PaintUnderground(ground, blocking);
             CreateLadders(root);
+            CreateSigns(root);
             CreateHouseInlets(root);
             CreateReserve(root);
 
@@ -263,6 +264,62 @@ namespace SousLaVille.EditorTools
                 SerializedObject serialized = new SerializedObject(plant);
                 serialized.FindProperty("capacityPerSeason").intValue = PlantCapacityPerSeason;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Les panneaux de carrefour, phase 12c. Le sous-sol n'avait AUCUN repere : trois
+        /// nuances de brun, des galeries qui se ressemblent toutes, et une carte passee de
+        /// 1200 a 2880 cases. LayerIndicator porte encore le commentaire « pas de mini-carte,
+        /// elle serait vide de sens tant que le reseau n'existe pas » : c'est vrai d'une carte,
+        /// pas d'un panneau.
+        ///
+        /// La fleche montre LA STATION, et elle est calculee ici, une fois, depuis le plan :
+        /// l'axe dominant vers l'arrivee. Un panneau de direction ne dit pas le chemin, il dit
+        /// la direction — c'est exactement ce que fait un vrai panneau, et c'est ce qui laisse
+        /// le puzzle des profondeurs entier.
+        ///
+        /// Ils ne bloquent pas : ils sont poses dans des galeries deja creusees, et le sol y
+        /// est peint comme partout ailleurs.
+        /// </summary>
+        private static void CreateSigns(GameObject root)
+        {
+            List<Vector2Int> cells = UndergroundLayout.FindAll(UndergroundLayout.Sign);
+            if (cells.Count == 0)
+            {
+                return;
+            }
+
+            List<Vector2Int> plants = UndergroundLayout.FindAll(UndergroundLayout.PlantOutlet);
+            if (plants.Count != 1)
+            {
+                return;
+            }
+
+            Vector2Int plant = plants[0];
+
+            GameObject parent = new GameObject("Signs");
+            parent.transform.SetParent(root.transform, false);
+
+            foreach (Vector2Int cell in cells)
+            {
+                Vector2Int delta = plant - cell;
+
+                // 0 nord, 1 est, 2 sud, 3 ouest : le meme ordre que les bits du masque de
+                // raccord, pour n'avoir qu'une convention de direction dans tout le projet.
+                int arrow = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y)
+                    ? (delta.x >= 0 ? 1 : 3)
+                    : (delta.y >= 0 ? 0 : 2);
+
+                GameObject sign = new GameObject($"Sign_{cell.x:00}_{cell.y:00}");
+                sign.transform.SetParent(parent.transform, false);
+                sign.transform.position = SurfaceSceneBuilder.CellCenter(cell);
+
+                SpriteRenderer renderer = sign.AddComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(
+                    PlaceholderArtGenerator.SignFirstArrow + arrow));
+                SceneBuilderUtility.ApplySortingLayer(renderer,
+                    GameSortingLayers.UndergroundEntities, UndergroundLayout.Height - cell.y);
             }
         }
 

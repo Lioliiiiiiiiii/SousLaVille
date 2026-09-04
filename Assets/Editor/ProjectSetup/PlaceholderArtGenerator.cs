@@ -81,9 +81,64 @@ namespace SousLaVille.EditorTools
         /// <summary>L'eau du village, phase 10. Semi-transparente : on voit le sol dessous.</summary>
         public const string TileWater = TilesFolder + "/Tile_Water.asset";
 
-        /// <summary>La fontaine du parc, phase 11. Bloquante comme une maison.</summary>
+        /// <summary>
+        /// La fontaine du parc, phase 11, SEPAREE EN DEUX EN PHASE 12C sur le patron exact de
+        /// house.png / tile_house.png. La tuile bloquante et le sprite sortaient du meme
+        /// fichier de seize sur seize, ce qui clouait la fontaine a la taille d'une case : elle
+        /// ne pouvait pas grandir sans que le mur du parc grandisse avec elle.
+        /// </summary>
         public const string FountainTexture = TilesFolder + "/tile_fountain.png";
         public const string TileFountain = TilesFolder + "/Tile_Fountain.asset";
+        public const string FountainSprite = SpritesFolder + "/fountain.png";
+
+        // ---- PHASE 12C, LE DECOR -------------------------------------------------------
+        //
+        // Seize tuiles par famille, masque de raccord, sur le patron EXACT de BuildPipe :
+        // bit 0 nord, 1 est, 2 sud, 3 ouest. Sans elles un labyrinthe de trois cents cases est
+        // trois cents carres verts identiques, et deux cent quarante-cinq cases de route sont
+        // une nappe beige sans direction.
+        public const int DecorMaskCount = 16;
+
+        /// <summary>L'arbre, phase 12c. Bloquant comme une maison, et de la meme hauteur.</summary>
+        public const string TreeTexture = SpritesFolder + "/tree.png";
+        public const string TreeTileTexture = TilesFolder + "/tile_tree.png";
+        public const string TileTree = TilesFolder + "/Tile_Tree.asset";
+
+        /// <summary>
+        /// Le catalogue de panneaux, phase 12c. Quatre panneaux de rue et quatre panneaux de
+        /// direction, un par point cardinal. L'USINE A PANNEAUX DE LA PHASE 13 REPREND CE
+        /// CATALOGUE au lieu d'en creer un second : c'est le premier dessin, pas le troisieme,
+        /// et la regle 4 de CLAUDE.md tient.
+        /// </summary>
+        public const int SignCount = 8;
+
+        /// <summary>Rang du premier panneau de direction. Les quatre suivants : nord, est, sud, ouest.</summary>
+        public const int SignFirstArrow = 4;
+
+        public static string SignTexture(int kind)
+        {
+            return $"{SpritesFolder}/sign_{Mathf.Clamp(kind, 0, SignCount - 1):00}.png";
+        }
+
+        public static string HedgeTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_hedge_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileHedgeMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Hedge_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        public static string RoadTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_path_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileRoadMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Path_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
 
         public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
         public const string TileWall = TilesFolder + "/Tile_Wall.asset";
@@ -348,7 +403,23 @@ namespace SousLaVille.EditorTools
 
                 WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
                 WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
-                WriteTexture(FountainTexture, BuildFountain());
+                WriteTexture(FountainTexture, BuildFountainBase());
+                WriteTexture(FountainSprite, BuildFountainSprite(), PlayerWidth);
+
+                // Le decor de la phase 12c.
+                for (int mask = 0; mask < DecorMaskCount; mask++)
+                {
+                    WriteTexture(HedgeTexture(mask), BuildHedge(mask));
+                    WriteTexture(RoadTexture(mask), BuildRoad(mask));
+                }
+
+                WriteTexture(TreeTexture, BuildTree(), PlayerWidth);
+                WriteTexture(TreeTileTexture, BuildTreeBase());
+
+                for (int kind = 0; kind < SignCount; kind++)
+                {
+                    WriteTexture(SignTexture(kind), BuildSign(kind), PlayerWidth);
+                }
                 WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
                 WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
 
@@ -418,6 +489,20 @@ namespace SousLaVille.EditorTools
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
             ConfigureImporter($"{TilesFolder}/tile_water.png", null);
             ConfigureImporter(FountainTexture, null);
+            ConfigureImporter(FountainSprite, PlayerPivot);
+            ConfigureImporter(TreeTexture, PlayerPivot);
+            ConfigureImporter(TreeTileTexture, null);
+
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                ConfigureImporter(HedgeTexture(mask), null);
+                ConfigureImporter(RoadTexture(mask), null);
+            }
+
+            for (int kind = 0; kind < SignCount; kind++)
+            {
+                ConfigureImporter(SignTexture(kind), PlayerPivot);
+            }
             ConfigureImporter($"{TilesFolder}/tile_facade.png", null);
             ConfigureImporter($"{TilesFolder}/tile_wall.png", null);
             ConfigureImporter(VillageMapTexture, null);
@@ -490,6 +575,13 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TileWorkshop, $"{TilesFolder}/tile_workshop.png");
             CreateTileAsset(TileWater, $"{TilesFolder}/tile_water.png");
             CreateTileAsset(TileFountain, FountainTexture);
+            CreateTileAsset(TileTree, TreeTileTexture);
+
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                CreateTileAsset(TileHedgeMasked(mask), HedgeTexture(mask));
+                CreateTileAsset(TileRoadMasked(mask), RoadTexture(mask));
+            }
             CreateTileAsset(TileFacade, $"{TilesFolder}/tile_facade.png");
             CreateTileAsset(TileWall, $"{TilesFolder}/tile_wall.png");
 
@@ -509,7 +601,32 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 123 textures, 66 tuiles.");
+
+            // Le compte est MESURE, plus ecrit a la main. Il annoncait « 123 textures, 66
+            // tuiles » quelle que soit la realite : la phase 12c en a ajoute quarante-deux
+            // sans que le nombre bouge d'une unite. Un journal qui ne peut pas dire non ne
+            // vaut pas mieux qu'un validateur qui dit toujours oui.
+            int textures = CountAssets(TilesFolder, ".png") + CountAssets(SpritesFolder, ".png")
+                         + CountAssets(PictosFolder, ".png");
+            int tiles = CountAssets(TilesFolder, ".asset");
+
+            Debug.Log($"[Sous la Ville] Art placeholder généré : {textures} textures, " +
+                      $"{tiles} tuiles.");
+        }
+
+        /// <summary>Combien de fichiers d'une extension donnee vivent dans un dossier d'assets.</summary>
+        private static int CountAssets(string folder, string extension)
+        {
+            string absolute = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Application.dataPath), folder);
+
+            if (!System.IO.Directory.Exists(absolute))
+            {
+                return 0;
+            }
+
+            return System.IO.Directory.GetFiles(absolute, "*" + extension,
+                System.IO.SearchOption.TopDirectoryOnly).Length;
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -518,7 +635,7 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain
+                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain, TileTree
             };
 
             foreach (string path in tiles)
@@ -549,13 +666,34 @@ namespace SousLaVille.EditorTools
                 }
             }
 
+            // Le decor de la phase 12c. AreAssetsPresent barre TOUTE construction de scene :
+            // une famille de tuiles oubliee ici se verrait donc a la construction, et non a
+            // l'ecran par des carres manquants.
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Tile>(TileHedgeMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileRoadMasked(mask)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int kind = 0; kind < SignCount; kind++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(SignTexture(kind)) == null)
+                {
+                    return false;
+                }
+            }
+
             string[] sprites =
             {
                 ManholeTexture, LadderTexture, HouseTexture, HouseInletTexture, PlayerDown,
                 PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
                 PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
-                DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk
+                DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
+                FountainSprite, TreeTexture
             };
 
             foreach (string path in sprites)
@@ -1452,6 +1590,361 @@ namespace SousLaVille.EditorTools
         /// Le jet est dessine sur le bassin, meme a l'arret : c'est une fontaine, pas un
         /// puits. Ce qui dit qu'elle marche, c'est l'eau que FloodView pose autour d'elle.
         /// </summary>
+        /// <summary>
+        /// Une haie a masque de raccord, phase 12c. Le masque suit BuildPipe : bit 0 nord,
+        /// 1 est, 2 sud, 3 ouest. La haie remplit sa case et POUSSE vers ses voisines ; sur un
+        /// cote libre elle se retire d'un pixel et montre sa tranche claire.
+        ///
+        /// Le labyrinthe fait deux cent quarante-deux cases de haie. Sans le masque, ce sont
+        /// deux cent quarante-deux carres verts identiques separes par un lisere : on ne lit
+        /// plus un mur, on lit un damier, et le labyrinthe cesse d'etre lisible.
+        /// </summary>
+        private static Color32[] BuildHedge(int mask)
+        {
+            Color32 leaf = new Color32(0x1F, 0x5C, 0x2E, 0xFF);
+            Color32 crown = new Color32(0x2F, 0x7A, 0x3E, 0xFF);
+            Color32 shade = Darken(leaf, 0.62f);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Le corps se retire d'un pixel de chaque cote LIBRE, et touche le bord partout
+            // ou une haie continue.
+            int x0 = (mask & 8) != 0 ? 0 : 1;
+            int x1 = (mask & 2) != 0 ? TileSize - 1 : TileSize - 2;
+            int y0 = (mask & 4) != 0 ? 0 : 1;
+            int y1 = (mask & 1) != 0 ? TileSize - 1 : TileSize - 2;
+
+            Fill(pixels, TileSize, x0, x1, y0, y1, leaf);
+
+            // Le feuillage : des touffes claires, toujours au meme endroit, pour que deux
+            // haies voisines ne se lisent pas comme une seule masse plate.
+            for (int y = y0; y <= y1; y++)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    if ((x + 2 * y) % 5 == 0)
+                    {
+                        pixels[y * TileSize + x] = crown;
+                    }
+                }
+            }
+
+            // L'ombre portee sur les cotes libres : c'est elle qui donne l'epaisseur du mur.
+            if ((mask & 4) == 0) Fill(pixels, TileSize, x0, x1, y0, y0, shade);
+            if ((mask & 8) == 0) Fill(pixels, TileSize, x0, x0, y0, y1, shade);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Une route a masque de raccord, phase 12c. Meme masque que la haie. La chaussee
+        /// s'etend vers ses voisines et se borde d'un accotement clair sur ses cotes libres :
+        /// une route se lit alors comme une route, avec ses virages et ses carrefours, et non
+        /// comme une nappe beige.
+        /// </summary>
+        private static Color32[] BuildRoad(int mask)
+        {
+            Color32 verge = new Color32(0xC8, 0xA9, 0x6E, 0xFF);
+            Color32 asphalt = new Color32(0xA6, 0x8B, 0x59, 0xFF);
+            Color32 paint = new Color32(0xE2, 0xD4, 0xB0, 0xFF);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = verge;
+            }
+
+            // La chaussee : un carre central, plus un bras vers chaque voisine.
+            Fill(pixels, TileSize, 3, 12, 3, 12, asphalt);
+            if ((mask & 1) != 0) Fill(pixels, TileSize, 3, 12, 12, 15, asphalt);
+            if ((mask & 2) != 0) Fill(pixels, TileSize, 12, 15, 3, 12, asphalt);
+            if ((mask & 4) != 0) Fill(pixels, TileSize, 3, 12, 0, 3, asphalt);
+            if ((mask & 8) != 0) Fill(pixels, TileSize, 0, 3, 3, 12, asphalt);
+
+            // La bande blanche, seulement sur une portion droite : elle dit le sens de la
+            // route. Un carrefour ou un virage n'en porte pas, comme en vrai.
+            bool straightVertical = mask == 5;
+            bool straightHorizontal = mask == 10;
+
+            if (straightVertical)
+            {
+                for (int y = 1; y < TileSize; y += 4)
+                {
+                    Fill(pixels, TileSize, 7, 8, y, y + 1, paint);
+                }
+            }
+            else if (straightHorizontal)
+            {
+                for (int x = 1; x < TileSize; x += 4)
+                {
+                    Fill(pixels, TileSize, x, x + 1, 7, 8, paint);
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Un arbre, phase 12c. Seize sur vingt-quatre comme la maison et le personnage : sa
+        /// cime deborde vers le haut et son tronc tient dans sa case. Il BLOQUE, et sa tuile
+        /// bloquante est une image separee, BuildTreeBase.
+        /// </summary>
+        private static Color32[] BuildTree()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 trunk = new Color32(0x6B, 0x4A, 0x2E, 0xFF);
+            Color32 bark = Darken(trunk, 0.72f);
+            Color32 leaf = new Color32(0x2C, 0x6E, 0x35, 0xFF);
+            Color32 light = new Color32(0x46, 0x92, 0x48, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            Fill(pixels, width, 6, 9, 0, 9, trunk);
+            Fill(pixels, width, 6, 6, 0, 9, bark);
+
+            // La cime : trois rangs de plus en plus larges, puis un sommet arrondi.
+            Fill(pixels, width, 2, 13, 9, 18, leaf);
+            Fill(pixels, width, 3, 12, 18, 20, leaf);
+            Fill(pixels, width, 5, 10, 20, 22, leaf);
+            Fill(pixels, width, 7, 8, 22, 23, leaf);
+
+            for (int y = 9; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int index = y * width + x;
+                    if (pixels[index].a != 0 && (x + 3 * y) % 7 == 0)
+                    {
+                        pixels[index] = light;
+                    }
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// La tuile bloquante de l'arbre : son pied. Une image separee du sprite, patron de
+        /// house.png / tile_house.png, sans quoi l'arbre serait cloue a la taille d'une case.
+        /// </summary>
+        private static Color32[] BuildTreeBase()
+        {
+            Color32 trunk = new Color32(0x6B, 0x4A, 0x2E, 0xFF);
+            Color32 root = Darken(trunk, 0.7f);
+
+            Color32[] pixels = BuildTile(new Color32(0x3A, 0x5E, 0x2C, 0xFF));
+
+            Fill(pixels, TileSize, 5, 10, 3, 12, root);
+            Fill(pixels, TileSize, 6, 9, 4, 11, trunk);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Un panneau de signalisation, phase 12c. Seize sur vingt-quatre : un poteau dans la
+        /// case, la plaque au-dessus. Le catalogue est celui du Code de la route francais, dont
+        /// la geometrie est deja presque sa forme finale — c'est ce que la decision du
+        /// 3 septembre appelait « un placeholder ideal ».
+        ///
+        ///   0 danger (triangle rouge)        1 stop (octogone rouge)
+        ///   2 sens interdit (disque barre)   3 cedez le passage (triangle pointe en bas)
+        ///   4 a 7 direction (disque bleu, fleche nord / est / sud / ouest)
+        ///
+        /// L'USINE A PANNEAUX DE LA PHASE 13 REPREND CE CATALOGUE.
+        /// </summary>
+        private static Color32[] BuildSign(int kind)
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
+            Color32 red = new Color32(0xC8, 0x2F, 0x2F, 0xFF);
+            Color32 blue = new Color32(0x2E, 0x5F, 0xA8, 0xFF);
+            Color32 white = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            Fill(pixels, width, 7, 8, 0, 13, post);
+
+            const int cx = 8;
+            const int cy = 18;
+
+            if (kind == 0 || kind == 3)
+            {
+                // Triangle. Pointe en haut pour le danger, en bas pour cedez le passage.
+                bool pointingUp = kind == 0;
+
+                for (int row = 0; row < 9; row++)
+                {
+                    int half = pointingUp ? row : 8 - row;
+                    int y = cy - 4 + row;
+                    Fill(pixels, width, cx - half, cx + half - 1, y, y, red);
+                }
+
+                for (int row = 2; row < 7; row++)
+                {
+                    int half = (pointingUp ? row : 8 - row) - 2;
+                    if (half <= 0)
+                    {
+                        continue;
+                    }
+
+                    int y = cy - 4 + row;
+                    Fill(pixels, width, cx - half, cx + half - 1, y, y, white);
+                }
+            }
+            else if (kind == 1)
+            {
+                // Octogone : un carre dont on retire les quatre coins.
+                Fill(pixels, width, cx - 5, cx + 4, cy - 5, cy + 4, red);
+
+                // Les quatre coins rabotes : c'est ce qui fait l'octogone.
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    for (int dx = 0; dx < 2 - dy; dx++)
+                    {
+                        pixels[(cy - 5 + dy) * width + cx - 5 + dx] = new Color32(0, 0, 0, 0);
+                        pixels[(cy - 5 + dy) * width + cx + 4 - dx] = new Color32(0, 0, 0, 0);
+                        pixels[(cy + 4 - dy) * width + cx - 5 + dx] = new Color32(0, 0, 0, 0);
+                        pixels[(cy + 4 - dy) * width + cx + 4 - dx] = new Color32(0, 0, 0, 0);
+                    }
+                }
+
+                Fill(pixels, width, cx - 3, cx + 2, cy - 1, cy, white);
+            }
+            else
+            {
+                // Les disques : sens interdit en rouge, direction en bleu.
+                Color32 face = kind == 2 ? red : blue;
+                DrawDisc(pixels, width, cx, cy, 5.4f, face);
+
+                if (kind == 2)
+                {
+                    Fill(pixels, width, cx - 4, cx + 3, cy - 1, cy, white);
+                }
+                else
+                {
+                    DrawArrow(pixels, width, cx, cy, kind - SignFirstArrow, white);
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>Un disque plein, centre sur (cx, cy).</summary>
+        private static void DrawDisc(Color32[] pixels, int width, int cx, int cy, float radius,
+            Color32 color)
+        {
+            int span = Mathf.CeilToInt(radius);
+
+            for (int dy = -span; dy <= span; dy++)
+            {
+                for (int dx = -span; dx <= span; dx++)
+                {
+                    if (dx * dx + dy * dy > radius * radius)
+                    {
+                        continue;
+                    }
+
+                    int x = cx + dx;
+                    int y = cy + dy;
+
+                    if (x < 0 || x >= width || y < 0 || y * width + x >= pixels.Length)
+                    {
+                        continue;
+                    }
+
+                    pixels[y * width + x] = color;
+                }
+            }
+        }
+
+        /// <summary>
+        /// La fleche d'un panneau de direction. 0 nord, 1 est, 2 sud, 3 ouest : le meme ordre
+        /// que les bits du masque de raccord, pour n'avoir qu'une convention dans le projet.
+        /// </summary>
+        private static void DrawArrow(Color32[] pixels, int width, int cx, int cy, int direction,
+            Color32 color)
+        {
+            for (int step = 0; step < 4; step++)
+            {
+                int half = 3 - step;
+
+                switch (direction)
+                {
+                    case 0:
+                        Fill(pixels, width, cx - half, cx + half - 1, cy + step, cy + step, color);
+                        break;
+                    case 2:
+                        Fill(pixels, width, cx - half, cx + half - 1, cy - step, cy - step, color);
+                        break;
+                    case 1:
+                        Fill(pixels, width, cx + step, cx + step, cy - half, cy + half - 1, color);
+                        break;
+                    default:
+                        Fill(pixels, width, cx - step, cx - step, cy - half, cy + half - 1, color);
+                        break;
+                }
+            }
+
+            // La hampe, dans l'axe de la pointe.
+            if (direction == 0) Fill(pixels, width, cx - 1, cx, cy - 4, cy, color);
+            else if (direction == 2) Fill(pixels, width, cx - 1, cx, cy, cy + 4, color);
+            else if (direction == 1) Fill(pixels, width, cx - 4, cx, cy - 1, cy, color);
+            else Fill(pixels, width, cx, cx + 4, cy - 1, cy, color);
+        }
+
+        /// <summary>
+        /// La fontaine VUE DE FACE, phase 12c : seize sur vingt-quatre comme la maison. Un
+        /// bassin, une colonne, une vasque, un jet. Elle ne pouvait pas grandir tant que la
+        /// tuile bloquante et le sprite sortaient du meme fichier.
+        /// </summary>
+        private static Color32[] BuildFountainSprite()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 stone = new Color32(0x8C, 0x86, 0x7A, 0xFF);
+            Color32 rim = new Color32(0xB8, 0xB2, 0xA4, 0xFF);
+            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
+            Color32 jet = new Color32(0x9C, 0xD4, 0xF0, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            // Le bassin du bas, dans la case.
+            Fill(pixels, width, 1, 14, 0, 6, stone);
+            Fill(pixels, width, 2, 13, 1, 5, water);
+            Fill(pixels, width, 1, 14, 6, 6, rim);
+
+            // La colonne.
+            Fill(pixels, width, 6, 9, 7, 14, stone);
+            Fill(pixels, width, 7, 8, 7, 14, rim);
+
+            // La vasque haute.
+            Fill(pixels, width, 3, 12, 15, 17, stone);
+            Fill(pixels, width, 4, 11, 16, 17, water);
+            Fill(pixels, width, 3, 12, 17, 17, rim);
+
+            // Le jet, qui retombe de part et d'autre.
+            Fill(pixels, width, 7, 8, 18, 23, jet);
+            Fill(pixels, width, 5, 5, 19, 21, jet);
+            Fill(pixels, width, 10, 10, 19, 21, jet);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// La tuile BLOQUANTE de la fontaine : son socle vu de dessus. C'est l'ancienne image
+        /// de la phase 11, qui servait aussi de sprite ; depuis la phase 12c elle ne sert plus
+        /// qu'a bloquer, et le sprite vit dans fountain.png.
+        /// </summary>
+        private static Color32[] BuildFountainBase()
+        {
+            return BuildFountain();
+        }
+
         private static Color32[] BuildFountain()
         {
             Color32 rim = new Color32(0xB8, 0xB2, 0xA4, 0xFF);
@@ -1642,6 +2135,7 @@ namespace SousLaVille.EditorTools
             Color32 plantWall = new Color32(0x3A, 0x6E, 0xA5, 0xFF);
             Color32 house = new Color32(0xA0, 0x44, 0x2B, 0xFF);
             Color32 facade = new Color32(0xB0, 0x7A, 0x3C, 0xFF);
+            Color32 tree = new Color32(0x2C, 0x6E, 0x35, 0xFF);
 
             Color32[] pixels = new Color32[VillageLayout.Width * VillageLayout.Height];
 
@@ -1658,6 +2152,11 @@ namespace SousLaVille.EditorTools
                         case VillageLayout.Facade:
                         case VillageLayout.PipeFacade: pixel = facade; break;
                         case VillageLayout.Hedge: pixel = hedge; break;
+                        // Un arbre bloque : le plan doit le montrer, sinon il annonce un
+                        // passage la ou il n'y en a pas. Un PANNEAU ne bloque pas, il retombe
+                        // donc sur son sol par le cas general : le plan n'affiche que ce qui
+                        // change un trajet.
+                        case VillageLayout.Tree: pixel = tree; break;
                         case VillageLayout.PlantWall: pixel = plantWall; break;
                         default:
                             switch (VillageLayout.GroundAt(x, y))
