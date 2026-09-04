@@ -1294,6 +1294,17 @@ expliquer *où* ça casse tant que le jeu l'ignore.
   - console **entièrement vide** en dehors du message voulu de mise de côté.
 - `git diff ProjectSettings/` : vide.
 
+## Les documents du projet
+
+- **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
+- **PROGRESS.md** — ce fichier. Le journal : ce qui est fait, les décisions et leur pourquoi,
+  les placeholders, les questions ouvertes.
+- **PIEGES.md** — les pièges tombés au moins une fois, rassemblés. À relire avant d'écrire.
+- **PLAN-PHASE-NN.md** — le plan de chaque phase, validé avant implémentation.
+- **AUDIT-PHASE-12.md** — l'audit d'impact de l'agrandissement de la carte, 4 septembre 2026.
+  Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
+  pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
+
 ## Prochaine étape, phase 12b
 
 La carte 64x45 et le grand labyrinthe, désormais couverts par les filets de 12a. Ce que les
