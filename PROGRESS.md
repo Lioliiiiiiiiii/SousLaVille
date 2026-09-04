@@ -20,11 +20,12 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 9b | L'usine à tuyaux | Terminée |
 | 10 | Les fuites | Terminée |
 | 11 | Le parc | Terminée |
-| 12 | L'usine à panneaux | À faire |
-| 13 | Le Stock, le memory | À faire |
-| 14 | La Fabrique | À faire |
-| 15 | Le Plan | À faire |
-| 16 | Habillage | À faire |
+| 12 | La grande carte | Plan validé, 12a en cours |
+| 13 | L'usine à panneaux | À faire |
+| 14 | Le Stock, le memory | À faire |
+| 15 | La Fabrique | À faire |
+| 16 | Le Plan | À faire |
+| 17 | Habillage | À faire |
 
 ## Phase 0, ce qui est fait
 
@@ -1462,15 +1463,17 @@ par le plan de design ont été tranchés avant d'écrire une ligne, règle 7.
 - **`Time.unscaledTime` pour l'anti-rebond**, et non `Time.time` : ralentir le jeu pour mes
   tests ne doit pas ralentir les écritures.
 
-### L'usine à panneaux, phases 12 à 15
+### L'usine à panneaux, phases 13 à 16
 
 Ajoutée le 3 septembre 2026, à la demande de Lio. Victorien est passionné de panneaux de
 signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route français.
 
 - **Quatre phases, pas une.** Le bâtiment et le catalogue d'abord, puis un mini-jeu par phase.
+- **Décalée de 12–15 à 13–16 le 4 septembre 2026**, la phase 12 étant prise par la grande carte.
+  Les décisions ci-dessous restent valables telles quelles : seul leur rang change.
 - **Elle passe avant l'habillage, jamais après.** Sinon ses panneaux seraient dessinés en
   placeholder puis redessinés une seconde fois, alors que la règle 4 de CLAUDE.md veut un
-  seul passage d'art à la fin. L'habillage devient la phase 16.
+  seul passage d'art à la fin. L'habillage devient la phase 17.
 - **Elle passe après l'arc du réseau.** Aucune phase de 7 à 11 n'en dépend, et le squelette de
   mini-jeu profitera des schémas stabilisés par six phases.
 - **L'ordre des trois mini-jeux va du plus simple au plus lourd** : Le Stock valide le
