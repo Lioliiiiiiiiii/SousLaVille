@@ -1080,6 +1080,38 @@ précédente. **Le générateur d'art ne s'en plaint pas, le générateur de sc�
 vérifier `EditorApplication.isPlaying` avant les menus, et pas seulement se souvenir d'avoir
 arrêté.
 
+## Corrections des bâtiments, 4 septembre 2026
+
+Trois défauts relevés par Lio en regardant les intérieurs de la phase 9. Corrigés avant
+d'entamer la phase 11.
+
+- **Les personnages étaient plantés devant leur porte**, à deux cases de l'entrée : ils avaient
+  l'air d'attendre dans le couloir. Ils passent **au milieu de leur pièce**, en (9, 25) et
+  (29, 25). La caméra étant bornée à la pièce et centrée dessus, le personnage est désormais au
+  centre de l'écran quand on entre, et les échantillons sont exposés derrière lui comme derrière
+  un comptoir.
+- **Les noms écrits dans le décor étaient illisibles.** Huit noms de cinq sur sept pixels posés
+  sur du pavé, tous affichés en même temps : trop petits, trop nombreux, sur un fond chargé.
+  Ils quittent le décor pour le HUD, **un seul à la fois, celui de l'objet foulé**, sur un fond
+  sombre uni et à la résolution de référence — exactement ce qui rend les phrases des
+  personnages lisibles depuis la phase 9a. Nouveau composant `UI/ItemLabel`.
+- **Les pictos de saison au-dessus des échantillons étaient énormes** : trente-deux pixels de
+  côté à côté d'un échantillon de seize, deux fois trop gros. Ils quittent le décor eux aussi et
+  accompagnent le nom dans le cartel, à dix-huit pixels : ils l'accompagnent, ils ne le
+  remplissent plus.
+
+**La boîte du cartel épouse son contenu**, largeur calculée à l'affichage. Une largeur fixe
+laissait « ISOLÉ », trente et un pixels, flotter au milieu de cent soixante : le nom paraissait
+perdu et la boîte pesait plus que ce qu'elle disait.
+
+Rien de modal : le personnage continue de marcher, le cartel ne consomme aucune touche et
+s'efface dès qu'on quitte la case. C'est un cartel, pas un dialogue.
+
+**Vérifié en jeu** : ouvrier et artisan au centre de leur pièce ; sur l'échantillon isolé, la
+boîte fait 66 sur 24 avec le flocon et `ISOLÉ` ; sur la plaque LONDRES, 55 sur 24 sans picto,
+une plaque ne vainquant aucune saison ; le cartel s'éteint dès qu'on quitte la case ; console
+propre.
+
 ## Prochaine étape, phase 11
 
 Le parc. Ce que la phase 10 laisse en place :
@@ -1607,8 +1639,12 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   monte. Lisible, mais c'est une boîte ; un vrai bassin d'orage vu de dessus reste à dessiner.
 - **Les dix-huit PNG de la phase 7** : les huit plaques, les huit noms, le plan du village et
   le pavé de l'atelier.
-- **La police de 5 sur 7 pixels** se lit, mais quelques lettres sont grasses à cette taille,
-  le M et le B surtout. À reprendre à l'habillage, en même temps que le reste.
+- **La police de 5 sur 7 pixels** se lit **au HUD**, sur fond uni, et ne se lisait pas dans le
+  décor : c'est ce qui a fait passer les noms au cartel le 4 septembre 2026. Quelques lettres
+  restent grasses à cette taille, le M et le B surtout. À reprendre à l'habillage.
+- **Les pièces sont vides** depuis que les noms et les pictos ont quitté le décor. Trois
+  échantillons et deux personnages dans une salle de vingt sur dix : c'est propre, mais ce n'est
+  pas encore un lieu. Mobilier, établi, étagères : à l'habillage.
 - **L'atelier n'a ni mur ni toit.** Une cour pavée posée sur l'herbe se lit comme un lieu, mais
   ce n'est pas encore une usine. À habiller.
 - **Les cinq PNG de la phase 5** : les quatre pictos de saison et la clé de réparation. La

@@ -61,6 +61,7 @@ namespace SousLaVille.Player
         private PipeFactory pipeFactory;
         private VillageMapScreen map;
         private SpeechBox speech;
+        private ItemLabel itemLabel;
         private bool isTravelling;
         private bool isChoosing;
         private bool isTalking;
@@ -105,6 +106,7 @@ namespace SousLaVille.Player
         {
             input?.Gameplay.Disable();
             ShowVillagerPrompt(null);
+            ResolveItemLabel()?.Hide();
         }
 
         private void EnsureInput()
@@ -135,6 +137,9 @@ namespace SousLaVille.Player
             // La bulle « on peut lui parler » vit au-dessus de la tete du PERSONNAGE, pas de
             // celle du joueur : voir Villager.ShowPrompt.
             ShowVillagerPrompt(kind == InteractionKind.Talk ? villagerAhead : null);
+
+            // Le nom de l'objet foule, au HUD. Il n'etait plus lisible dans le decor.
+            ShowItemLabel(kind);
 
             // WasPressedThisFrame et non ReadValue : un appui, jamais un maintien. Espace
             // garde enfonce ne creuse pas une galerie entiere.
@@ -506,6 +511,50 @@ namespace SousLaVille.Player
             {
                 promptedVillager.ShowPrompt(true);
             }
+        }
+
+        /// <summary>
+        /// Le cartel de l'objet sur lequel on se tient. Rien de modal : le personnage marche,
+        /// aucune touche n'est consommee, et le cartel s'efface des qu'on quitte la case.
+        /// </summary>
+        private void ShowItemLabel(InteractionKind kind)
+        {
+            ItemLabel box = ResolveItemLabel();
+            if (box == null)
+            {
+                return;
+            }
+
+            if (kind == InteractionKind.ChooseCover)
+            {
+                ManholeFactory workshop = ResolveFactory();
+                ManholeCoverDefinition definition =
+                    workshop != null ? workshop.CoverAt(coverUnderfoot) : null;
+                box.Show(definition != null ? definition.NameImage : null, null);
+                return;
+            }
+
+            if (kind == InteractionKind.ChoosePipe)
+            {
+                PipeFactory pipeWorks = ResolvePipeFactory();
+                PipeType type = pipeWorks != null ? pipeWorks.TypeAt(pipeSampleUnderfoot) : null;
+                box.Show(type != null ? type.NameImage : null,
+                    type != null ? type.DefeatedSeasonIcon : null);
+                return;
+            }
+
+            box.Hide();
+        }
+
+        /// <summary>Le cartel vit dans Persistent, mais eteint : il faut l'inclure.</summary>
+        private ItemLabel ResolveItemLabel()
+        {
+            if (itemLabel == null)
+            {
+                itemLabel = FindAnyObjectByType<ItemLabel>(FindObjectsInactive.Include);
+            }
+
+            return itemLabel;
         }
 
         private void ShowPrompt(InteractionKind kind)

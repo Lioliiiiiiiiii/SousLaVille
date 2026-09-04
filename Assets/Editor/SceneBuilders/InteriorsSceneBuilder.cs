@@ -312,8 +312,13 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// L'usine a tuyaux : trois echantillons poses au sol, chacun avec son nom ecrit en
-        /// dessous et, au-dessus, le picto de la saison qu'il vainc.
+        /// L'usine a tuyaux : trois echantillons poses au sol, derriere l'ouvrier comme
+        /// derriere un comptoir.
+        ///
+        /// NI NOM NI PICTO DE SAISON DANS LE DECOR depuis le 4 septembre 2026. Le picto de
+        /// saison faisait trente-deux pixels de cote a cote d'un echantillon de seize, deux
+        /// fois trop gros ; le nom, lui, ne se lisait pas. Les deux s'affichent au HUD quand
+        /// on foule l'echantillon, a une taille qui leur va. Voir ItemLabel.
         ///
         /// L'echantillon EST la tuile qui sera posee en jeu : le picto de pose ne peut donc
         /// pas mentir sur ce qu'il va poser. Le standard ne vainc rien et n'a pas de picto,
@@ -360,30 +365,6 @@ namespace SousLaVille.EditorTools
                 SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
                 view.sprite = catalogue[i].Sample;
                 SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
-
-                // Le cartel, une case sous l'echantillon, comme les noms de villes.
-                GameObject label = new GameObject($"Name_{i + 1:00}");
-                label.transform.SetParent(sample.transform, false);
-                label.transform.localPosition = new Vector3(0f, -0.9f, 0f);
-
-                SpriteRenderer labelView = label.AddComponent<SpriteRenderer>();
-                labelView.sprite = catalogue[i].NameImage;
-                SceneBuilderUtility.ApplySortingLayer(labelView, EntitiesSortingLayer, 1);
-
-                // Le picto de la saison vaincue, au-dessus. Le standard n'en a pas : il ne
-                // vainc rien, et l'absence est un message aussi.
-                if (catalogue[i].DefeatedSeasonIcon == null)
-                {
-                    continue;
-                }
-
-                GameObject icon = new GameObject($"Season_{i + 1:00}");
-                icon.transform.SetParent(sample.transform, false);
-                icon.transform.localPosition = new Vector3(0f, 1.6f, 0f);
-
-                SpriteRenderer iconView = icon.AddComponent<SpriteRenderer>();
-                iconView.sprite = catalogue[i].DefeatedSeasonIcon;
-                SceneBuilderUtility.ApplySortingLayer(iconView, EntitiesSortingLayer, 1);
             }
 
             PipeFactory factory = root.AddComponent<PipeFactory>();
@@ -412,6 +393,10 @@ namespace SousLaVille.EditorTools
         /// Rien n'a change au choix lui-meme ni a la sauvegarde des plaques ; seul le lieu a
         /// change. Les plaques ne bloquent toujours pas le passage : on marche dessus, et
         /// Espace prend celle qu'on foule.
+        ///
+        /// PLUS DE CARTEL DANS LE DECOR depuis le 4 septembre 2026 : huit noms de cinq sur
+        /// sept pixels affiches en meme temps sur du pave ne se lisaient pas. Le nom de la
+        /// plaque foulee s'affiche au HUD, un seul a la fois. Voir ItemLabel.
         ///
         /// ManholeFactory vit desormais dans cette scene, comme PipeNetwork vit dans
         /// l'Underground. ManholeCover, reste dans le village, la cherche deja en
@@ -456,16 +441,6 @@ namespace SousLaVille.EditorTools
                 SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
                 view.sprite = catalogue[i].Cover;
                 SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
-
-                // Le cartel, une case sous la plaque. Toujours affiche : aucune logique,
-                // aucun mode, huit images de plus dans le decor.
-                GameObject label = new GameObject($"Name_{i + 1:00}");
-                label.transform.SetParent(sample.transform, false);
-                label.transform.localPosition = new Vector3(0f, -0.9f, 0f);
-
-                SpriteRenderer labelView = label.AddComponent<SpriteRenderer>();
-                labelView.sprite = catalogue[i].NameImage;
-                SceneBuilderUtility.ApplySortingLayer(labelView, EntitiesSortingLayer, 1);
             }
 
             ManholeFactory factory = root.AddComponent<ManholeFactory>();

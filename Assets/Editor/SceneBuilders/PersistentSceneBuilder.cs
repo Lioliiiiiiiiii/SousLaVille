@@ -272,6 +272,7 @@ namespace SousLaVille.EditorTools
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
             CreateVillageMap(canvasObject);
             CreateSpeechBox(canvasObject);
+            CreateItemLabel(canvasObject);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
             SerializedObject serializedFader = new SerializedObject(fader);
@@ -550,6 +551,72 @@ namespace SousLaVille.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // Eteint au depart : c'est le personnage qui le rallume, le temps qu'il parle.
+            panel.SetActive(false);
+        }
+
+        /// <summary>
+        /// Le cartel de l'objet foule : son nom, et le picto de la saison qu'il vainc s'il en
+        /// a un. Juste au-dessus de la boite de dialogue, pour qu'ils ne se recouvrent jamais.
+        ///
+        /// Il remplace les noms qui etaient ecrits dans le decor jusqu'au 4 septembre 2026 :
+        /// huit noms de cinq sur sept pixels poses sur du pave, tous en meme temps, ne se
+        /// lisaient pas. Un seul a la fois, sur un fond uni, se lit.
+        /// </summary>
+        private static void CreateItemLabel(GameObject canvasObject)
+        {
+            const float boxHeight = 24f;
+            const float margin = 6f;
+            const float speechHeight = 34f;
+
+            GameObject panel = new GameObject("ItemLabel");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            Image background = panel.AddComponent<Image>();
+            background.color = new Color(0f, 0f, 0f, 0.78f);
+            background.raycastTarget = false;
+
+            RectTransform panelRect = background.rectTransform;
+            panelRect.anchorMin = new Vector2(0.5f, 0f);
+            panelRect.anchorMax = new Vector2(0.5f, 0f);
+            panelRect.pivot = new Vector2(0.5f, 0f);
+            // La largeur est posee par ItemLabel : la boite epouse son contenu.
+            panelRect.sizeDelta = new Vector2(0f, boxHeight);
+            panelRect.anchoredPosition = new Vector2(0f, margin * 2f + speechHeight);
+
+            GameObject iconObject = new GameObject("Season");
+            iconObject.transform.SetParent(panel.transform, false);
+
+            Image icon = iconObject.AddComponent<Image>();
+            icon.raycastTarget = false;
+            icon.enabled = false;
+
+            // Picto et nom sont ancres au CENTRE de la boite : ItemLabel les decale lui-meme,
+            // puisque lui seul connait la largeur du nom qu'il affiche.
+            RectTransform iconRect = icon.rectTransform;
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+
+            GameObject nameObject = new GameObject("Name");
+            nameObject.transform.SetParent(panel.transform, false);
+
+            Image name = nameObject.AddComponent<Image>();
+            name.raycastTarget = false;
+
+            RectTransform nameRect = name.rectTransform;
+            nameRect.anchorMin = new Vector2(0.5f, 0.5f);
+            nameRect.anchorMax = new Vector2(0.5f, 0.5f);
+            nameRect.pivot = new Vector2(0.5f, 0.5f);
+
+            ItemLabel label = canvasObject.AddComponent<ItemLabel>();
+
+            SerializedObject serialized = new SerializedObject(label);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("label").objectReferenceValue = name;
+            serialized.FindProperty("icon").objectReferenceValue = icon;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : il ne s'allume que sur un objet foule.
             panel.SetActive(false);
         }
 

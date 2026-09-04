@@ -74,8 +74,11 @@ namespace SousLaVille.EditorTools
         /// Les plaques sont en x = 3, 7, 11 et 15 plutot qu'en x = 2, 6, 10 et 14 : un cartel
         /// centre sur x = 2 deborderait sur le mur de gauche.
         ///
-        /// L'artisan se tient au milieu, entre les plaques et la porte : on lui parle en
-        /// entrant, sans avoir a le chercher, et sans qu'il barre le chemin.
+        /// L'artisan se tient AU MILIEU DE LA PIECE, entre les deux rangees de plaques, et
+        /// non devant la porte. Corrige le 4 septembre 2026 apres l'avoir vu : plante a deux
+        /// cases de l'entree, il avait l'air d'attendre dans le couloir. Au centre, il tient
+        /// sa boutique, et la camera etant centree sur la piece, il est aussi au centre de
+        /// l'ecran quand on entre.
         /// </summary>
         private static readonly Room CoverWorkshop = new Room(
             "Atelier des plaques",
@@ -86,21 +89,23 @@ namespace SousLaVille.EditorTools
                 "#..................#",
                 "#..C...C...C...C...#",
                 "#..................#",
+                "#........V.........#",
                 "#..................#",
                 "#..C...C...C...C...#",
                 "#..................#",
-                "#........V.........#",
                 "#..................#",
                 "#########D##########",
             });
 
         /// <summary>
-        /// L'usine a tuyaux. Trois echantillons seulement, largement espaces : au-dessus de
-        /// chacun, le picto de la saison qu'il vainc, flocon ou feuille, et sous chacun son
-        /// nom ecrit. Le standard ne vainc rien et n'a donc pas de picto, ce qui se voit.
+        /// L'usine a tuyaux. Trois echantillons seulement, largement espaces, exposes
+        /// derriere l'ouvrier comme derriere un comptoir.
         ///
-        /// L'ouvrier se tient au meme endroit que l'artisan chez le voisin : les deux
-        /// batiments s'apprennent une seule fois.
+        /// Ni nom ni picto de saison dans le decor depuis le 4 septembre 2026 : les deux
+        /// s'affichent au HUD quand on marche sur un echantillon. Voir ItemLabel.
+        ///
+        /// L'ouvrier se tient au meme endroit que l'artisan chez le voisin, au milieu de sa
+        /// piece : les deux batiments s'apprennent une seule fois.
         /// </summary>
         private static readonly Room PipeWorks = new Room(
             "Usine a tuyaux",
@@ -109,12 +114,12 @@ namespace SousLaVille.EditorTools
             {
                 "####################",
                 "#..................#",
-                "#..................#",
-                "#..................#",
                 "#....P....P....P...#",
                 "#..................#",
-                "#..................#",
                 "#........V.........#",
+                "#..................#",
+                "#..................#",
+                "#..................#",
                 "#..................#",
                 "#########D##########",
             });
