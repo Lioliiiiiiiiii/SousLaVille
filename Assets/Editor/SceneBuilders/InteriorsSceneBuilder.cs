@@ -36,24 +36,24 @@ namespace SousLaVille.EditorTools
         private static readonly Vector3 PromptOffset = new Vector3(0f, 1.25f, 0f);
 
         [MenuItem("Sous La Ville/Construire la scène Interiors")]
-        public static void Build()
+        public static bool Build()
         {
             if (!InteriorsLayout.IsWellFormed())
             {
-                return;
+                return false;
             }
 
             if (!PlaceholderArtGenerator.AreAssetsPresent())
             {
                 Debug.LogError("[Sous la Ville] Art placeholder absent. Lance d'abord " +
                                "« Sous La Ville/Générer l'art placeholder ».");
-                return;
+                return false;
             }
 
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
-                return;
+                return false;
             }
 
             // Meme intensite que le village : une piece est eclairee, et elle ne change pas
@@ -73,6 +73,7 @@ namespace SousLaVille.EditorTools
             CreatePipeWorks(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
+            return true;
         }
 
         private static Grid CreateGrid(GameObject root, out Tilemap ground, out Tilemap blocking)

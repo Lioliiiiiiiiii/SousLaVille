@@ -363,30 +363,23 @@ namespace SousLaVille.EditorTools
 
                 for (int index = 0; index < CraftsmanLines.Length; index++)
                 {
-                    WriteTexture(CraftsmanLineTexture(index),
-                        BuildSentence(CraftsmanLines[index]),
-                        PixelFont.WidthOf(CraftsmanLines[index]));
+                    WriteWord(CraftsmanLineTexture(index), CraftsmanLines[index]);
                 }
 
                 for (int index = 0; index < WorkerLines.Length; index++)
                 {
-                    WriteTexture(WorkerLineTexture(index),
-                        BuildSentence(WorkerLines[index]),
-                        PixelFont.WidthOf(WorkerLines[index]));
+                    WriteWord(WorkerLineTexture(index), WorkerLines[index]);
                 }
 
                 for (int index = 0; index < PipeNames.Length; index++)
                 {
-                    WriteTexture(PipeNameTexture(index),
-                        BuildSentence(PipeNames[index]),
-                        PixelFont.WidthOf(PipeNames[index]));
+                    WriteWord(PipeNameTexture(index), PipeNames[index]);
                 }
 
                 for (int index = 0; index < CoverCount; index++)
                 {
                     WriteTexture(CoverTexture(index), BuildCover(index));
-                    WriteTexture(CoverNameTexture(index), BuildCoverName(index),
-                        PixelFont.WidthOf(CoverNames[index]));
+                    WriteWord(CoverNameTexture(index), CoverNames[index]);
                 }
 
                 WriteTexture(VillageMapTexture, BuildVillageMap(), VillageLayout.Width);
@@ -443,12 +436,12 @@ namespace SousLaVille.EditorTools
             // justesse sur le nom AMSTERDAM.
             for (int index = 0; index < CraftsmanLines.Length; index++)
             {
-                ConfigureImporter(CraftsmanLineTexture(index), null, maxSize: 256);
+                ConfigureImporter(CraftsmanLineTexture(index), null);
             }
 
             for (int index = 0; index < WorkerLines.Length; index++)
             {
-                ConfigureImporter(WorkerLineTexture(index), null, maxSize: 256);
+                ConfigureImporter(WorkerLineTexture(index), null);
             }
 
             for (int index = 0; index < PipeNames.Length; index++)
@@ -1634,14 +1627,6 @@ namespace SousLaVille.EditorTools
                 new Color32(0x2B, 0x1B, 0x14, 0xFF));
         }
 
-        /// <summary>Le nom d'une ville, en blanc cerne de sombre pour tenir sur le pave.</summary>
-        private static Color32[] BuildCoverName(int index)
-        {
-            return PixelFont.Render(CoverNames[index],
-                new Color32(0xFF, 0xFF, 0xFF, 0xFF),
-                new Color32(0x2B, 0x1B, 0x14, 0xFF));
-        }
-
         /// <summary>
         /// Le plan du village, une case par pixel, engendre depuis VillageLayout. Deux dessins
         /// d'un meme village finiraient par diverger ; celui-ci en sort, donc il ne peut pas
@@ -1766,8 +1751,77 @@ namespace SousLaVille.EditorTools
             Object.DestroyImmediate(texture);
         }
 
+        /// <summary>
+        /// Le plus petit plafond de texture d'Unity qui contienne cette image. Ajoute en
+        /// phase 12a : le plafond etait ecrit a la main, et une image plus large que lui etait
+        /// divisee par deux EN SILENCE. La phase 7 l'a evite de justesse sur le nom AMSTERDAM,
+        /// la phase 9a sur les phrases de l'ouvrier. Le calculer supprime le piege au lieu de
+        /// le surveiller.
+        /// </summary>
+        private static int TextureCapFor(int width, int height)
+        {
+            int cap = 32;
+            int longest = Mathf.Max(width, height);
+
+            while (cap < longest)
+            {
+                cap *= 2;
+            }
+
+            return cap;
+        }
+
+        /// <summary>
+        /// Le plafond qu'il faut pour le PNG pose sur le disque, lu dans son en-tete : les
+        /// octets 16 a 23 portent la largeur puis la hauteur, en gros-boutiste. On lit le
+        /// fichier plutot que d'interroger l'importeur, dont l'API de taille source n'est pas
+        /// publique et a change d'une version d'Unity a l'autre.
+        /// </summary>
+        private static int TextureCapForFile(string assetPath)
+        {
+            try
+            {
+                byte[] header = new byte[24];
+                using (FileStream stream = File.OpenRead(assetPath))
+                {
+                    if (stream.Read(header, 0, header.Length) < header.Length)
+                    {
+                        return 64;
+                    }
+                }
+
+                int width = (header[16] << 24) | (header[17] << 16) | (header[18] << 8) | header[19];
+                int height = (header[20] << 24) | (header[21] << 16) | (header[22] << 8) | header[23];
+
+                return TextureCapFor(width, height);
+            }
+            catch (IOException error)
+            {
+                Debug.LogError($"[Sous la Ville] Taille illisible pour {assetPath} : {error.Message}");
+                return 64;
+            }
+        }
+
+        /// <summary>
+        /// Ecrit l'image d'un mot dessine par PixelFont, avec le plafond de texture qu'il faut
+        /// et un refus bruyant si un caractere ne sait pas se dessiner.
+        /// </summary>
+        private static void WriteWord(string assetPath, string word)
+        {
+            char missing;
+            if (!PixelFont.CanRender(word, out missing))
+            {
+                Debug.LogError($"[Sous la Ville] PixelFont ne sait pas dessiner « {missing} », " +
+                               $"dans « {word} ». Le mot sortirait troué, sans un mot. " +
+                               $"Fichier : {assetPath}");
+                return;
+            }
+
+            WriteTexture(assetPath, BuildSentence(word), PixelFont.WidthOf(word));
+        }
+
         private static void ConfigureImporter(string assetPath, Vector2? customPivot,
-            int maxSize = 64)
+            int maxSize = 0)
         {
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
 
@@ -1791,9 +1845,10 @@ namespace SousLaVille.EditorTools
             // 32 les reduirait en silence et detruirait la police. Ce plafond ne fait que
             // tronquer, il n'agrandit rien : aucune image existante ne change.
             //
-            // Les phrases des personnages font environ 170 px et demandent 256, d'ou le
-            // parametre. Tout le reste garde 64.
-            importer.maxTextureSize = maxSize;
+            // Depuis la phase 12a, un plafond de zero veut dire « calcule-le » : on prend le
+            // plus petit palier qui contienne l'image. Plus aucune texture ne peut etre reduite
+            // de moitie en silence, quelle que soit la longueur d'une phrase.
+            importer.maxTextureSize = maxSize > 0 ? maxSize : TextureCapForFile(assetPath);
 
             TextureImporterSettings settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);

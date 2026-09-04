@@ -27,24 +27,24 @@ namespace SousLaVille.EditorTools
         private const string EntitiesSortingLayer = GameSortingLayers.SurfaceEntities;
 
         [MenuItem("Sous La Ville/Construire la scène Surface")]
-        public static void Build()
+        public static bool Build()
         {
             if (!VillageLayout.IsWellFormed() || !VillageLayout.ValidatePark())
             {
-                return;
+                return false;
             }
 
             if (!PlaceholderArtGenerator.AreAssetsPresent())
             {
                 Debug.LogError("[Sous la Ville] Art placeholder absent. Lance d'abord " +
                                "« Sous La Ville/Générer l'art placeholder ».");
-                return;
+                return false;
             }
 
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
-                return;
+                return false;
             }
 
             GameObject root = LayerRootBuilder.CreateRoot(SceneName, globalLightIntensity: 1f,
@@ -67,6 +67,7 @@ namespace SousLaVille.EditorTools
             CreateBuildingDoors(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
+            return true;
         }
 
         private static Grid CreateGrid(GameObject root, out Tilemap ground, out Tilemap blocking,
@@ -148,33 +149,34 @@ namespace SousLaVille.EditorTools
                         case VillageLayout.PlantWall:
                             // Du sol de station sous le batiment : le mur se pose dessus.
                             groundTiles[index] = plantFloor;
-                            blockingTiles[index] = plantWall;
                             break;
                         case VillageLayout.Hedge:
                             groundTiles[index] = grass;
-                            blockingTiles[index] = hedge;
                             break;
                         default:
                             groundTiles[index] = grass;
                             break;
                     }
 
-                    // La maison et la facade sont des marqueurs : GroundAt a deja rendu de
-                    // l'herbe, la tuile bloquante se pose par-dessus.
-                    if (VillageLayout.At(x, y) == VillageLayout.House)
+                    // Les marqueurs bloquants : GroundAt a deja peint le sol dessous, la
+                    // tuile bloquante se pose par-dessus.
+                    //
+                    // UNE SEULE LISTE DE BLOCAGE depuis la phase 12a. Ce switch et
+                    // VillageLayout.IsWalkable etaient deux listes maintenues a la main : un
+                    // marqueur ajoute a l'une et oublie a l'autre donnait une case franchissable
+                    // qui ne se peint pas, ou l'inverse, sans un mot. C'est desormais le plan
+                    // qui tranche, et lui seul.
+                    char marker = VillageLayout.At(x, y);
+
+                    if (!VillageLayout.IsWalkable(new Vector2Int(x, y)))
                     {
-                        blockingTiles[index] = house;
-                    }
-                    else if (VillageLayout.At(x, y) == VillageLayout.Facade
-                             || VillageLayout.At(x, y) == VillageLayout.PipeFacade)
-                    {
-                        blockingTiles[index] = facade;
-                    }
-                    else if (VillageLayout.At(x, y) == VillageLayout.Fountain)
-                    {
-                        // La dalle du parc est deja peinte dessous ; le bassin de la fontaine
-                        // se pose par-dessus et bloque, comme une maison.
-                        blockingTiles[index] = fountainTile;
+                        blockingTiles[index] =
+                            marker == VillageLayout.House ? house
+                            : marker == VillageLayout.Fountain ? fountainTile
+                            : marker == VillageLayout.Facade
+                              || marker == VillageLayout.PipeFacade ? facade
+                            : marker == VillageLayout.PlantWall ? plantWall
+                            : hedge;
                     }
                 }
             }

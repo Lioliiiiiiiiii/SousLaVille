@@ -40,6 +40,12 @@ namespace SousLaVille.Network
         private readonly HashSet<Vector2Int> connectedReserves = new HashSet<Vector2Int>();
         private readonly List<PipeNode> fountains = new List<PipeNode>();
 
+        /// <summary>
+        /// Les cases que l'eau atteint depuis une source SANS parvenir a la station. C'est la
+        /// frontiere : l'endroit exact ou la regle de profondeur casse.
+        /// </summary>
+        private readonly HashSet<Vector2Int> stranded = new HashSet<Vector2Int>();
+
         /// <summary>Leve apres chaque resolution. Les vues s'y accrochent.</summary>
         public event Action Solved;
 
@@ -72,6 +78,25 @@ namespace SousLaVille.Network
         public bool IsReserveConnectedAt(Vector2Int reserveCell) => connectedReserves.Contains(reserveCell);
 
         public bool IsCarrying(PipeSegment segment) => carrying.Contains(segment);
+
+        /// <summary>
+        /// Vrai si l'eau monte jusqu'a cette case sans aller plus loin. Elle appartient donc a
+        /// une route COMMENCEE mais qui n'aboutit pas.
+        ///
+        /// Ajoute en phase 12a, et c'est le retour qui manquait le plus. Jusque-la, une route de
+        /// cinquante-sept segments fausse d'UNE SEULE case etait rendue entierement blanche,
+        /// exactement comme un tuyau qu'on vient de poser : le parcours jetait son ensemble de
+        /// cases atteintes des qu'il echouait. Le joueur apprenait « ça ne marche pas » apres
+        /// soixante-treize appuis sur Espace, et rien ne lui disait ou.
+        ///
+        /// C'est aussi la seule chose que l'agrandissement de la carte degradait LINEAIREMENT
+        /// avec la longueur des routes, et c'est ce qu'un personnage-guide doit pouvoir montrer :
+        /// on ne peut pas expliquer ou ça casse tant que le jeu l'ignore.
+        /// </summary>
+        public bool IsStrandedAt(Vector2Int cell) => stranded.Contains(cell);
+
+        /// <summary>Nombre de cases ou l'eau s'arrete en chemin. Sert aux verifications.</summary>
+        public int StrandedCount => stranded.Count;
 
         /// <summary>Vrai si au moins un segment pose sur cette case porte de l'eau.</summary>
         public bool IsCarryingAt(Vector2Int cell)
@@ -134,6 +159,7 @@ namespace SousLaVille.Network
             served.Clear();
             houses.Clear();
             fountains.Clear();
+            stranded.Clear();
             reserves.Clear();
             connectedReserves.Clear();
 
@@ -196,6 +222,13 @@ namespace SousLaVille.Network
         /// Parcours en largeur depuis une source, maison ou bassin. Si la station est
         /// atteinte, on remonte le chemin et on marque ses segments comme porteurs.
         /// </summary>
+        /// <summary>
+        /// Parcours en largeur depuis une source. Si la station est atteinte, on remonte le
+        /// chemin et on marque ses segments comme porteurs.
+        ///
+        /// SI ELLE NE L'EST PAS, on garde l'ensemble atteint : c'est jusque-la que l'eau monte,
+        /// et pas plus loin. Voir IsStrandedAt.
+        /// </summary>
         private bool TraceToPlant(PipeNode source)
         {
             Dictionary<Vector2Int, PipeSegment> cameFrom = new Dictionary<Vector2Int, PipeSegment>();
@@ -231,6 +264,14 @@ namespace SousLaVille.Network
                     cameFrom[next.GridPos] = segment;
                     queue.Enqueue(next);
                 }
+            }
+
+            // La station n'a pas ete atteinte. On retient ou l'eau s'est arretee : ces cases
+            // portent une route commencee qui n'aboutit pas, et c'est la seule chose que le
+            // joueur puisse regarder pour comprendre.
+            foreach (Vector2Int cell in visited)
+            {
+                stranded.Add(cell);
             }
 
             return false;

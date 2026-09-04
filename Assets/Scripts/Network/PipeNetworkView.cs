@@ -16,6 +16,13 @@ namespace SousLaVille.Network
     /// Le motif etant une nuance plus sombre du corps, il survit a la teinte : multiplier
     /// toute la tuile garde le contraste entre le corps et son motif.
     ///
+    /// SIXIEME COULEUR EN PHASE 12A : l'eau morte. Une route commencee qui n'aboutit pas etait
+    /// rendue en blanc, exactement comme un tuyau qu'on vient de poser — sur cinquante-sept
+    /// segments fausses d'une seule case, le joueur n'apprenait rien apres soixante-treize
+    /// appuis. C'est un bleu grise, de la meme famille que l'eau vive mais eteint : « elle est
+    /// montee jusqu'ici et elle s'arrete ». La frontiere se lit d'un coup d'oeil, et c'est
+    /// exactement l'endroit ou la regle de profondeur casse.
+    ///
     /// Tout est redessine a chaque changement. Quelques centaines de cases, et seulement sur
     /// action du joueur ou apres une resolution : le calcul incremental viendra s'il se voit
     /// un jour.
@@ -45,6 +52,9 @@ namespace SousLaVille.Network
 
         [Tooltip("Tuyau trop abime pour porter : rouge terne.")]
         [SerializeField] private Color brokenTint = new Color(0.72f, 0.35f, 0.32f, 1f);
+
+        [Tooltip("Route commencee qui n'aboutit pas : l'eau monte jusque-la et s'arrete.")]
+        [SerializeField] private Color strandedTint = new Color(0.48f, 0.62f, 0.72f, 1f);
 
         [Tooltip("Tuyau sain, sans eau. Blanc : la tuile garde son gris d'origine.")]
         [SerializeField] private Color idleTint = Color.white;
@@ -164,7 +174,19 @@ namespace SousLaVille.Network
                 return brokenTint;
             }
 
-            return flow != null && flow.IsCarryingAt(cell) ? waterTint : idleTint;
+            if (flow == null)
+            {
+                return idleTint;
+            }
+
+            // L'eau vive avant l'eau morte : une case peut porter pour une maison et rester
+            // sur la branche morte d'une autre. Si l'eau y coule, elle y coule.
+            if (flow.IsCarryingAt(cell))
+            {
+                return waterTint;
+            }
+
+            return flow.IsStrandedAt(cell) ? strandedTint : idleTint;
         }
     }
 }

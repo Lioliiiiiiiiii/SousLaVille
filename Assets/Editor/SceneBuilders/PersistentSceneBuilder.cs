@@ -30,12 +30,12 @@ namespace SousLaVille.EditorTools
         private static readonly Vector3 PromptOffset = new Vector3(0f, 1.25f, 0f);
 
         [MenuItem("Sous La Ville/Construire la scène Persistent")]
-        public static void Build()
+        public static bool Build()
         {
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
-                return;
+                return false;
             }
 
             SceneRouter router = CreateGameManager();
@@ -48,6 +48,7 @@ namespace SousLaVille.EditorTools
             CreateHud(router);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
+            return true;
         }
 
         private static SceneRouter CreateGameManager()

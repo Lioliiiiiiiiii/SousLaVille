@@ -74,6 +74,44 @@ namespace SousLaVille.EditorTools
             "..#..", "..#..", ".....", ".....", ".....", ".....", "....."
         };
 
+        // Ponctuation et chiffres, ajoutes en phase 12a. Les phrases des personnages-guides en
+        // ont besoin : jusque-la, « AIDE-MOI ! » sortait « AIDE MOI  », sans un avertissement,
+        // tout caractere inconnu ne dessinant rien tout en avancant d'une cellule.
+        private static readonly string[] Hyphen =
+        {
+            ".....", ".....", ".....", ".###.", ".....", ".....", "....."
+        };
+
+        private static readonly string[] Exclamation =
+        {
+            "..#..", "..#..", "..#..", "..#..", "..#..", ".....", "..#.."
+        };
+
+        private static readonly string[] Question =
+        {
+            ".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.."
+        };
+
+        /// <summary>La cedille tient dans la septieme rangee : la police n'a pas de jambage.</summary>
+        private static readonly string[] Cedilla =
+        {
+            ".###.", "#...#", "#....", "#....", "#...#", ".###.", "..#.."
+        };
+
+        private static readonly string[][] DigitGlyphs =
+        {
+            new[] { ".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###." }, // 0
+            new[] { "..#..", ".##..", "..#..", "..#..", "..#..", "..#..", "#####" }, // 1
+            new[] { ".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####" }, // 2
+            new[] { "#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###." }, // 3
+            new[] { "...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#." }, // 4
+            new[] { "#####", "#....", "####.", "....#", "....#", "#...#", ".###." }, // 5
+            new[] { "..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###." }, // 6
+            new[] { "#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..." }, // 7
+            new[] { ".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###." }, // 8
+            new[] { ".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.." }, // 9
+        };
+
         // Les trois accents, dessines dans les deux rangees au-dessus du glyphe. Ligne du
         // haut en premier, comme les lettres.
         private static readonly string[] Acute = { "...#.", "..#.." };
@@ -99,6 +137,34 @@ namespace SousLaVille.EditorTools
         public static int HeightOf(string word)
         {
             return GlyphHeight + Padding * 2 + (HasAccent(word) ? AccentHeight : 0);
+        }
+
+        /// <summary>
+        /// Vrai si chaque caractere du mot sait se dessiner. Un caractere inconnu ne dessine
+        /// rien MAIS avance d'une cellule : le mot sort avec un trou, sans un avertissement.
+        /// Le generateur d'art appelle ceci avant d'ecrire quoi que ce soit.
+        /// </summary>
+        public static bool CanRender(string word, out char missing)
+        {
+            missing = '\0';
+
+            if (string.IsNullOrEmpty(word))
+            {
+                return true;
+            }
+
+            foreach (char character in word)
+            {
+                if (character == ' ' || GlyphFor(character) != null)
+                {
+                    continue;
+                }
+
+                missing = character;
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>Vrai si le mot porte au moins une lettre accentuée.</summary>
@@ -231,9 +297,19 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static string[] GlyphFor(char character)
         {
-            if (character == '\'')
+            switch (character)
             {
-                return Apostrophe;
+                case '\'': return Apostrophe;
+                case '-': return Hyphen;
+                case '!': return Exclamation;
+                case '?': return Question;
+                case 'Ç':
+                case 'ç': return Cedilla;
+            }
+
+            if (character >= '0' && character <= '9')
+            {
+                return DigitGlyphs[character - '0'];
             }
 
             char upper = char.ToUpperInvariant(BaseLetter(character));
@@ -261,6 +337,17 @@ namespace SousLaVille.EditorTools
                 case 'À':
                 case 'à':
                     return 'A';
+                case 'Ô':
+                case 'ô':
+                    return 'O';
+                case 'Î':
+                case 'î':
+                    return 'I';
+                case 'Û':
+                case 'û':
+                case 'Ù':
+                case 'ù':
+                    return 'U';
                 default:
                     return character;
             }
@@ -281,7 +368,16 @@ namespace SousLaVille.EditorTools
                     return Grave;
                 case 'Ê':
                 case 'ê':
+                case 'Ô':
+                case 'ô':
+                case 'Î':
+                case 'î':
+                case 'Û':
+                case 'û':
                     return Circumflex;
+                case 'Ù':
+                case 'ù':
+                    return Grave;
                 default:
                     return null;
             }

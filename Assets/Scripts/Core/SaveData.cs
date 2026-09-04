@@ -88,8 +88,15 @@ namespace SousLaVille.Core
         /// <summary>
         /// A monter des que la forme du fichier change. Un champ ajoute se relit sans rien
         /// casser ; un champ dont le sens change, non.
+        ///
+        /// PASSEE A 2 EN PHASE 12A, et c'est la premiere fois depuis la phase 6. Le critere est
+        /// celui que la phase 6 avait ecrit : c'est le SENS des cases qui change. La carte passe
+        /// de 40x30 a 64x45, et une case d'une partie de la phase 11 ne designe plus le meme
+        /// endroit du monde. Rejouer ses creusements et ses poses produirait un reseau absurde
+        /// sans une erreur, puisque Dig et PlacePipe refusent proprement. Une vieille partie est
+        /// donc mise de cote avec un horodatage, bruyamment, et le jeu repart neuf.
         /// </summary>
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         public int version = CurrentVersion;
 

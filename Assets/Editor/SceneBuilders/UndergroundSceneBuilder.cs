@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Network;
+using SousLaVille.Seasons;
 using SousLaVille.World;
 using UnityEditor;
 using UnityEngine;
@@ -37,39 +38,96 @@ namespace SousLaVille.EditorTools
         private const int PlantCapacityPerSeason = 9;
         private const int ReserveCapacity = 10;
 
+        /// <summary>
+        /// L'economie de l'eau est-elle tenable ? Sur une annee, l'arrivant vaut
+        /// 4 x destinations + la pluie annuelle, et la station traite 4 x sa capacite. La
+        /// condition est donc `4D + R &lt;= 4C`, dont le minimum entier est `C = D + 3` avec
+        /// R = 11.
+        ///
+        /// Ajoute en phase 12a. Le reglage a ete refait a la main deux fois, en phase 8 puis en
+        /// phase 11, chaque fois en decouvrant apres coup qu'une destination de plus faisait
+        /// saturer le bassin et deborder le village a chaque automne, pour toujours. Cette
+        /// verification refuse de construire un monde insoutenable, et dit la capacite attendue.
+        /// </summary>
+        private static bool ValidateWaterBudget()
+        {
+            int destinations = VillageLayout.FindAll(VillageLayout.House).Count
+                             + VillageLayout.FindAll(VillageLayout.Fountain).Count;
+
+            int rain = 0;
+            foreach (string path in ScriptableObjectSetup.SeasonCycle)
+            {
+                SeasonDefinition season = AssetDatabase.LoadAssetAtPath<SeasonDefinition>(path);
+                if (season == null)
+                {
+                    Debug.LogError($"[Sous la Ville] Saison introuvable : {path}.");
+                    return false;
+                }
+
+                rain += season.RainVolume;
+            }
+
+            int seasons = ScriptableObjectSetup.SeasonCycle.Length;
+            int inflow = seasons * destinations * SeasonSystem.HouseVolumePerSeason + rain;
+            int treated = seasons * PlantCapacityPerSeason;
+
+            if (inflow <= treated)
+            {
+                Debug.Log($"[Sous la Ville] Bilan de l'eau tenable : {destinations} destination(s), " +
+                          $"{inflow} arrivant sur l'année contre {treated} traités, station à " +
+                          $"{PlantCapacityPerSeason} par saison.");
+                return true;
+            }
+
+            int needed = Mathf.CeilToInt((destinations * SeasonSystem.HouseVolumePerSeason * seasons
+                                          + rain) / (float)seasons);
+
+            Debug.LogError($"[Sous la Ville] Bilan de l'eau INSOUTENABLE : {destinations} " +
+                           $"destination(s) apportent {inflow} sur l'année, la station n'en traite " +
+                           $"que {treated}. Le bassin gagnerait {(inflow - treated)} par an, " +
+                           $"saturerait, et le village déborderait à chaque automne pour toujours. " +
+                           $"Capacité attendue : {needed} par saison (règle C = D + 3).");
+            return false;
+        }
+
         [MenuItem("Sous La Ville/Construire la scène Underground")]
-        public static void Build()
+        public static bool Build()
         {
             if (!UndergroundLayout.IsWellFormed() || !VillageLayout.IsWellFormed())
             {
-                return;
+                return false;
             }
 
             // Un portail mal aligne ne planterait pas, il serait juste mort : on refuse de
             // construire plutot que de livrer une bouche qui ne mene nulle part.
             if (!UndergroundLayout.ValidateAgainstVillage())
             {
-                return;
+                return false;
             }
 
             if (!PlaceholderArtGenerator.AreAssetsPresent())
             {
                 Debug.LogError("[Sous la Ville] Art placeholder absent. Lance d'abord " +
                                "« Sous La Ville/Générer l'art placeholder ».");
-                return;
+                return false;
             }
 
             if (!ScriptableObjectSetup.ArePresent())
             {
                 Debug.LogError("[Sous la Ville] ScriptableObjects absents. Lance d'abord " +
                                "« Sous La Ville/Créer les ScriptableObjects ».");
-                return;
+                return false;
+            }
+
+            if (!ValidateWaterBudget())
+            {
+                return false;
             }
 
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
-                return;
+                return false;
             }
 
             GameObject root = LayerRootBuilder.CreateRoot(SceneName, GlobalLightIntensity,
@@ -89,6 +147,7 @@ namespace SousLaVille.EditorTools
             AttachNetwork(root, map, pipes);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
+            return true;
         }
 
         private static Grid CreateGrid(GameObject root, out Tilemap ground, out Tilemap blocking,

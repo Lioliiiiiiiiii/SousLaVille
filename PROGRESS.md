@@ -20,7 +20,11 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 9b | L'usine à tuyaux | Terminée |
 | 10 | Les fuites | Terminée |
 | 11 | Le parc | Terminée |
-| 12 | La grande carte | Plan validé, 12a en cours |
+| 12a | Les filets | Terminée |
+| 12b | La carte 64x45 et le grand labyrinthe | À faire |
+| 12c | Le décor | À faire |
+| 12d | La station qui s'agrandit | À faire |
+| 12e | Les huit guides | À faire |
 | 13 | L'usine à panneaux | À faire |
 | 14 | Le Stock, le memory | À faire |
 | 15 | La Fabrique | À faire |
@@ -212,7 +216,7 @@ pont MCP il faut donc l'éditeur au premier plan, ou `Application.runInBackgroun
 - Compilation relue par le pont MCP : **zéro erreur, zéro warning**.
 - `Créer les ScriptableObjects`, `Générer l'art placeholder`, `Construire toutes les scènes` :
   console propre, quatre scènes régénérées.
-- Scène relue par script : **1200 profondeurs cuites**, réparties en 766 / 374 / 60 pour les
+- Scène relue par script : **1200 profondeurs cuites**, réparties en 804 / 336 / 60 pour les
   profondeurs 1, 2 et 3 ; station à la profondeur 3, bouches à 2 et 1 ; trois tuiles de
   galerie câblées ; nœud permanent `PlantInlet` en (6, 25) ; seize tuiles de canalisation, une
   seule tilemap `Tilemap_Pipes` ; quatre sprites de personnage et cinq pictos d'action câblés ;
@@ -1015,8 +1019,8 @@ et seules les cases praticables prennent l'eau.
 | 1 | 0 | 3 |
 | 2 | 1 | 15 |
 | 3 | 2 | 38 |
-| 4 | 3 | 73 |
-| 5 | 4 | 118 |
+| 4 | 3 | 71 |
+| 5 | 4 | 113 |
 
 Au maximum 118 cases sur 1200, soit un dixième du village : un spectacle, pas une inondation qui
 cache le village.
@@ -1045,14 +1049,14 @@ ou une flaque isolée au milieu d'une rue.
   planche à l'appui : elle se lit comme de l'eau sur les trois, la grille du sol se voit dessous,
   et les vaguelettes se répètent sans couture.
 - Play depuis Boot, par injection clavier, `Application.isFocused` vérifié :
-  - **les cinq paliers de `Lost`, mesurés case par case** : 3, 15, 38, 73, 118, **exactement les
+  - **les cinq paliers de `Lost`, mesurés case par case** : 3, 15, 38, 71, 113, **exactement les
     nombres calculés depuis le plan du village**. Obtenus en reliant les maisons une par une, en
     grillagé pour que l'automne ne les bouche pas : `Lost` vaut alors exactement le nombre de
     maisons reliées ;
   - **le critère de fin** : bassin débranché, automne, `Lost` vaut 5 et **les trois bouches
     débordent** ; bassin relié, automne, 13 arrivant, 8 traité, 5 absorbé, **`Lost` vaut 0 et le
     village reste sec** ;
-  - **l'eau ne monte sur aucune case bloquante** : 118 cases mouillées, 0 sur du bloquant, et la
+  - **l'eau ne monte sur aucune case bloquante** : 113 cases mouillées, 0 sur du bloquant, et la
     couche bloquante est restée à 200 tuiles ;
   - **le personnage traverse l'eau** : parti de (20, 14) flèche bas maintenue, il arrive en
     (20, 1) après **9 cases mouillées**, sans être arrêté ni ralenti ;
@@ -1158,7 +1162,7 @@ chiffres, eux, valaient pour cinq destinations et une station à 8.
 avant l'hiver. Tout laisser en grillagé donne 2/6 desservies en hiver, et 3 d'arrivant.
 
 **`Lost` plafonne toujours à 5** — 14 arrivant moins 9 traités. La table d'étalement de la
-phase 10, 0 / 3 / 15 / 38 / 73 / 118, reste donc valable telle quelle.
+phase 10, 0 / 3 / 15 / 38 / 71 / 113, reste donc valable telle quelle.
 
 ## Phase 11, vérifications faites
 
@@ -1198,9 +1202,102 @@ case au-dessus de la fontaine.
 **Un plan ASCII se modifie par indice de ligne, jamais par contenu.** Le contenu n'est pas une
 clé : rien n'oblige deux lignes d'une carte à différer.
 
-## Prochaine étape, phase 12
+## Phase 12a, ce qui est fait
 
-L'usine à panneaux, premier des quatre volets. Ce que la phase 11 laisse en place :
+Aucun contenu neuf. Rendre **bruyante** toute rupture que 12b à 12e pourraient causer, et
+réparer ce qu'un audit de huit dimensions a trouvé.
+
+- **`BuildAllScenes` s'arrête au premier refus.** Les cinq `Build()` rendent `bool` ; jusqu'ici
+  ils étaient `void` et personne ne lisait leur résultat. Un générateur qui refusait laissait les
+  quatre autres se construire, et le journal annonçait quand même « les cinq scènes sont
+  construites ». Deux cartes désalignées case pour case n'auraient rien dit.
+- **`UndergroundLayout.ValidateDepthPuzzle`** : parcours en largeur **depuis la station**, à
+  profondeur non croissante en remontant — la règle de CLAUDE.md lue à l'envers. Une destination
+  que ce parcours n'atteint pas ne pourra jamais être desservie, quoi que le joueur creuse.
+  Rien ne vérifiait le plan des profondeurs depuis la phase 3.
+- **`UndergroundSceneBuilder.ValidateWaterBudget`** : refuse de construire un monde
+  insoutenable, et **dit la capacité attendue**. Le réglage avait été refait à la main deux fois,
+  en phase 8 puis en phase 11, chaque fois en découvrant après coup qu'une destination de plus
+  faisait déborder le village pour toujours.
+- **`ValidateAgainstVillage` apparie enfin la fontaine**, seul couple surface/sous-sol que
+  personne ne vérifiait : les deux étaient en (20, 15) par la seule discipline de la main.
+- **`ValidatePark` réécrit.** L'ancien partait de quatre entrées écrites à la main et lançait
+  quatre parcours qui, par inondation, exploraient tous le même ensemble : il prouvait quatre
+  fois la même chose, et jamais celle que son résumé promettait. Un seul parcours depuis le
+  départ prouve les deux : aucune case enfermée, et la fontaine atteignable. Rien n'est écrit à
+  la main, donc rien ne se périme quand le parc grandit.
+- **Une seule liste de blocage.** `PaintVillage` interrogeait un second `switch` maintenu à la
+  main en parallèle de `VillageLayout.IsWalkable` : un marqueur ajouté à l'une et oublié à
+  l'autre donnait une case franchissable qui ne se peint pas. C'est le plan qui tranche, et lui
+  seul.
+- **`Teleport` refuse une case hors carte**, avec un message.
+- **`PixelFont` gagne les chiffres, `-`, `!`, `?`, `Ç`, et `Ô Î Û Ù`.** Et `CanRender` refuse
+  bruyamment un caractère inconnu : jusqu'ici « AIDE-MOI ! » sortait « AIDE MOI  », sans un mot,
+  tout caractère inconnu ne dessinant rien tout en avançant d'une cellule.
+- **Le plafond de texture est calculé, plus écrit à la main.** Il est lu dans l'en-tête du PNG
+  posé sur le disque. Une image plus large que son plafond était divisée par deux **en silence** ;
+  la phase 7 l'a évité de justesse sur AMSTERDAM, la phase 9a sur les phrases de l'ouvrier.
+- **`SaveData.CurrentVersion` passe à 2**, la première fois depuis la phase 6, sur le critère que
+  la phase 6 avait écrit : c'est le **sens** des cases qui change.
+
+### L'eau morte : le retour qui manquait
+
+`FlowSolver.TraceToPlant` jetait son ensemble de cases atteintes dès qu'il échouait. Conséquence
+exacte : **une route de cinquante-sept segments fausse d'une seule case était rendue entièrement
+blanche**, comme un tuyau qu'on vient de poser. Le joueur apprenait « ça ne marche pas » après
+soixante-treize appuis sur Espace, et rien ne lui disait où.
+
+Le solveur publie désormais cette frontière, et `PipeNetworkView` la peint d'une **sixième
+couleur**, un bleu grisé de la même famille que l'eau vive mais éteint : « elle est montée
+jusqu'ici et elle s'arrête ». L'eau vive passe avant l'eau morte, une case pouvant porter pour
+une maison et rester sur la branche morte d'une autre.
+
+C'était aussi la seule chose que l'agrandissement de la carte dégradait **linéairement avec la
+longueur des routes**, et c'est ce qu'un personnage-guide devra pouvoir montrer : on ne peut pas
+expliquer *où* ça casse tant que le jeu l'ignore.
+
+### Trois affirmations fausses du journal, corrigées
+
+- **La table d'étalement des flaques** valait 0 / 3 / 15 / 38 / **71** / **113**, et non 73 / 118,
+  depuis la phase 11 : le labyrinthe de haies a porté le village de 200 à 252 cases bloquantes.
+  La phase 11 affirmait que la table « reste valable telle quelle » sans l'avoir revérifiée.
+- **La répartition des profondeurs** est **804 / 336 / 60**, et non 766 / 374 / 60. Faux depuis
+  la phase 3.
+- **Le printemps ne débouche pas.** `ApplyToSegment` ne remet que `IsFrozen` à faux ; un bouchon
+  n'est effacé que par une réparation à la main, et ils s'accumulent d'année en année. Le tableau
+  des saisons dit « dégèle tout », ce qui n'est vrai que du gel.
+
+## Phase 12a, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP.
+- Les quatre validateurs **passent** sur la carte actuelle, connue bonne.
+- **Et surtout, ils REFUSENT sur un monde saboté.** Un validateur qui dit toujours oui ne vaut
+  rien : j'ai mis l'alcôve de la maison (34, 4) à la profondeur 3 et glissé l'arrivée de la
+  fontaine d'une case, puis reconstruit. `ValidateDepthPuzzle` et `ValidateAgainstVillage` ont
+  tous deux refusé, en nommant **la case et la raison exactes** : « La destination (34, 4),
+  profondeur 3, ne peut JAMAIS être desservie », « Arrivée de fontaine orpheline en (20, 14) ».
+  Le sabotage a ensuite été retiré.
+- Les validateurs **journalisent** ce qu'ils ont prouvé : « 1197 cases vivantes sur 1200,
+  7 destinations atteignables », « 35 arrivant sur l'année contre 36 traités, station à 9 ».
+- Plafonds de texture relus un par un : 256 pour les phrases larges, 64 pour le plan du village,
+  32 pour une tuile de seize. Aucune image réduite.
+- Les nouveaux glyphes relus sur planche : chiffres, trait d'union, point d'exclamation, point
+  d'interrogation, cédille, et les quatre accents circonflexes et graves manquants.
+- Play depuis Boot :
+  - **une partie de version 1 est mise de côté bruyamment** et n'est PAS rejouée : huit nœuds
+    permanents et rien d'autre, message en console avec le chemin du fichier gardé ;
+  - le village compte toujours **252 cases bloquantes** : la liste unique n'a rien changé ;
+  - **l'eau morte** : une route de 32 cases dont **une seule manque** montre 20 cases mortes du
+    côté de la maison contre 1 du côté de la station, la maison en fait partie, la station non,
+    et la frontière s'arrête exactement au trou ;
+  - console **entièrement vide** en dehors du message voulu de mise de côté.
+- `git diff ProjectSettings/` : vide.
+
+## Prochaine étape, phase 12b
+
+La carte 64x45 et le grand labyrinthe, désormais couverts par les filets de 12a. Ce que les
+phases précédentes laissent en place :
 
 - **Tout le modèle de CLAUDE.md est désormais utilisé** : `FountainInlet` était le dernier type
   sans usage, et `Buildings/Fountain` le dernier fichier de l'arborescence jamais écrit.
@@ -1244,7 +1341,7 @@ L'usine à panneaux, premier des quatre volets. Ce que la phase 11 laisse en pla
 - **L'eau est semi-transparente.** Un bleu opaque ferait un carré plein qui cacherait le village ;
   une eau qui laisse voir le sol dessous se lit tout de suite comme de l'eau.
 - **Rien ne bloque, rien ne punit.** L'eau se peint sur `Surface_Water`, jamais sur la couche
-  bloquante. Vérifié en jeu : 118 cases mouillées, 0 sur du bloquant, et le personnage traverse.
+  bloquante. Vérifié en jeu : 113 cases mouillées, 0 sur du bloquant, et le personnage traverse.
 - **Aucun changement au bilan de l'eau ni à l'ordre du tick.** La question ouverte de la phase 8
   reste ouverte ; cette phase ne fait que montrer un nombre déjà calculé.
 - **La fontaine reste au parc.** `NodeType.FountainInlet` et `Buildings/Fountain` attendent la

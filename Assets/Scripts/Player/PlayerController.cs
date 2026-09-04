@@ -176,6 +176,16 @@ namespace SousLaVille.Player
                 return;
             }
 
+            // Une case hors carte laisserait le personnage inerte : les quatre directions
+            // seraient refusees par IsWalkable, ecran noir, console vide. Ajoute en phase 12a,
+            // avant d'agrandir la carte et de multiplier les occasions de se tromper de repere.
+            if (!map.Contains(cell))
+            {
+                Debug.LogError($"[Sous la Ville] Téléportation refusée vers {cell} : hors des " +
+                               $"bornes de {map.GetType().Name}, {map.CellBounds.size}.");
+                return;
+            }
+
             currentCell = cell;
             targetCell = cell;
             stepProgress = 0f;

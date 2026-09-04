@@ -13,18 +13,19 @@ namespace SousLaVille.EditorTools
         public const string SceneName = "Boot";
 
         [MenuItem("Sous La Ville/Construire la scène Boot")]
-        public static void Build()
+        public static bool Build()
         {
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
-                return;
+                return false;
             }
 
             GameObject bootstrapper = new GameObject("Bootstrapper");
             bootstrapper.AddComponent<Bootstrapper>();
 
             SceneBuilderUtility.EndScene(scene, SceneName);
+            return true;
         }
     }
 }

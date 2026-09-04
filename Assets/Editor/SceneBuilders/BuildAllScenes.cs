@@ -43,11 +43,22 @@ namespace SousLaVille.EditorTools
                 return;
             }
 
-            BootSceneBuilder.Build();
-            PersistentSceneBuilder.Build();
-            SurfaceSceneBuilder.Build();
-            UndergroundSceneBuilder.Build();
-            InteriorsSceneBuilder.Build();
+            // LA CHAINE S'ARRETE AU PREMIER REFUS. Jusqu'a la phase 12a, les cinq Build()
+            // etaient void et personne ne lisait leur resultat : un generateur qui refusait
+            // laissait les quatre autres se construire, et cette methode annoncait quand meme
+            // « les cinq scenes sont construites ». Deux cartes desalignees case pour case,
+            // Surface en 64x45 et Underground restee en 40x30, n'auraient rien dit.
+            if (!BootSceneBuilder.Build()
+                || !PersistentSceneBuilder.Build()
+                || !SurfaceSceneBuilder.Build()
+                || !UndergroundSceneBuilder.Build()
+                || !InteriorsSceneBuilder.Build())
+            {
+                Debug.LogError("[Sous la Ville] Construction interrompue : une scène a refusé. " +
+                               "Les Build Settings n'ont pas été touchés, et le message d'erreur " +
+                               "ci-dessus dit laquelle et pourquoi.");
+                return;
+            }
 
             SceneBuilderUtility.SetBuildScenes(
                 BootSceneBuilder.SceneName,

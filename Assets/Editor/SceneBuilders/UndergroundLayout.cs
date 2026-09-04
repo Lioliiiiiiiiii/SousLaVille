@@ -273,6 +273,39 @@ namespace SousLaVille.EditorTools
                 }
             }
 
+            // LA FONTAINE, appariee depuis la phase 12a. Elle etait le SEUL couple
+            // surface/sous-sol que personne ne verifiait : les deux etaient en (20, 15) par la
+            // seule discipline de la main. Deplacer l'un sans l'autre eteint la fontaine en
+            // silence, FloodView demandant au solveur la case de SURFACE qu'il ne connait plus.
+            List<Vector2Int> villageFountains = VillageLayout.FindAll(VillageLayout.Fountain);
+            List<Vector2Int> fountainOutlets = FindAll(Fountain);
+
+            if (villageFountains.Count != fountainOutlets.Count)
+            {
+                Debug.LogError($"[Sous la Ville] {villageFountains.Count} fontaine(s) en surface " +
+                               $"mais {fountainOutlets.Count} arrivée(s) au sous-sol.");
+                ok = false;
+            }
+
+            foreach (Vector2Int fountain in villageFountains)
+            {
+                if (At(fountain.x, fountain.y) != Fountain)
+                {
+                    Debug.LogError($"[Sous la Ville] Aucune arrivée sous la fontaine {fountain}.");
+                    ok = false;
+                }
+            }
+
+            foreach (Vector2Int outlet in fountainOutlets)
+            {
+                if (VillageLayout.At(outlet.x, outlet.y) != VillageLayout.Fountain)
+                {
+                    Debug.LogError($"[Sous la Ville] Arrivée de fontaine orpheline en {outlet} : " +
+                                   "aucune fontaine au-dessus.");
+                    ok = false;
+                }
+            }
+
             // Chaque maison doit avoir son alcove juste dessous, sinon elle ne pourra jamais
             // etre raccordee et le joueur chercherait pour rien.
             List<Vector2Int> villageHouses = VillageLayout.FindAll(VillageLayout.House);
@@ -306,6 +339,11 @@ namespace SousLaVille.EditorTools
 
             ok &= ValidateReserve();
 
+            // Le puzzle lui-meme : chaque destination doit etre atteignable a profondeur non
+            // decroissante. C'est la seule verification qui regarde le PLAN DES PROFONDEURS, et
+            // c'est celle qui manquait depuis la phase 3.
+            ok &= ValidateDepthPuzzle();
+
             Vector2Int plant = VillageLayout.FindSingle(VillageLayout.PlantInlet);
             if (At(plant.x, plant.y) != PlantOutlet)
             {
@@ -330,6 +368,109 @@ namespace SousLaVille.EditorTools
         /// entierement sous de l'herbe, ni maison, ni atelier, ni station au-dessus. Il
         /// doit aussi pouvoir descendre vers la station, donc ne pas etre deja au fond.
         /// </summary>
+        /// <summary>
+        /// Le puzzle est-il resolvable ? Parcours en largeur DEPUIS LA STATION, a profondeur
+        /// non croissante en remontant, ce qui est exactement l'inverse de la regle de
+        /// CLAUDE.md : l'eau ne va vers la station que si la profondeur ne diminue pas. Une
+        /// destination que ce parcours n'atteint pas ne pourra JAMAIS etre desservie, quoi que
+        /// le joueur creuse.
+        ///
+        /// Ajoute en phase 12a. Jusque-la, rien ne verifiait le plan des profondeurs, et la
+        /// mesure est brutale : supprimer UNE SEULE porte de crete fait tomber les destinations
+        /// desservables de sept a une, et les cases vivantes de 1197 a 125. Le pire mode de
+        /// panne n'est pas celui-la : c'est celui ou une seule route sur sept change, qu'aucun
+        /// controle par echantillon ne verrait.
+        ///
+        /// Le parcours ignore ce qui est deja creuse : n'importe quelle case peut l'etre. Seule
+        /// la profondeur decide, et elle ne se creuse pas.
+        /// </summary>
+        public static bool ValidateDepthPuzzle()
+        {
+            List<Vector2Int> plants = FindAll(PlantOutlet);
+            if (plants.Count != 1)
+            {
+                Debug.LogError($"[Sous la Ville] {plants.Count} station(s) au sous-sol, il en " +
+                               "faut exactement une.");
+                return false;
+            }
+
+            HashSet<Vector2Int> reachable = ReachableFromPlant(plants[0]);
+
+            bool ok = true;
+            foreach (Vector2Int destination in Destinations())
+            {
+                if (reachable.Contains(destination))
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] La destination {destination}, profondeur " +
+                               $"{DepthAt(destination.x, destination.y)}, ne peut JAMAIS être " +
+                               "desservie : aucun chemin à profondeur non décroissante ne la " +
+                               "relie à la station. Le plan des profondeurs l'enferme.");
+                ok = false;
+            }
+
+            Debug.Log($"[Sous la Ville] Puzzle des profondeurs : {reachable.Count} case(s) " +
+                      $"vivante(s) sur {Width * Height}, {Destinations().Count} destination(s) " +
+                      "atteignable(s).");
+
+            return ok;
+        }
+
+        /// <summary>
+        /// Les cases d'ou l'eau peut atteindre la station. On remonte depuis elle, donc on
+        /// n'accepte un voisin que si sa profondeur ne DEPASSE pas celle de la case courante :
+        /// c'est la regle de l'ecoulement, lue a l'envers.
+        /// </summary>
+        private static HashSet<Vector2Int> ReachableFromPlant(Vector2Int plant)
+        {
+            Vector2Int[] steps =
+            {
+                Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left
+            };
+
+            HashSet<Vector2Int> seen = new HashSet<Vector2Int> { plant };
+            Queue<Vector2Int> queue = new Queue<Vector2Int>();
+            queue.Enqueue(plant);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int cell = queue.Dequeue();
+                int depth = DepthAt(cell.x, cell.y);
+
+                foreach (Vector2Int step in steps)
+                {
+                    Vector2Int next = cell + step;
+
+                    if (next.x < 0 || next.x >= Width || next.y < 0 || next.y >= Height)
+                    {
+                        continue;
+                    }
+
+                    // En remontant le courant, la profondeur ne peut que diminuer ou tenir.
+                    if (DepthAt(next.x, next.y) > depth || !seen.Add(next))
+                    {
+                        continue;
+                    }
+
+                    queue.Enqueue(next);
+                }
+            }
+
+            return seen;
+        }
+
+        /// <summary>Toutes les destinations du monde : maisons, fontaine, bassin.</summary>
+        public static List<Vector2Int> Destinations()
+        {
+            List<Vector2Int> cells = new List<Vector2Int>();
+            cells.AddRange(FindAll(HouseOutlet));
+            cells.AddRange(FindAll(Fountain));
+            cells.AddRange(FindAll(Reserve));
+            return cells;
+        }
+
         private static bool ValidateReserve()
         {
             List<Vector2Int> reserves = FindAll(Reserve);

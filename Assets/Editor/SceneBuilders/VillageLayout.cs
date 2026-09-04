@@ -185,12 +185,18 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Vrai si le parc tient : une seule fontaine, atteignable depuis ses quatre entrees,
-        /// et aucune case de parc enfermee.
+        /// Vrai si le parc tient : une seule fontaine, aucune case enfermee, et la fontaine
+        /// atteignable a pied depuis le depart du joueur.
         ///
-        /// La solvabilite a ete verifiee par calcul avant d'ecrire le trace ; cette methode la
-        /// reverifie a chaque construction, pour qu'un coup de crayon dans le labyrinthe ne
-        /// puisse pas enfermer la fontaine en silence.
+        /// REECRIT EN PHASE 12A. La version de la phase 11 partait de quatre entrees ECRITES A
+        /// LA MAIN et lancait quatre parcours qui, par inondation, exploraient tous le meme et
+        /// unique ensemble : elle prouvait quatre fois la meme chose, et jamais celle que son
+        /// resume promettait, « aucune case de parc enfermee ». Elle ne verifiait pas non plus
+        /// que ses propres points de depart etaient praticables.
+        ///
+        /// Un seul parcours suffit, et il prouve les deux : la composante connexe du DEPART du
+        /// joueur doit contenir toutes les cases praticables du parc, et une voisine de la
+        /// fontaine. Rien n'est ecrit a la main, donc rien ne se perime quand le parc grandit.
         /// </summary>
         public static bool ValidatePark()
         {
@@ -202,33 +208,53 @@ namespace SousLaVille.EditorTools
                 return false;
             }
 
-            Vector2Int fountain = fountains[0];
-            Vector2Int[] entrances =
+            Vector2Int start = FindSingle(PlayerStart);
+            if (!IsWalkable(start))
             {
-                new Vector2Int(13, 15), new Vector2Int(27, 15),
-                new Vector2Int(20, 19), new Vector2Int(20, 11)
-            };
-
-            foreach (Vector2Int entrance in entrances)
-            {
-                if (Reaches(entrance, fountain))
-                {
-                    continue;
-                }
-
-                Debug.LogError($"[Sous la Ville] La fontaine {fountain} n'est pas atteignable " +
-                               $"depuis l'entrée {entrance} : le labyrinthe l'enferme.");
+                Debug.LogError($"[Sous la Ville] Le départ {start} n'est pas praticable.");
                 return false;
             }
 
-            return true;
+            HashSet<Vector2Int> reachable = FloodFrom(start);
+            bool ok = true;
+
+            // 1. Rien ne piege : toute case praticable du parc se rejoint depuis le depart,
+            // donc s'en ressort.
+            foreach (Vector2Int cell in FindAll(Park))
+            {
+                if (IsWalkable(cell) && !reachable.Contains(cell))
+                {
+                    Debug.LogError($"[Sous la Ville] La case de parc {cell} est enfermée : " +
+                                   "aucun chemin ne l'atteint depuis le départ.");
+                    ok = false;
+                }
+            }
+
+            // 2. La fontaine s'atteint : elle bloque, donc c'est une de ses voisines qu'il faut.
+            Vector2Int fountain = fountains[0];
+            Vector2Int[] steps =
+            {
+                Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left
+            };
+
+            bool touched = false;
+            foreach (Vector2Int step in steps)
+            {
+                touched |= reachable.Contains(fountain + step);
+            }
+
+            if (!touched)
+            {
+                Debug.LogError($"[Sous la Ville] La fontaine {fountain} n'est atteignable depuis " +
+                               "aucune case accessible : le labyrinthe l'enferme.");
+                ok = false;
+            }
+
+            return ok;
         }
 
-        /// <summary>
-        /// Vrai si l'on peut marcher de depart jusqu'a une case VOISINE de la cible. La
-        /// fontaine bloque le passage comme une maison : on l'atteint, on n'entre pas dedans.
-        /// </summary>
-        private static bool Reaches(Vector2Int start, Vector2Int target)
+        /// <summary>Toutes les cases praticables que l'on peut rejoindre a pied depuis une case.</summary>
+        private static HashSet<Vector2Int> FloodFrom(Vector2Int start)
         {
             Vector2Int[] steps =
             {
@@ -247,11 +273,6 @@ namespace SousLaVille.EditorTools
                 {
                     Vector2Int next = cell + step;
 
-                    if (next == target)
-                    {
-                        return true;
-                    }
-
                     if (!IsWalkable(next) || !seen.Add(next))
                     {
                         continue;
@@ -261,7 +282,7 @@ namespace SousLaVille.EditorTools
                 }
             }
 
-            return false;
+            return seen;
         }
 
         /// <summary>
