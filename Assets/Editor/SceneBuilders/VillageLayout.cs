@@ -4,7 +4,8 @@ using UnityEngine;
 namespace SousLaVille.EditorTools
 {
     /// <summary>
-    /// Le plan du village, ecrit a la main. Trente lignes de quarante caracteres.
+    /// Le plan du village, ecrit a la main. Quarante-cinq lignes de soixante-quatre
+    /// caracteres.
     ///
     /// Ce fichier vit dans l'assembly Editor et rien de plus : le runtime ne lit jamais la
     /// carte ASCII, il interroge les tilemaps. (La phase 1 annoncait ici du procedural pour
@@ -29,15 +30,27 @@ namespace SousLaVille.EditorTools
     /// porte. PHASE 9B : l'usine a tuyaux prend la place laissee libre a sa droite, sur le
     /// meme patron.
     ///
-    /// PHASE 11. Le parc, neuf cases sur six qui n'avaient jamais rien porte, devient un
-    /// LABYRINTHE DE HAIES de treize sur sept, avec la fontaine en son centre. Il ne mange que
-    /// de l'herbe : ni la station, ni les bosquets, ni les maisons, ni les bouches, ni le
-    /// depart, ni les facades n'ont bouge d'un caractere depuis la phase 1.
+    /// PHASE 12B. La carte passe de 40x30 a 64x45. Le sens de l'agrandissement n'est pas
+    /// neutre : At fait Rows[Height - 1 - y][x], donc AJOUTER LES LIGNES EN TETE et LES
+    /// CARACTERES EN FIN DE LIGNE preserve rigoureusement chaque couple (x, y). La station
+    /// reste en (6, 25), l'atelier et l'usine a tuyaux sur leurs cases, et le village a
+    /// grandi vers le NORD et vers l'EST.
     ///
-    /// Le trace est une spirale a deux anneaux, ecrit a la main et VERIFIE SOLVABLE PAR CALCUL
-    /// AVANT D'ETRE POSE, la methode des cretes de la phase 4. Ses quatre entrees existaient
-    /// deja depuis la phase 1, une au milieu de chaque cote ; elles menent a la fontaine en
-    /// 11, 21, 18 et 10 pas. Aucune case du parc n'est orpheline : on ressort toujours.
+    /// Le parc porte desormais UN SEUL labyrinthe de haies de 27 sur 17, coin bas-gauche en
+    /// (15, 7), fontaine en (28, 14). L'ecran montre 20 sur 11,25 cases : il ne tient donc
+    /// plus dans le cadre, la camera y defile, et il ne se resout plus d'un coup d'oeil mais
+    /// DE MEMOIRE. C'est le but, pas un effet de bord. Ses quatre entrees sont a 24, 32, 34
+    /// et 34 pas de la fontaine, et sa case la plus lointaine a 47 pas.
+    ///
+    /// Le labyrinthe a ete CREUSE EN POLYLIGNES et non dessine caractere par caractere : un
+    /// premier jet dessine a la main s'etait fragmente en seize morceaux sans que rien ne le
+    /// dise. Chaque polyligne devait toucher le trace deja pose, ce qui rend la connexite
+    /// structurelle, et ValidatePark la reverifie a chaque construction.
+    ///
+    /// Douze maisons et la fontaine font TREIZE destinations, le plafond de la rangee de
+    /// gouttes du HUD (a quatorze elle chevauche le picto de saison). Sept bouches d'egout
+    /// tiennent la densite de la phase 1, et l'invariant : jamais plus de 23 pas entre une
+    /// case et l'echelle la plus proche.
     ///
     /// Ecrit a la main et non engendre. Le commentaire ci-dessous annoncait l'inverse en
     /// phase 1 ; la pratique du projet a tranche depuis, et un plan engendre ne se verifie
@@ -45,8 +58,8 @@ namespace SousLaVille.EditorTools
     /// </summary>
     public static class VillageLayout
     {
-        public const int Width = 40;
-        public const int Height = 30;
+        public const int Width = 64;
+        public const int Height = 45;
 
         public const char Grass = '.';
         public const char Road = '#';
@@ -73,36 +86,51 @@ namespace SousLaVille.EditorTools
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
-            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
-            "H......................................H",
-            "H.BBBBBBBBB...........FFFF....GGGG.....H",
-            "H.BSSSSSSSB...........FFFF....GGGG.....H",
-            "H.BSSSTSSSB....HHH.....D.......E.......H",
-            "H.BSSSSSSSB....HHH.....................H",
-            "H.BSSSSSSSB............................H",
-            "H.BBBBSBBBB............................H",
-            "H.....#................................H",
-            "H....A#................................H",
-            "H.....##M######################........H",
-            "H...........#.HHHHHHPHHHHHH.#..........H",
-            "H...........#AHPPPPPPPPPPPHA#..........H",
-            "H...........#.HPHHHHHHHHHPH.#....HHH...H",
-            "H...........##XPHPPPOPPPHPP##....HHH...H",
-            "H...........#.HPHPHHHHHPHPH.#..........H",
-            "H...........#.HPPPPPPPPPHPH.#..........H",
-            "H...........#.HHHHHHPHHHHHH.#..........H",
-            "H...........#.......#.......#..........H",
-            "H...........########M########A.........H",
-            "H...........................#..........H",
-            "H...........................#..........H",
-            "H.....HHH...................#..........H",
-            "H.....HHH...................#..........H",
-            "H...........................#####M#....H",
-            "H.................................A....H",
-            "H......................................H",
-            "H......................................H",
-            "H......................................H",
-            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
+            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
+            "H..................HHH..................................HHH....H",
+            "H..................HHH..................................HHH....H",
+            "H.........................................................A....H",
+            "H.................#########################################....H",
+            "H.................#....#.....................##................H",
+            "H.................#....#.....................A#................H",
+            "H.................#....#......................#................H",
+            "H.................#....#......................#................H",
+            "H.........#########....#...A..................####M............H",
+            "H.........A.......#....#...#..................#................H",
+            "H.......#M#################M####..............#................H",
+            "H.......#.........#....#...#...#..............#................H",
+            "H.......#.........#....#...#...#..............#................H",
+            "H.......#.........#....#...#...#..............##########A......H",
+            "H.......#.........A....#...#...#..............#................H",
+            "H.......#..............#...#...#..............#................H",
+            "H.BBBBBBBBB...........FFFF.#..GGGG..HHH.......#................H",
+            "H.BSSSSSSSB...........FFFF.#..GGGG..HHH.......#................H",
+            "H.BSSSTSSSB............D.......E...........A###................H",
+            "H.BSSSSSSSB...................................#................H",
+            "H.BSSSSSSSB....HHHHHHHHHHHHHPHHHHHHHHHHHHH....#................H",
+            "H.BBBBSBBBB....HPPPPPPPPPPPPPPPPPPPPPPPPPH....############M....H",
+            "H....##.#......HPHHHHHHHPHHHHHHHHHPHHHHHPH....#................H",
+            "H....A#.#......HPHPPPPPPPPPPPPPPPPPPPHPHPH....#................H",
+            "H.....#.#......HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
+            "H.....#.######.HPHPHPHPPPPPPPPPPPHPHPHPHPH....#................H",
+            "H.....###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH....######A..........H",
+            "H.....#.#.....XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
+            "H.....#.#......HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
+            "H.....#.#......HPHPHPHPHPHPHOPPPPHPHPHPHPP....#................H",
+            "H.....#.#......HPHPHPHPHHHPHHHHHHHHHPHPHPH....#................H",
+            "H.....#.#......HPHPHPHPPPPPPPPPPPPPPPHPHPH....#................H",
+            "H.....#.#M.....HPHPHHHHHPHHHHHPHHHHHHHPHPH....#................H",
+            "H.....#........HPHPPPPPPPPPPPPPPPPPPPPPPPH....####M###########.H",
+            "H.....#........HPHHHHHPHHHPHHHHHPHHHPHHHPH...................#.H",
+            "H.....#........HPPPPPPPPPPPPPPPPPPPPPPPPPH...........HHH.....A.H",
+            "H.HHH.#........HHHHHHHHHHHHHPHHHHHHHHHHHHH...........HHH.......H",
+            "H.HHH.#........................................................H",
+            "H.....#############################............................H",
+            "H..........................#......A............................H",
+            "H..........................M...................................H",
+            "H..............................................................H",
+            "H..............................................................H",
+            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
         };
 
         /// <summary>
@@ -301,7 +329,7 @@ namespace SousLaVille.EditorTools
                 && marker != Facade && marker != PipeFacade && marker != Fountain;
         }
 
-        /// <summary>Vrai si la carte fait bien 30 lignes de 40 caracteres.</summary>
+        /// <summary>Vrai si la carte fait bien 45 lignes de 64 caracteres.</summary>
         public static bool IsWellFormed()
         {
             if (Rows.Length != Height)

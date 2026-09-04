@@ -15,7 +15,7 @@ namespace SousLaVille.EditorTools
     ///
     /// CINQUIEME SCENE, ecart explicite aux quatre scenes de CLAUDE.md, accepte le
     /// 3 septembre 2026. La peser dans la scene Surface aurait demande d'apprendre les pieces
-    /// a SurfaceMap, d'agrandir le village au-dela de la colonne 40 donc de deplacer ses
+    /// a SurfaceMap, d'agrandir le village au-dela de sa derniere colonne donc de deplacer ses
     /// bornes de camera, et surtout n'aurait pas empeche les saisons de teinter les pieces :
     /// une Light2D globale porte sur des Sorting Layers, pas sur une zone.
     ///

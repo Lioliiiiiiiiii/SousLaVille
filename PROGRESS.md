@@ -21,7 +21,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 10 | Les fuites | Terminée |
 | 11 | Le parc | Terminée |
 | 12a | Les filets | Terminée |
-| 12b | La carte 64x45 et le grand labyrinthe | À faire |
+| 12b | La carte 64x45 et le grand labyrinthe | Terminée |
 | 12c | Le décor | À faire |
 | 12d | La station qui s'agrandit | À faire |
 | 12e | Les huit guides | À faire |
@@ -1161,8 +1161,10 @@ chiffres, eux, valaient pour cinq destinations et une station à 8.
 **Comme en phase 9b, ce tableau demande d'adapter les tuyaux** : grillagé avant l'automne, isolé
 avant l'hiver. Tout laisser en grillagé donne 2/6 desservies en hiver, et 3 d'arrivant.
 
-**`Lost` plafonne toujours à 5** — 14 arrivant moins 9 traités. La table d'étalement de la
-phase 10, 0 / 3 / 15 / 38 / 71 / 113, reste donc valable telle quelle.
+**`Lost` plafonne toujours à 5** — 14 arrivant moins 9 traités. La table d'étalement valait
+alors 0 / 3 / 15 / 38 / 71 / 113. **Périmée depuis la phase 12b** : voir la table à jour dans
+cette phase. Elle dépend du nombre de bouches et du nombre de cases bloquantes, et elle a
+maintenant été fausse deux fois pour avoir été crue « valable telle quelle ».
 
 ## Phase 11, vérifications faites
 
@@ -1293,6 +1295,194 @@ expliquer *où* ça casse tant que le jeu l'ignore.
     et la frontière s'arrête exactement au trou ;
   - console **entièrement vide** en dehors du message voulu de mise de côté.
 - `git diff ProjectSettings/` : vide.
+
+## Phase 12b, ce qui est fait
+
+La carte passe de **40x30 à 64x45**, 2880 cases, 3,2 x 4,0 écrans. Rien de neuf en décor : les
+deux plans réécrits, les profondeurs redessinées, un grand labyrinthe, le pré-creusement, les
+bouches et les destinations. Tout est repris par les quatre validateurs de la phase 12a.
+
+**Le sens de l'agrandissement n'est pas neutre.** `At` fait `Rows[Height - 1 - y][x]` : ajouter
+les lignes **en tête** des tableaux et les caractères **en fin** de ligne préserve rigoureusement
+chaque couple (x, y). Le village a donc grandi vers le **nord** et vers l'**est**. La station
+reste en (6, 25), l'atelier et l'usine à tuyaux sur leurs cases, et le départ du joueur devant
+l'entrée ouest du parc. Conséquence heureuse : rien n'a eu besoin de bouger côté code — le plan
+du HUD tient à l'échelle 4 (256x180 dans 320x180), `CameraFollow.halfView` se déduit de l'écran
+et non de la carte, et `maxTextureSize` est calculé depuis l'en-tête du PNG depuis la phase 12a.
+
+### Les trois décisions chiffrées, prises avant d'écrire
+
+- **Treize destinations**, douze maisons et la fontaine. C'est le plafond dur de la rangée de
+  gouttes : à quatorze elle chevauche le picto de saison. La densité constante en aurait voulu
+  14,4. La capacité de la station passe donc à **16**, la règle `C = D + 3` de la phase 12.
+  Elle reste un nombre écrit à la main ; c'est la phase 12d qui la fera grandir en jeu.
+- **Quarante et un segments à profondeur 1 sur la route la plus longue.** C'est le rythme de
+  l'hiver, et il se règle au rayon près : le nombre vaut **exactement** `r_destination` moins le
+  rayon extérieur de la couronne. La couronne va donc jusqu'à r = 31, ce qui laisse 59 % de la
+  carte à profondeur 1 contre 67 % avant — les proportions d'aujourd'hui, reproduites.
+- **Un seul labyrinthe de haies, 27 x 17.** L'écran montre 20 x 11,25 cases : il déborde donc du
+  cadre dans les deux axes, la caméra y défile, et il ne se résout plus d'un coup d'œil mais
+  **de mémoire**. C'est le but, pas un effet de bord.
+
+### Le plan des profondeurs est une formule, plus un dessin
+
+L'ancien l'était déjà sans le dire : décodé case par case, il se réduit à quatre nombres et deux
+listes de portes, à **zéro écart sur 1200 cases**. Le nouveau l'écrit franchement :
+
+```
+r = distance de MANHATTAN à la station (6, 25)
+r <= 8   -> profondeur 3      r > 31  -> profondeur 1      sinon profondeur 2
+sauf r = 12, 19 et 26, les TROIS CRÊTES, forcées à 1 hors de leurs portes
+```
+
+Trois crêtes au lieu de deux : la couronne est 1,56 fois plus large, deux crêtes y seraient plus
+clairsemées qu'avant. Chaque crête est percée d'une **porte de cinq cases**, et les trois portes
+sont à 90 degrés l'une de l'autre — **est** pour r = 26, **sud** pour r = 19, **nord** pour
+r = 12. On les traverse donc en zigzag, et c'est ce zigzag qui fait le puzzle.
+
+**La position des portes compte autant que leur existence.** Premier jet, la porte extérieure
+était au nord-ouest : les maisons de l'est devaient alors longer la plaine pour la rejoindre, et
+la pire route montait à **61** segments à profondeur 1 au lieu de 41. Mise à l'est, du côté où la
+carte a grandi, elle retombe exactement sur les 41 voulus. Un rayon règle le nombre, un azimut
+règle le détour.
+
+Répartition : **1809 / 930 / 141**. 2844 cases restent vivantes sur 2880.
+
+### Le pré-creusement est du contenu, pas de la mise à l'échelle
+
+217 galeries livrées ouvertes, **7,5 %** de la carte, le ratio de la phase 11 (88 sur 1200).
+Mais le ratio ne suffit pas : **où** elles sont décide de tout. Posées d'abord en chambres autour
+des échelles, elles n'économisaient que 16 % des appuis. Réécrites comme l'**ancien collecteur du
+village** — le réseau qui existait avant que le joueur arrive, posé sous les routes de la plaine —
+les cinq maisons de l'est ne demandent plus **aucun creusement**, seulement la pose.
+
+Le collecteur **s'arrête à r = 33**, en deçà de la crête la plus extérieure. Aucune case de porte
+n'est jamais livrée creusée : les portes restent à trouver, et le plan le vérifie avant d'être
+émis.
+
+**Coût réel, à modèle égal** (arbre partagé, une case creusée ou un tuyau posé = un appui) :
+368 appuis pour 13 destinations, soit **28 par destination**, contre 121 pour 7 sur l'ancienne
+carte, soit 17. La carte est 2,4 fois plus grande, le travail 3,0 fois plus long. Environ neuf
+minutes de pose pure à 1,5 s par appui délibéré, hors marche.
+
+### Les bouches et l'invariant
+
+**Sept bouches d'égout**, la densité de la phase 1 (3 pour 1200 cases). L'invariant tenu :
+**jamais plus de 23 pas** entre une case et l'échelle la plus proche, contre 22 avant et un
+plafond fixé à 25.
+
+### La table d'étalement des flaques, recalculée
+
+Elle dépend du **nombre de bouches** et du **nombre de cases bloquantes**, et elle a maintenant
+été fausse deux fois pour avoir été reportée sans être revérifiée. Recalculée sur les plans
+réellement écrits — 7 bouches, **539 cases bloquantes** sur 2880 :
+
+| `Lost` | Rayon | Cases mouillées |
+|---|---|---|
+| 0 | — | 0 |
+| 1 | 0 | 7 |
+| 2 | 1 | 35 |
+| 3 | 2 | 89 |
+| 4 | 3 | 172 |
+| 5 | 4 | **280** |
+| 6 | 5 | 412 |
+
+`Lost` plafonne toujours à **5** : l'arrivant plafonne à 21, treize destinations plus huit de
+pluie d'automne, la station en traite seize. À `Lost` = 5 la flaque couvre 280 cases, **9,7 %**
+du village — la phase 11 en couvrait 113 sur 1200, soit 9,4 %. La proportion est tenue.
+
+### Note d'atelier : un plan dessiné à la main se fragmente sans le dire
+
+Le labyrinthe a d'abord été **dessiné caractère par caractère** sur un treillis strict, cases en
+positions impaires et murs en positions paires. Il s'est fragmenté en **seize composantes
+connexes**. Rien dans le dessin ne le montrait, et `ValidatePark` ne l'aurait dit qu'à la
+construction.
+
+Il est donc **creusé en polylignes** : une liste de segments droits, chacun devant toucher le
+tracé déjà posé, l'assertion refusant le contraire. La connexité devient **structurelle** — une
+poche morte n'est plus dessinable par inadvertance. Le vérificateur ne mesure plus que la
+difficulté : entrées à **24, 32, 34 et 34 pas** de la fontaine, case la plus lointaine à 47 pas,
+217 cases de couloir sur 459. Aucune entrée ne voit la fontaine : le cadre montre 20 x 11 cases.
+
+## Phase 12b, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP venu de `Library/PackageCache`.
+- **Solvabilité vérifiée PAR CALCUL avant écriture**, la méthode des crêtes de la phase 4. Un
+  atelier de conception assemble les deux plans, les vérifie sur dix points, et **n'émet le C#
+  que si tout passe**. Il a refusé quatre fois avant de céder : une route traversait l'herbe du
+  bassin, le labyrinthe avait onze cases enfermées, les portes de crête étaient mal placées, et
+  la fontaine se posait sur une ligne du labyrinthe au lieu d'une autre.
+- Les quatre validateurs **passent** sur la carte neuve, et journalisent ce qu'ils ont prouvé :
+  « 2844 cases vivantes sur 2880, 14 destinations atteignables sur 14 », « 13 destinations,
+  63 arrivant sur l'année contre 64 traités, station à 16 par saison ».
+- **Et ils REFUSENT sur un monde saboté**, chacun en nommant la case et la raison :
+  - **porte de la crête r = 26 bouchée** → les cases vivantes tombent de 2844 à **934**, neuf
+    destinations sont nommées une par une, et `BuildAllScenes` **s'arrête** : « Construction
+    interrompue : une scène a refusé », Build Settings non touchés ;
+  - **case (29, 14) murée**, la seule voisine de la fontaine → « La fontaine (28, 14) n'est
+    atteignable depuis aucune case accessible : le labyrinthe l'enferme » ;
+  - **arrivée de fontaine effacée au sous-sol** → « 1 fontaine(s) en surface mais 0 arrivée(s) au
+    sous-sol » ;
+  - **quatorzième maison posée** → « 14 destinations apportent 67 sur l'année, la station n'en
+    traite que 64. Capacité attendue : 17 par saison ».
+  Le sabotage a ensuite été retiré, et les plans revérifiés case par case.
+- **Un bilan qui ne pouvait pas dire non, corrigé au passage.** `ValidateDepthPuzzle` imprimait
+  `Destinations().Count` : il annonçait « 14 destinations atteignables » sur la ligne qui suivait
+  neuf refus. Il compte désormais les atteintes, et dit « x sur y ».
+- **Les deux plans relus par script** après écriture : 12 maisons pour 12 alcôves, 7 bouches pour
+  7 échelles, la fontaine pour son arrivée, la station au fond, le bassin sous herbe stricte avec
+  sa chambre creusée.
+- **Play depuis Boot, par injection clavier réelle**, `Application.isFocused` vérifié à chaque
+  appui — **zéro image injectée sans focus**, le pilote attendant le focus plutôt que de tricher :
+  - **le labyrinthe traversé** du départ (14, 16) à l'unique voisine de la fontaine (29, 14),
+    35 pas en 9,1 secondes ;
+  - descente par la bouche (27, 3) ;
+  - **la maison la plus lointaine (61, 8) reliée**, route de 148 segments, **263 appuis sur
+    Espace** en 53,9 secondes, cinq destinations desservies au bout ;
+  - **l'eau morte fait son travail** : la frontière grossit à mesure que la route avance —
+    14, 39, 63, 88, 113, 136 cases — puis retombe à 8 quand la route atteint la station ;
+  - **une route volontairement fausse** de 32 cases, en ligne droite depuis la maison (27, 35),
+    traverse la crête r = 26 ailleurs qu'à sa porte : l'eau monte jusqu'en (23, 35), profondeur
+    2, et **s'arrête net** sur (22, 35), profondeur 1. Une seule case peu profonde au milieu de
+    la profondeur 2 coupe toute la route, et le jeu le montre enfin.
+- **Horloge accélérée**, une année entière saison par saison sur le réseau posé :
+
+  | | gelés | bouchés | arrivant | traité | perdu |
+  |---|---|---|---|---|---|
+  | Été | 0 | 0 | 5 | 5 | 0 |
+  | Automne | 0 | 19 | 11 | 11 | 0 |
+  | **Hiver** | **50** | 19 | 4 | 4 | 0 |
+  | Printemps | 0 | **19** | 5 | 5 | 0 |
+
+  Les **50** segments gelés sont **exactement** les 50 segments à profondeur 1 du réseau :
+  probabilité 1, comme le réglage l'annonçait. Le bilan tient à toutes les saisons avec la
+  capacité 16. Et le printemps dégèle mais **ne débouche pas** — la panne connue de l'audit, ici
+  en clair : sur 96 ticks accélérés, 50 segments finissent bouchés et plus rien n'est desservi.
+- **Captures** dans `Captures/`, dossier ignoré par git comme le reste des artefacts de
+  vérification : la carte entière, le labyrinthe 27 x 17, le sous-sol avec la route et sa
+  frontière, et le gros plan sur l'eau morte à la crête.
+- `git diff ProjectSettings/` : **vide**. `ProjectAuditorSettings.asset`, qu'Unity avait réécrit
+  de lui-même, a été remis en état.
+
+### Note d'atelier : le SceneRouter éteint TOUS les objets racines d'une couche
+
+`SetLayerEnabled` parcourt `scene.GetRootGameObjects()` et éteint **chacun** d'eux, pas seulement
+la racine nommée de la couche. Un objet posé dans la scène Surface s'éteint donc en descendant, et
+sa coroutine s'arrête **sans un mot**. Le pilote de test l'a appris en mourant en silence au
+moment de la descente. Tout objet qui doit survivre à un changement de couche appartient à
+Persistent, ou passe par `DontDestroyOnLoad`.
+
+### Note d'atelier : relâcher une touche à l'arrivée fait dépasser d'une case
+
+`PlayerController.currentCell` ne change qu'à **l'arrivée**, alors que le personnage se déplace en
+continu. Relâcher la flèche au moment où la case change la laisse tenue une image de trop : le pas
+suivant est déjà engagé, et le personnage dépasse d'une case. Dans un couloir cela se rattrape
+tout seul ; **sur la case d'arrivée il oscille autour d'elle sans jamais s'arrêter**. Le remède
+est de relâcher **avant** l'arrivée, à une demi-case du centre, le pas étant déjà engagé.
+
+Cela ne concerne que le pilotage automatique — un humain relâche la flèche quand il voit qu'il est
+arrivé, une image plus tard, et la case suivante est de toute façon celle qu'il voulait.
 
 ## Les documents du projet
 

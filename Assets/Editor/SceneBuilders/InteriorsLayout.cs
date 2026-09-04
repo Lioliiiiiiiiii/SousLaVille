@@ -11,8 +11,11 @@ namespace SousLaVille.EditorTools
     /// batiment, c'est ajouter un bloc et un creneau, sans toucher aux pieces existantes.
     /// Une grande grille aurait oblige a rouvrir les lignes des voisins a chaque batiment.
     ///
-    /// La carte fait 40x30 comme les deux autres couches, decoupee en six creneaux de 20 sur
-    /// 10. Un creneau est exactement la vue de la camera, 320x180 a PPU 16 : la piece tient
+    /// La carte fait 40x30, decoupee en six creneaux de 20 sur 10. Elle porte ses PROPRES
+    /// dimensions et ne suit pas celles du village : la phase 12b a porte les deux autres
+    /// couches a 64x45 sans que celle-ci bouge, les pieces n'ayant aucune raison de grandir.
+    ///
+    /// Un creneau est exactement la vue de la camera, 320x180 a PPU 16 : la piece tient
     /// donc a l'ecran d'un seul tenant, sans rien faire defiler.
     ///
     /// Legende

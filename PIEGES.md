@@ -24,6 +24,17 @@ nouvelle session lancée sans focus reste figée à l'image 1 : Boot ne charge m
 dans `Awake`, qu'Unity ne rappelle pas après un rechargement. Relancer le play plutôt que
 chercher un bug. (Le poser dans `OnEnable` le réglerait ; question ouverte depuis la phase 7.)
 
+**Un champ `static readonly` ne se sabote pas par réflexion.** `FieldInfo.SetValue` remplace bien
+la valeur — `ReferenceEquals` le confirme — mais le runtime a figé la référence à l'initialisation
+et les méthodes de la classe lisent toujours l'ancien tableau, **sans un mot**. Un validateur
+saboté ainsi dit oui et on le croit. Le sabotage passe donc par le fichier et une vraie
+recompilation, jamais par la réflexion.
+
+**Relâcher une flèche à l'arrivée fait dépasser d'une case.** `currentCell` ne change qu'à
+l'arrivée alors que le personnage bouge en continu : relâcher à ce moment laisse la touche tenue
+une image de trop et le pas suivant est déjà engagé. Dans un couloir cela se rattrape ; **sur la
+case d'arrivée le pilote oscille autour d'elle indéfiniment**. Relâcher à une demi-case du centre.
+
 **Une capture d'écran produit deux erreurs `memoryless`.** Elles viennent du chemin
 `ScreenCapture` d'URP sur Metal, pas du jeu. Vérifié en isolant.
 
@@ -41,8 +52,13 @@ couche doit **retenter tant qu'il échoue**, jamais résoudre une seule fois au 
 phase 1 (la carte du joueur), phase 4 (le solveur), phase 5 (l'ambiance).
 
 **Un composant d'une couche de jeu s'abonne dans `OnEnable`, se désabonne dans `OnDisable`, et
-se RÉAPPLIQUE au rallumage.** Le `SceneRouter` éteint la racine de la couche inactive : ce qui
-s'est passé pendant l'extinction doit se rattraper au réveil.
+se RÉAPPLIQUE au rallumage.** Le `SceneRouter` éteint la couche inactive : ce qui s'est passé
+pendant l'extinction doit se rattraper au réveil.
+
+**Et il éteint TOUS les objets racines de cette scène, pas seulement sa racine nommée.**
+`SetLayerEnabled` parcourt `scene.GetRootGameObjects()` et éteint chacun d'eux. Un objet posé dans
+la scène Surface s'éteint donc en descendant, et sa coroutine s'arrête **sans un mot**. Ce qui doit
+survivre à un changement de couche appartient à Persistent, ou passe par `DontDestroyOnLoad`.
 
 **Chercher un objet d'une couche éteinte demande `FindObjectsInactive.Include`.** Sans lui,
 `FindAnyObjectByType` ne le voit pas. C'est le cas de l'usine à tuyaux, consultée depuis le
@@ -77,6 +93,18 @@ sur son visage et l'effaçait. Un picto qui cache ce qu'il désigne ne désigne 
 **Un plan ASCII se modifie par INDICE DE LIGNE, jamais par contenu.** Deux lignes d'une carte
 peuvent être identiques au caractère près, et `string.Replace(..., 1)` touche la première
 rencontrée. L'alcôve de la fontaine s'est posée une case trop haut comme ça.
+
+**Un plan ASCII dessiné à la main se fragmente sans le dire.** Le labyrinthe de la phase 12b,
+dessiné caractère par caractère sur un treillis pourtant régulier, est sorti en **seize
+composantes connexes** ; rien dans le dessin ne le montrait. Le creuser en **polylignes**, chacune
+devant toucher le tracé déjà posé sous peine d'assertion, rend la connexité structurelle : une
+poche morte n'est plus dessinable par inadvertance.
+
+**La table d'étalement des flaques dépend du nombre de BOUCHES autant que des cases bloquantes.**
+Elle a été fausse deux fois, chaque fois pour avoir été reportée d'une phase à l'autre sans être
+revérifiée. Toute phase qui touche à la carte la recalcule, sur le plan **réellement écrit** et
+non sur celui qu'on croit avoir écrit — six cases bloquantes d'écart se sont glissées ainsi entre
+deux mesures de la phase 12b.
 
 **Vérifier la solvabilité PAR CALCUL avant d'écrire un plan.** Les crêtes de la phase 4, le
 labyrinthe de la phase 11, l'alcôve de la fontaine : chacun a été calculé avant d'être posé.

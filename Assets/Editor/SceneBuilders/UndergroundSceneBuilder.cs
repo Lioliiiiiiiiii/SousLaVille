@@ -26,16 +26,15 @@ namespace SousLaVille.EditorTools
         // Le sous-sol est plus sombre que le village, sans gener la lecture des couleurs.
         private const float GlobalLightIntensity = 0.8f;
 
-        // Les nombres du bilan de l'eau, phase 8. Cinq maisons et huit de pluie font treize
-        // a l'automne : la station en traite huit, le bassin encaisse cinq, et l'ete le
-        // ramene a zero. Le cycle est stable.
-        // PHASE 11 : 9 et non 8. La fontaine est une sixieme destination, et l'annee passe de
-        // 31 a 35 unites d'arrivant. A huit par saison, la station n'en traite que 32 : le
-        // bassin gagnerait trois unites par an, saturerait vers la troisieme annee, et le
-        // village deborderait a chaque automne. A neuf, le bilan annuel redevient -1, comme
-        // avant la fontaine, et la suite du bassin retombe exactement sur celle de la phase 8,
-        // 5 / 3 / 2 / 0.
-        private const int PlantCapacityPerSeason = 9;
+        // Les nombres du bilan de l'eau. La regle, derivee en phase 12 puis confirmee par
+        // simulation sur six annees : sur l'annee l'arrivant vaut 4D + R et la station traite
+        // 4C, donc C = D + 3 est le minimum entier avec R = 11 (pluies 2/0/8/1). A C = D + 3,
+        // Lost vaut zero a toutes les saisons et la suite du bassin retombe sur 5/3/2/0.
+        //
+        // PHASE 12B : treize destinations, donc SEIZE. Le nombre reste ecrit a la main ici ;
+        // c'est la phase 12d qui fera grandir la station en jeu, bassin par bassin, et qui
+        // rendra au debordement son role de retour permanent.
+        private const int PlantCapacityPerSeason = 16;
         private const int ReserveCapacity = 10;
 
         /// <summary>

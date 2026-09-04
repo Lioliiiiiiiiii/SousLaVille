@@ -107,7 +107,7 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Peint les deux tilemaps d'un coup. SetTilesBlock ecrit les 1200 cases en un
+        /// Peint les deux tilemaps d'un coup. SetTilesBlock ecrit les 2880 cases en un
         /// appel, la ou SetTile case par case declencherait autant de mises a jour.
         /// </summary>
         private static void PaintVillage(Tilemap ground, Tilemap blocking)

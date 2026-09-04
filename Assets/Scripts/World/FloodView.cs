@@ -140,15 +140,18 @@ namespace SousLaVille.World
         }
 
         /// <summary>
-        /// Le debordement, autour de chaque bouche. Les trois debordent de la meme facon et
-        /// non d'un tiers chacune : le reseau deborde, c'est vrai partout, et il le voit ou
+        /// Le debordement, autour de chaque bouche. Les SEPT debordent de la meme facon et
+        /// non d'un septieme chacune : le reseau deborde, c'est vrai partout, et il le voit ou
         /// qu'il se trouve dans le village.
         ///
-        /// L'etalement croit par anneaux de Manhattan. Lost plafonne a 5 par le calcul :
-        /// l'arrivant plafonne a 14, cinq maisons plus la fontaine plus huit de pluie
-        /// d'automne, la station en traite neuf, donc le surplus plafonne a cinq. La phase 11
-        /// a change les deux nombres et le plafond n'a pas bouge : la table d'etalement de la
-        /// phase 10 reste donc valable telle quelle.
+        /// L'etalement croit par anneaux de Manhattan, rayon = Lost - 1, et la table depend
+        /// donc du NOMBRE DE BOUCHES et du nombre de cases bloquantes. Elle a deja ete fausse
+        /// deux fois pour avoir ete crue « valable telle quelle » apres un changement de
+        /// plan : la recalculer fait partie de toute phase qui touche a la carte. Elle est
+        /// tenue a jour dans PROGRESS.md, jamais ici.
+        ///
+        /// Lost plafonne toujours a 5 : l'arrivant plafonne a treize destinations plus huit
+        /// de pluie d'automne, soit 21, la station en traite seize.
         /// </summary>
         private void PaintOverflow()
         {
@@ -176,8 +179,9 @@ namespace SousLaVille.World
 
         /// <summary>
         /// Les fuites. Une case du sous-sol dont un segment est tombe au seuil recoit une
-        /// flaque sur LA MEME case du village : les deux cartes font 40x30 et partagent le
-        /// meme repere depuis la phase 2, donc il n'y a aucune conversion a faire.
+        /// flaque sur LA MEME case du village : les deux cartes ont toujours la meme taille,
+        /// 64x45 depuis la phase 12b, et partagent le meme repere depuis la phase 2, donc il
+        /// n'y a aucune conversion a faire.
         ///
         /// La regle du « trop abime » vit dans PipeNetwork, et c'est la meme que celle qui
         /// peint le tuyau en rouge terne sous terre.

@@ -76,3 +76,6 @@ crashlytics-build.properties
 
 # macOS
 .DS_Store
+
+# Les captures de verification. Utiles pendant une phase, jamais du contenu de depot.
+/Captures/

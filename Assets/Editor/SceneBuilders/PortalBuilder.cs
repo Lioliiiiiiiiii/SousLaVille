@@ -14,7 +14,7 @@ namespace SousLaVille.EditorTools
     {
         /// <summary>
         /// Entre la surface et le sous-sol, la case d'arrivee est la case de depart : les
-        /// deux cartes font 40x30 et partagent le meme repere. Descendre depose donc le
+        /// deux cartes ont la meme taille et partagent le meme repere. Descendre depose donc le
         /// personnage juste sous la bouche.
         ///
         /// Les portes de batiment, elles, donnent leur case d'arrivee : la carte des

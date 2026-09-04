@@ -4,13 +4,20 @@ using UnityEngine;
 namespace SousLaVille.EditorTools
 {
     /// <summary>
-    /// Le plan du sous-sol, ecrit a la main. Trente lignes de quarante caracteres, exactement
+    /// Le plan du sous-sol, ecrit a la main. Quarante-cinq lignes de soixante-quatre
+    /// caracteres, exactement
     /// alignees case pour case sur celles du village : la case (8, 19) du sous-sol est
     /// directement sous la case (8, 19) de la surface.
     ///
-    /// Au depart tout est de la terre pleine, sauf une salle sous chaque bouche et sous la
-    /// station, et les galeries qui les relient. Soixante-quatorze cases praticables sur mille
-    /// deux cents : de quoi marcher des la phase 2, et tout le reste a ouvrir en phase 3.
+    /// Au depart tout est de la terre pleine, sauf une chambre sous chaque echelle et sous la
+    /// station, et l'ANCIEN COLLECTEUR du village : le reseau qui existait avant que le joueur
+    /// arrive, pose sous les routes de la plaine. 217 cases praticables sur 2880, soit 7,5 %,
+    /// le ratio de la phase 11 (88 sur 1200). Sans lui la pire destination coute 118 appuis
+    /// sur Espace au lieu de 108, et le total passe de 368 a 431 : le pre-creusement est du
+    /// CONTENU, pas de la mise a l'echelle.
+    ///
+    /// Le collecteur s'ARRETE A r = 33, en deca de la crete la plus exterieure : aucune case
+    /// de porte n'est jamais livree creusee, et le plan le verifie avant d'etre emis.
     ///
     /// Un second plan, superpose au premier, donne la profondeur de chaque case : 1 peu
     /// profond, 2 moyen, 3 profond. Trois zones concentriques autour de la station, qui seule
@@ -29,11 +36,28 @@ namespace SousLaVille.EditorTools
     /// E, T, R et O sont des marqueurs : le builder peint du sol de galerie dessous et pose un
     /// GameObject par-dessus.
     ///
-    /// PHASE 11. L'alcove de la fontaine est en (20, 15), a la PROFONDEUR 1 : sa route gele
-    /// donc en hiver et se bouche en automne, comme celle des trois maisons peu profondes. Le
-    /// plan des profondeurs n'a pas bouge d'un caractere, et les cinq routes de maison gardent
-    /// leurs longueurs, 57 / 46 / 31 / 45 / 6 segments. Sa propre route fait 36 segments, et
-    /// elle a ete verifiee par calcul avant que l'alcove soit creusee.
+    /// PHASE 12B. La carte passe a 64x45 et le plan des profondeurs est redessine. Il se
+    /// resume a une formule exacte, plus trois listes de portes ecrites a la main :
+    ///
+    ///   r = distance de MANHATTAN a la station (6, 25)
+    ///   r <= 8   -> profondeur 3      r > 31  -> profondeur 1      sinon profondeur 2
+    ///   sauf r = 12, 19 et 26, les TROIS CRETES, forcees a 1 hors de leurs portes.
+    ///
+    /// Une crete est un anneau peu profond pose au milieu de la couronne : un trajet deja
+    /// descendu a 2 ne peut pas y remonter a 1, donc elle est un mur pour l'eau et il faut
+    /// trouver la porte. Les portes font cinq cases chacune et sont a 90 degres l'une de
+    /// l'autre : est pour r = 26, sud pour r = 19, nord pour r = 12. On les traverse donc en
+    /// zigzag, et c'est ce zigzag qui fait le puzzle.
+    ///
+    /// Le rayon exterieur de la couronne decide le RYTHME DE L'HIVER : le nombre de segments
+    /// a profondeur 1 d'une route vaut exactement r_destination - 31. freezeMaxDepth vaut 1
+    /// et frostResistance(Standard) vaut 0, donc chacun de ces segments gele a CHAQUE hiver,
+    /// probabilite 1. La destination la plus lointaine, (61, 8) a r = 72, en compte 41.
+    ///
+    /// Solvabilite VERIFIEE PAR CALCUL AVANT ECRITURE, la methode des cretes de la phase 4 :
+    /// les treize destinations et le bassin gardent un chemin a profondeur non decroissante
+    /// jusqu'a la station. ValidateDepthPuzzle le reverifie a chaque construction, et 2844
+    /// des 2880 cases restent vivantes.
     /// </summary>
     public static class UndergroundLayout
     {
@@ -57,82 +81,109 @@ namespace SousLaVille.EditorTools
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
-            "########################################",
-            "########################################",
-            "########################################",
-            "#####...################################",
-            "#####.T.################################",
-            "#####...################################",
-            "######.#################################",
-            "######.#################################",
-            "######.#################################",
-            "#####A....##############################",
-            "######..E.##############################",
-            "#######...##############################",
-            "########.####A#############A############",
-            "########.###############################",
-            "########.###########O###################",
-            "########....############################",
-            "########..R.############################",
-            "########....############################",
-            "########.##########...##################",
-            "########............E.#######A##########",
-            "###################...##################",
-            "####################.###################",
-            "####################.###################",
-            "####################.###########...#####",
-            "####################.............E.#####",
-            "################################..A#####",
-            "########################################",
-            "########################################",
-            "########################################",
-            "########################################",
+            "################################################################",
+            "################################################################",
+            "################################################################",
+            "##########################################################A#####",
+            "##############################################.............#####",
+            "#############################################..#################",
+            "#############################################A.#################",
+            "#############################################..#################",
+            "##############################################.##...############",
+            "###########################A##################....E.############",
+            "########..A###############...#################.##...############",
+            "########.E.###############.E.#################.#################",
+            "########...###############...#################.#################",
+            "###########################.##################.#################",
+            "###########################.##################..........A#######",
+            "##################A###########################.#########.#######",
+            "##################.###########################.#################",
+            "##############################################.#################",
+            "#####...######################################.#################",
+            "#####.T.###############################....A..................##",
+            "#####...###################################.##.#####.#####.##.##",
+            "######.#######################################.#####.####...#.##",
+            "######.#######################################.#####.####.E.#.##",
+            "######.#######################################.#####.####...#.##",
+            "#####A########################################.#####.########.##",
+            "#####.########################################.#####.########.##",
+            "##############################################.#####.########.##",
+            "##########.##A################################.#####A########.##",
+            "##########.##.################################.#####.########.##",
+            "##########.###################################.##############.##",
+            "#########...################O#################.##############.##",
+            "#########.R.################.#################.##############.##",
+            "########....##################################.##############.##",
+            "########.E.###################################.##...#########.##",
+            "########...###################################....E.#########.##",
+            "#################################################...#########.##",
+            "#############################################################A##",
+            "#############################################################.##",
+            "################################################################",
+            "##################################.#############################",
+            "##########################...#####A#############################",
+            "##########################.E.......#############################",
+            "##########################...###################################",
+            "################################################################",
+            "################################################################",
         };
 
         /// <summary>
-        /// Profondeur de chaque case, meme orientation que Rows. Zones concentriques autour
-        /// de la station : 3 jusqu'a cinq cases de distance, 2 jusqu'a vingt, 1 au-dela.
+        /// Profondeur de chaque case, meme orientation que Rows. Anneaux COMPLETS de
+        /// Manhattan autour de la station : 3 jusqu'a huit cases, 2 jusqu'a trente et une,
+        /// 1 au-dela. Repartition : 1809 / 930 / 141.
         ///
-        /// Deux cretes peu profondes traversent la couronne, a quatorze et a huit cases de la
-        /// station, chacune percee d'une seule porte, les deux portes opposees. Une crete a
-        /// profondeur 1 posee au milieu de la profondeur 2 est un mur pour l'eau : un trajet
-        /// deja descendu a 2 ne peut pas y remonter. Il faut trouver la porte.
-        ///
-        /// Solvabilite verifiee avant ecriture : chaque maison garde un chemin a profondeur
-        /// non decroissante jusqu'a la station, avec un detour de zero a seize cases.
+        /// TROIS cretes peu profondes traversent la couronne, a douze, dix-neuf et vingt-six
+        /// cases de la station, chacune percee d'une porte de CINQ cases, les trois portes a
+        /// 90 degres l'une de l'autre. Voir le resume de la classe pour la formule complete.
         /// </summary>
         private static readonly string[] DepthRows =
         {
-            "2212233322122222122222211111111111111111",
-            "2122333332212222212222221111111111111111",
-            "1223333333222222221222222111111111111111",
-            "2233333333322222222122222211111111111111",
-            "2333333333332222222212222221111111111111",
-            "2233333333322222222122222211111111111111",
-            "1223333333222222221222222111111111111111",
-            "2122333332212222212222221111111111111111",
-            "2212233322122222122222211111111111111111",
-            "2221223221222221222222111111111111111111",
-            "2222122212222212222221111111111111111111",
-            "2222212122222122222211111111111111111111",
-            "1222221222221222222111111111111111111111",
-            "2122222222212222221111111111111111111111",
-            "2212222222122222211111111111111111111111",
-            "2221222221222222111111111111111111111111",
-            "2222122222222221111111111111111111111111",
-            "2222222222222211111111111111111111111111",
-            "2222222222222111111111111111111111111111",
-            "1222222222221111111111111111111111111111",
-            "1122222222211111111111111111111111111111",
-            "1112222222111111111111111111111111111111",
-            "1111222221111111111111111111111111111111",
-            "1111122211111111111111111111111111111111",
-            "1111112111111111111111111111111111111111",
-            "1111111111111111111111111111111111111111",
-            "1111111111111111111111111111111111111111",
-            "1111111111111111111111111111111111111111",
-            "1111111111111111111111111111111111111111",
-            "1111111111111111111111111111111111111111",
+            "2222221222222122222111111111111111111111111111111111111111111111",
+            "2222212122222212222211111111111111111111111111111111111111111111",
+            "2222122212222221222221111111111111111111111111111111111111111111",
+            "2221222221222222122222111111111111111111111111111111111111111111",
+            "2212222222122222212222211111111111111111111111111111111111111111",
+            "2122222222212222221222221111111111111111111111111111111111111111",
+            "1222222222221222222122222111111111111111111111111111111111111111",
+            "2222222222222122222212222211111111111111111111111111111111111111",
+            "2222222222222212222221222221111111111111111111111111111111111111",
+            "2222222222222221222222122222111111111111111111111111111111111111",
+            "2221222221222222122222212222211111111111111111111111111111111111",
+            "2212223222122222212222221222221111111111111111111111111111111111",
+            "2122233322212222221222222122222111111111111111111111111111111111",
+            "1222333332221222222122222212222211111111111111111111111111111111",
+            "2223333333222122222212222221222221111111111111111111111111111111",
+            "2233333333322212222221222222122222111111111111111111111111111111",
+            "2333333333332221222222122222212222211111111111111111111111111111",
+            "3333333333333222122222212222222222221111111111111111111111111111",
+            "3333333333333322212222221222222222222111111111111111111111111111",
+            "3333333333333332221222222122222222222211111111111111111111111111",
+            "3333333333333322212222221222222222222111111111111111111111111111",
+            "3333333333333222122222212222222222221111111111111111111111111111",
+            "2333333333332221222222122222212222211111111111111111111111111111",
+            "2233333333322212222221222222122222111111111111111111111111111111",
+            "2223333333222122222212222221222221111111111111111111111111111111",
+            "1222333332221222222122222212222211111111111111111111111111111111",
+            "2122233322212222221222222122222111111111111111111111111111111111",
+            "2212223222122222212222221222221111111111111111111111111111111111",
+            "2221222221222222122222212222211111111111111111111111111111111111",
+            "2222122212222221222222122222111111111111111111111111111111111111",
+            "2222212122222212222221222221111111111111111111111111111111111111",
+            "2222221222222122222212222211111111111111111111111111111111111111",
+            "1222222222221222222122222111111111111111111111111111111111111111",
+            "2122222222212222221222221111111111111111111111111111111111111111",
+            "2212222222122222212222211111111111111111111111111111111111111111",
+            "2221222221222222122222111111111111111111111111111111111111111111",
+            "2222222222222221222221111111111111111111111111111111111111111111",
+            "2222222222222212222211111111111111111111111111111111111111111111",
+            "2222222222222122222111111111111111111111111111111111111111111111",
+            "1222222222221222221111111111111111111111111111111111111111111111",
+            "2122222222212222211111111111111111111111111111111111111111111111",
+            "2212222222122222111111111111111111111111111111111111111111111111",
+            "2221222221222221111111111111111111111111111111111111111111111111",
+            "2222122212222211111111111111111111111111111111111111111111111111",
+            "2222212122222111111111111111111111111111111111111111111111111111",
         };
 
         /// <summary>
@@ -185,7 +236,7 @@ namespace SousLaVille.EditorTools
             return cells;
         }
 
-        /// <summary>Vrai si la carte fait bien 30 lignes de 40 caracteres.</summary>
+        /// <summary>Vrai si la carte fait bien 45 lignes de 64 caracteres.</summary>
         public static bool IsWellFormed()
         {
             if (Rows.Length != Height)
@@ -411,9 +462,23 @@ namespace SousLaVille.EditorTools
                 ok = false;
             }
 
+            // Le compte des ATTEINTES, pas le total : la version de la phase 12a imprimait
+            // Destinations().Count, si bien qu'elle annoncait « 14 destinations atteignables »
+            // sur la ligne qui suivait neuf refus. Un bilan qui ne peut pas dire non ne vaut
+            // pas mieux qu'un validateur qui dit toujours oui.
+            List<Vector2Int> all = Destinations();
+            int served = 0;
+            foreach (Vector2Int destination in all)
+            {
+                if (reachable.Contains(destination))
+                {
+                    served++;
+                }
+            }
+
             Debug.Log($"[Sous la Ville] Puzzle des profondeurs : {reachable.Count} case(s) " +
-                      $"vivante(s) sur {Width * Height}, {Destinations().Count} destination(s) " +
-                      "atteignable(s).");
+                      $"vivante(s) sur {Width * Height}, {served} destination(s) " +
+                      $"atteignable(s) sur {all.Count}.");
 
             return ok;
         }
