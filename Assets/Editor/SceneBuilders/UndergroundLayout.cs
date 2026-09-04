@@ -24,9 +24,16 @@ namespace SousLaVille.EditorTools
     ///   E  echelle vers la surface   T  arrivee sous la station
     ///   A  alcove d'une maison, deja creusee
     ///   R  le bassin d'orage, au centre d'une chambre de trois sur trois deja creusee
+    ///   O  l'arrivee de la fontaine du parc, une alcove d'une case comme celle d'une maison
     ///
-    /// E, T et R sont des marqueurs : le builder peint du sol de galerie dessous et pose un
+    /// E, T, R et O sont des marqueurs : le builder peint du sol de galerie dessous et pose un
     /// GameObject par-dessus.
+    ///
+    /// PHASE 11. L'alcove de la fontaine est en (20, 15), a la PROFONDEUR 1 : sa route gele
+    /// donc en hiver et se bouche en automne, comme celle des trois maisons peu profondes. Le
+    /// plan des profondeurs n'a pas bouge d'un caractere, et les cinq routes de maison gardent
+    /// leurs longueurs, 57 / 46 / 31 / 45 / 6 segments. Sa propre route fait 36 segments, et
+    /// elle a ete verifiee par calcul avant que l'alcove soit creusee.
     /// </summary>
     public static class UndergroundLayout
     {
@@ -39,6 +46,7 @@ namespace SousLaVille.EditorTools
         public const char PlantOutlet = 'T';
         public const char HouseOutlet = 'A';
         public const char Reserve = 'R';
+        public const char Fountain = 'O';
 
         /// <summary>La chambre du bassin : trois cases sur trois autour du marqueur.</summary>
         public const int ReserveChamberRadius = 1;
@@ -63,7 +71,7 @@ namespace SousLaVille.EditorTools
             "#######...##############################",
             "########.####A#############A############",
             "########.###############################",
-            "########.###############################",
+            "########.###########O###################",
             "########....############################",
             "########..R.############################",
             "########....############################",

@@ -28,7 +28,13 @@ namespace SousLaVille.EditorTools
         // Les nombres du bilan de l'eau, phase 8. Cinq maisons et huit de pluie font treize
         // a l'automne : la station en traite huit, le bassin encaisse cinq, et l'ete le
         // ramene a zero. Le cycle est stable.
-        private const int PlantCapacityPerSeason = 8;
+        // PHASE 11 : 9 et non 8. La fontaine est une sixieme destination, et l'annee passe de
+        // 31 a 35 unites d'arrivant. A huit par saison, la station n'en traite que 32 : le
+        // bassin gagnerait trois unites par an, saturerait vers la troisieme annee, et le
+        // village deborderait a chaque automne. A neuf, le bilan annuel redevient -1, comme
+        // avant la fontaine, et la suite du bassin retombe exactement sur celle de la phase 8,
+        // 5 / 3 / 2 / 0.
+        private const int PlantCapacityPerSeason = 9;
         private const int ReserveCapacity = 10;
 
         [MenuItem("Sous La Ville/Construire la scène Underground")]
@@ -341,9 +347,11 @@ namespace SousLaVille.EditorTools
             List<Vector2Int> outlets = UndergroundLayout.FindAll(UndergroundLayout.PlantOutlet);
             List<Vector2Int> houses = UndergroundLayout.FindAll(UndergroundLayout.HouseOutlet);
             List<Vector2Int> reserves = UndergroundLayout.FindAll(UndergroundLayout.Reserve);
+            List<Vector2Int> fountains = UndergroundLayout.FindAll(UndergroundLayout.Fountain);
 
             SerializedProperty fixedNodes = serializedNetwork.FindProperty("fixedNodes");
-            fixedNodes.arraySize = outlets.Count + houses.Count + reserves.Count;
+            fixedNodes.arraySize =
+                outlets.Count + houses.Count + reserves.Count + fountains.Count;
 
             int index = 0;
             foreach (Vector2Int cell in outlets)
@@ -364,6 +372,15 @@ namespace SousLaVille.EditorTools
             foreach (Vector2Int cell in reserves)
             {
                 SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell, NodeType.ReserveInlet);
+            }
+
+            // La fontaine, phase 11 : une destination comme une maison, permanente comme
+            // elles. C'est le premier usage de FountainInlet, le seul type du modele de
+            // CLAUDE.md qui n'en avait aucun depuis la phase 3.
+            foreach (Vector2Int cell in fountains)
+            {
+                SetFixedNode(fixedNodes.GetArrayElementAtIndex(index++), cell,
+                    NodeType.FountainInlet);
             }
 
             serializedNetwork.ApplyModifiedPropertiesWithoutUndo();

@@ -81,6 +81,10 @@ namespace SousLaVille.EditorTools
         /// <summary>L'eau du village, phase 10. Semi-transparente : on voit le sol dessous.</summary>
         public const string TileWater = TilesFolder + "/Tile_Water.asset";
 
+        /// <summary>La fontaine du parc, phase 11. Bloquante comme une maison.</summary>
+        public const string FountainTexture = TilesFolder + "/tile_fountain.png";
+        public const string TileFountain = TilesFolder + "/Tile_Fountain.asset";
+
         public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
         public const string TileWall = TilesFolder + "/Tile_Wall.asset";
         public const string DoorTexture = SpritesFolder + "/door.png";
@@ -344,6 +348,7 @@ namespace SousLaVille.EditorTools
 
                 WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
                 WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
+                WriteTexture(FountainTexture, BuildFountain());
                 WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
                 WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
 
@@ -419,6 +424,7 @@ namespace SousLaVille.EditorTools
 
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
             ConfigureImporter($"{TilesFolder}/tile_water.png", null);
+            ConfigureImporter(FountainTexture, null);
             ConfigureImporter($"{TilesFolder}/tile_facade.png", null);
             ConfigureImporter($"{TilesFolder}/tile_wall.png", null);
             ConfigureImporter(VillageMapTexture, null);
@@ -490,6 +496,7 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TileHouse, $"{TilesFolder}/tile_house.png");
             CreateTileAsset(TileWorkshop, $"{TilesFolder}/tile_workshop.png");
             CreateTileAsset(TileWater, $"{TilesFolder}/tile_water.png");
+            CreateTileAsset(TileFountain, FountainTexture);
             CreateTileAsset(TileFacade, $"{TilesFolder}/tile_facade.png");
             CreateTileAsset(TileWall, $"{TilesFolder}/tile_wall.png");
 
@@ -509,7 +516,7 @@ namespace SousLaVille.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[Sous la Ville] Art placeholder généré : 122 textures, 65 tuiles.");
+            Debug.Log("[Sous la Ville] Art placeholder généré : 123 textures, 66 tuiles.");
         }
 
         /// <summary>Vrai si toutes les tuiles et tous les sprites attendus sont sur le disque.</summary>
@@ -518,7 +525,7 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop, TileFacade, TileWall, TileWater
+                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain
             };
 
             foreach (string path in tiles)
@@ -1440,6 +1447,62 @@ namespace SousLaVille.EditorTools
             // Rangee du haut, decalee : deux vagues ne se superposent jamais.
             Fill(pixels, TileSize, 2, 6, 11, 11, ripple);
             Fill(pixels, TileSize, 9, 13, 11, 11, ripple);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// La fontaine du parc : un bassin rond de pierre, son bord clair, et un jet au
+        /// milieu. Ronde plutot que carree pour la meme raison que la bouche d'egout : elle se
+        /// distingue au premier coup d'oeil des haies et des dalles qui l'entourent.
+        ///
+        /// Le jet est dessine sur le bassin, meme a l'arret : c'est une fontaine, pas un
+        /// puits. Ce qui dit qu'elle marche, c'est l'eau que FloodView pose autour d'elle.
+        /// </summary>
+        private static Color32[] BuildFountain()
+        {
+            Color32 rim = new Color32(0xB8, 0xB2, 0xA4, 0xFF);
+            Color32 stone = new Color32(0x8C, 0x86, 0x7A, 0xFF);
+            Color32 basin = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
+            Color32 jet = new Color32(0x9C, 0xD4, 0xF0, 0xFF);
+
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+            const float center = (TileSize - 1) * 0.5f;
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float radius = Mathf.Sqrt(dx * dx + dy * dy);
+
+                    if (radius > 7.4f)
+                    {
+                        continue;
+                    }
+
+                    Color32 pixel;
+                    if (radius > 6.2f)
+                    {
+                        pixel = stone;
+                    }
+                    else if (radius > 4.8f)
+                    {
+                        pixel = rim;
+                    }
+                    else
+                    {
+                        pixel = basin;
+                    }
+
+                    pixels[y * TileSize + x] = pixel;
+                }
+            }
+
+            // Le jet, une colonne au milieu du bassin.
+            Fill(pixels, TileSize, 7, 8, 6, 11, jet);
+            Fill(pixels, TileSize, 6, 9, 10, 11, jet);
 
             return pixels;
         }

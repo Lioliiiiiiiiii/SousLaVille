@@ -1,3 +1,4 @@
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Network;
 using SousLaVille.Seasons;
@@ -7,8 +8,8 @@ using UnityEngine.Tilemaps;
 namespace SousLaVille.World
 {
     /// <summary>
-    /// L'eau dans le village. Elle vient de deux endroits, et les deux ne disent pas la meme
-    /// chose.
+    /// L'eau dans le village. Elle vient de trois endroits, et les trois ne disent pas la
+    /// meme chose.
     ///
     /// LE DEBORDEMENT sort des bouches d'egout et s'etale autour d'elles. Il montre
     /// SeasonSystem.LastBudget.Lost, le surplus que rien n'a retenu : le seul nombre que le
@@ -24,6 +25,10 @@ namespace SousLaVille.World
     /// Une seule image d'eau pour les deux : une flaque est une flaque, et c'est un symbole de
     /// moins a apprendre. C'est la position qui raconte l'histoire, une nappe autour d'une
     /// bouche ou une flaque isolee au milieu d'une rue.
+    ///
+    /// LE JET DE LA FONTAINE, depuis la phase 11, mouille les quatre cases autour du bassin
+    /// quand le solveur lui a trouve une route. Il dit « celle-la marche ». Le bassin lui-meme
+    /// bloque le passage, donc il ne prend pas l'eau : c'est autour de lui qu'elle deborde.
     ///
     /// RIEN NE BLOQUE ET RIEN NE PUNIT. L'eau se peint sur Surface_Water, jamais sur la couche
     /// bloquante : le personnage la traverse. CLAUDE.md, « un reseau qui deborde est un
@@ -49,6 +54,7 @@ namespace SousLaVille.World
 
         private SeasonSystem seasons;
         private PipeNetwork network;
+        private Fountain fountain;
 
         /// <summary>Cases mouillees au dernier passage. Sert aux verifications.</summary>
         public int FloodedCount { get; private set; }
@@ -130,6 +136,7 @@ namespace SousLaVille.World
 
             PaintOverflow();
             PaintLeaks();
+            PaintFountain();
         }
 
         /// <summary>
@@ -138,8 +145,10 @@ namespace SousLaVille.World
         /// qu'il se trouve dans le village.
         ///
         /// L'etalement croit par anneaux de Manhattan. Lost plafonne a 5 par le calcul :
-        /// l'arrivant plafonne a 13, cinq maisons plus huit de pluie d'automne, la station en
-        /// traite huit, donc le surplus plafonne a cinq.
+        /// l'arrivant plafonne a 14, cinq maisons plus la fontaine plus huit de pluie
+        /// d'automne, la station en traite neuf, donc le surplus plafonne a cinq. La phase 11
+        /// a change les deux nombres et le plafond n'a pas bouge : la table d'etalement de la
+        /// phase 10 reste donc valable telle quelle.
         /// </summary>
         private void PaintOverflow()
         {
@@ -188,6 +197,41 @@ namespace SousLaVille.World
                     Paint(node.GridPos);
                 }
             }
+        }
+
+        /// <summary>
+        /// Le jet de la fontaine. Elle est desservie exactement comme une maison, donc son
+        /// eau s'arrete des qu'un tuyau de sa route gele, se bouche ou casse : c'est le seul
+        /// retour qui dise « celle-la marche » sans un mot.
+        ///
+        /// Le bassin bloque, donc sa propre case ne prend pas l'eau. Ce sont ses quatre
+        /// voisines qui la recoivent, comme un bassin qui deborde.
+        /// </summary>
+        private void PaintFountain()
+        {
+            Fountain basin = ResolveFountain();
+            FlowSolver flow = GameManager.Instance != null ? GameManager.Instance.Flow : null;
+
+            if (basin == null || flow == null || !flow.IsServed(basin.Cell))
+            {
+                return;
+            }
+
+            Paint(basin.Cell + Vector2Int.up);
+            Paint(basin.Cell + Vector2Int.right);
+            Paint(basin.Cell + Vector2Int.down);
+            Paint(basin.Cell + Vector2Int.left);
+        }
+
+        /// <summary>La fontaine vit dans la meme scene que nous : elle est la quand nous le sommes.</summary>
+        private Fountain ResolveFountain()
+        {
+            if (fountain == null)
+            {
+                fountain = FindAnyObjectByType<Fountain>(FindObjectsInactive.Include);
+            }
+
+            return fountain;
         }
 
         /// <summary>

@@ -324,7 +324,10 @@ namespace SousLaVille.EditorTools
             const float margin = 4f;
             const float spacing = 2f;
 
-            int count = VillageLayout.FindAll(VillageLayout.House).Count;
+            // Une goutte par DESTINATION : les cinq maisons plus la fontaine du parc depuis
+            // la phase 11. Le solveur les compte ensemble dans ServedCount.
+            int count = VillageLayout.FindAll(VillageLayout.House).Count
+                      + VillageLayout.FindAll(VillageLayout.Fountain).Count;
             Sprite idle = LoadSprite(PlaceholderArtGenerator.PictoDropEmpty);
 
             List<Image> drops = new List<Image>(count);

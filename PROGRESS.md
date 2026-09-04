@@ -19,7 +19,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 9a | Les bâtiments | Terminée |
 | 9b | L'usine à tuyaux | Terminée |
 | 10 | Les fuites | Terminée |
-| 11 | Le parc | À faire |
+| 11 | Le parc | Terminée |
 | 12 | L'usine à panneaux | À faire |
 | 13 | Le Stock, le memory | À faire |
 | 14 | La Fabrique | À faire |
@@ -1112,18 +1112,98 @@ boîte fait 66 sur 24 avec le flocon et `ISOLÉ` ; sur la plaque LONDRES, 55 sur
 une plaque ne vainquant aucune saison ; le cartel s'éteint dès qu'on quitte la case ; console
 propre.
 
-## Prochaine étape, phase 11
+## Phase 11, ce qui est fait
 
-Le parc. Ce que la phase 10 laisse en place :
+Le parc devient un labyrinthe de haies avec la fontaine en son centre : les deux choses que le
+projet lui réservait depuis la phase 1, en une seule.
 
-- **`Surface_Water` sert enfin**, avec sa tilemap et son composant. La fontaine du parc a donc
-  déjà sa couche, sa tilemap et son eau semi-transparente ; il ne lui manque que son nœud.
-- **`NodeType.FountainInlet` et `Buildings/Fountain`** sont dans CLAUDE.md et n'ont **toujours
-  jamais servi**. `FountainInlet` est le seul `NodeType` du modèle qui n'ait aucun usage.
-- **Le patron du nœud permanent** sert quatre fois : station, maisons, bassin, et la fontaine
-  reprendra le même.
-- **La dalle du parc**, marqueur `P`, occupe neuf cases sur six au centre du village et n'a
-  jamais rien porté.
+- **Le parc passe de neuf cases sur six à treize sur sept**, `x ∈ [14, 26]`, `y ∈ [12, 18]`. Il
+  ne mange que de l'herbe : **ni la station, ni les cinq maisons, ni les trois bouches, ni le
+  départ, ni les deux façades ne bougent d'un caractère.** Ses quatre entrées existaient déjà
+  depuis la phase 1, une au milieu de chaque côté.
+- **Le tracé est une spirale à deux anneaux, écrite à la main et vérifiée solvable par calcul
+  AVANT d'être posée**, la méthode des crêtes de la phase 4. Les quatre entrées mènent à la
+  fontaine en **11, 21, 18 et 10 pas**, et **aucune case du parc n'est orpheline** : on ressort
+  toujours.
+- `VillageLayout.ValidatePark()` refait cette vérification à chaque construction : un coup de
+  crayon dans le labyrinthe ne peut pas enfermer la fontaine en silence.
+- `Assets/Scripts/Buildings/Fountain.cs` : le fichier prévu par CLAUDE.md depuis la phase 0, et
+  **le premier usage de `NodeType.FountainInlet`**, le seul type du modèle qui n'en avait aucun.
+- **La fontaine est une destination**, pas un décor : elle consomme une unité par saison, allume
+  une sixième goutte au HUD, et n'est desservie que si le solveur lui trouve une route. À la
+  **profondeur 1**, sa route gèle en hiver et se bouche en automne comme celle des trois maisons
+  peu profondes.
+- **La station passe de 8 à 9 par saison.** Sans cela la fontaine reliée faisait gagner trois
+  unités par an au bassin, qui saturait vers la troisième année.
+- `FloodView` gagne une troisième eau : **le jet de la fontaine**, sur les cases praticables
+  autour du bassin. Le bassin bloque, donc c'est autour de lui que l'eau déborde.
+- `PlaceholderArtGenerator` : le bassin de la fontaine. **123 textures, 66 tuiles.**
+- **Règle 9 vérifiée** : aucun type nouveau, aucune référence d'assembly à ajouter.
+
+### Les nombres, avec la station à 9
+
+| Saison | Desservies | Arrivant | Traité | Absorbé | Relâché | Bassin |
+|---|---|---|---|---|---|---|
+| Automne | 6/6 | 14 | 9 | 5 | 0 | **5** |
+| Hiver | 6/6 | 7 | 7 | 0 | 2 | **3** |
+| Printemps | 6/6 | 8 | 8 | 0 | 1 | **2** |
+| Été | 6/6 | 6 | 6 | 0 | 2 | **0** |
+
+**La suite du bassin, 5 / 3 / 2 / 0, est exactement celle de la phase 8.** Seuls l'arrivant et
+le traité gagnent une unité chacun. Le tableau de la phase 8 reste vrai dans sa forme ; ses
+chiffres, eux, valaient pour cinq destinations et une station à 8.
+
+**Comme en phase 9b, ce tableau demande d'adapter les tuyaux** : grillagé avant l'automne, isolé
+avant l'hiver. Tout laisser en grillagé donne 2/6 desservies en hiver, et 3 d'arrivant.
+
+**`Lost` plafonne toujours à 5** — 14 arrivant moins 9 traités. La table d'étalement de la
+phase 10, 0 / 3 / 15 / 38 / 73 / 118, reste donc valable telle quelle.
+
+## Phase 11, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**, hors le warning du package
+  MCP.
+- Menus dans l'ordre, `EditorApplication.isPlaying` vérifié avant, pas de mémoire : la leçon de
+  la phase 10 a servi.
+- **Plan du village relu par script** : bornes du village inchangées, six portails aux mêmes
+  cases, fontaine en (20, 15) **et non praticable**, 81 cases de parc praticables pour 54
+  bloquantes, aucun renderer hors de la famille `Surface_*`.
+- **Sous-sol relu** : 88 cases praticables, l'alcôve (20, 15) ouverte à la profondeur 1, huit
+  nœuds permanents dont `FountainInlet` en (20, 15), station à 9, et **les cinq routes de maison
+  toujours à 57 / 46 / 31 / 45 / 6 segments**. La route de la fontaine fait 36 segments, la
+  longueur calculée avant que l'alcôve soit creusée.
+- Play depuis Boot, par injection clavier :
+  - **le labyrinthe bloque et guide** : flèche droite depuis l'entrée ouest, arrêt net en
+    (15, 15) contre la haie ; flèche haut, arrêt en (15, 17) dans le couloir du haut ;
+  - la fontaine est **sèche tant qu'elle n'est pas reliée**, et le HUD montre **six gouttes**
+    dont aucune allumée ;
+  - **reliée, elle jaillit** et les six gouttes s'allument ;
+  - **l'année suit le tableau ci-dessus, au chiffre près**, avec les tuyaux adaptés ;
+  - **l'hiver l'arrête** : tout en grillagé, la fontaine n'est plus desservie, 2/6, et son eau
+    disparaît ; **en isolé, elle repart**, 6/6, et son eau revient ;
+  - **une partie de la phase 10 se relit sans une erreur** : 81 nœuds, hiver, bassin à 7, une
+    résolution pour le chargement, aucune écriture ;
+  - console **entièrement vide** sur une session complète.
+- Captures : le parc vu d'ensemble, et la fontaine qui jaillit au centre du labyrinthe.
+- `git diff ProjectSettings/` : **vide**.
+
+### Le bug trouvé au test : deux lignes identiques
+
+Poser le marqueur de l'alcôve par un remplacement de chaîne a touché la mauvaise ligne : les
+lignes `y = 15` et `y = 16` du sous-sol sont **identiques au caractère près**, et
+`string.Replace(..., 1)` remplace la première rencontrée. Le nœud est sorti en (20, 16), une
+case au-dessus de la fontaine.
+
+**Un plan ASCII se modifie par indice de ligne, jamais par contenu.** Le contenu n'est pas une
+clé : rien n'oblige deux lignes d'une carte à différer.
+
+## Prochaine étape, phase 12
+
+L'usine à panneaux, premier des quatre volets. Ce que la phase 11 laisse en place :
+
+- **Tout le modèle de CLAUDE.md est désormais utilisé** : `FountainInlet` était le dernier type
+  sans usage, et `Buildings/Fountain` le dernier fichier de l'arborescence jamais écrit.
+- **Le patron du nœud permanent** sert cinq fois : station, maisons, bassin, fontaine.
 - **Le patron du bâtiment** : façade et porte au plan du village, pièce dans un créneau libre,
   personnage et phrases. **Quatre créneaux de pièce restent libres** dans la scène Interiors,
   et `Villager` accepte déjà plusieurs personnages dans une pièce, ce dont l'usine à panneaux

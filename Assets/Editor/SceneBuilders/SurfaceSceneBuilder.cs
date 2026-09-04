@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Buildings;
 using SousLaVille.Core;
 using SousLaVille.Seasons;
 using SousLaVille.World;
@@ -28,7 +29,7 @@ namespace SousLaVille.EditorTools
         [MenuItem("Sous La Ville/Construire la scène Surface")]
         public static void Build()
         {
-            if (!VillageLayout.IsWellFormed())
+            if (!VillageLayout.IsWellFormed() || !VillageLayout.ValidatePark())
             {
                 return;
             }
@@ -57,6 +58,7 @@ namespace SousLaVille.EditorTools
             PaintVillage(ground, blocking);
             CreateManholes(root);
             CreateTreatmentPlant(root);
+            CreateFountain(root);
 
             SurfaceMap map = AttachSurfaceMap(root, grid, ground, blocking);
             AttachFloodView(root, map, water);
@@ -117,6 +119,7 @@ namespace SousLaVille.EditorTools
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
             Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
             Tile facade = LoadTile(PlaceholderArtGenerator.TileFacade);
+            Tile fountainTile = LoadTile(PlaceholderArtGenerator.TileFountain);
 
             int width = VillageLayout.Width;
             int height = VillageLayout.Height;
@@ -166,6 +169,12 @@ namespace SousLaVille.EditorTools
                              || VillageLayout.At(x, y) == VillageLayout.PipeFacade)
                     {
                         blockingTiles[index] = facade;
+                    }
+                    else if (VillageLayout.At(x, y) == VillageLayout.Fountain)
+                    {
+                        // La dalle du parc est deja peinte dessous ; le bassin de la fontaine
+                        // se pose par-dessus et bloque, comme une maison.
+                        blockingTiles[index] = fountainTile;
                     }
                 }
             }
@@ -322,6 +331,31 @@ namespace SousLaVille.EditorTools
                 PortalBuilder.Attach(door, outside, GameLayer.Surface, GameLayer.Interior,
                     inside);
             }
+        }
+
+        /// <summary>
+        /// La fontaine, au centre du labyrinthe de haies. Elle bloque le passage comme une
+        /// maison : on l'atteint, on n'entre pas dedans.
+        ///
+        /// Elle n'a aucun etat propre : c'est le solveur qui dit si elle est desservie, et
+        /// FloodView qui pose son eau. Le composant ne porte que sa case.
+        /// </summary>
+        private static void CreateFountain(GameObject root)
+        {
+            Vector2Int cell = VillageLayout.FindSingle(VillageLayout.Fountain);
+
+            GameObject fountain = new GameObject("Fountain");
+            fountain.transform.SetParent(root.transform, false);
+            fountain.transform.position = CellCenter(cell);
+
+            SpriteRenderer renderer = fountain.AddComponent<SpriteRenderer>();
+            renderer.sprite = LoadSprite(PlaceholderArtGenerator.FountainTexture);
+            SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+
+            Fountain component = fountain.AddComponent<Fountain>();
+            SerializedObject serialized = new SerializedObject(component);
+            serialized.FindProperty("cell").vector2IntValue = cell;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>

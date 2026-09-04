@@ -57,6 +57,9 @@ namespace SousLaVille.UI
                     continue;
                 }
 
+                // Une goutte par destination desservie, maisons ET fontaine depuis la
+                // phase 11. La rangee reste un compteur et non une liste : l'ordre n'a pas a
+                // etre appris, et il ne dit pas laquelle est la fontaine.
                 drops[i].sprite = i < flow.ServedCount ? dropServed : dropIdle;
             }
         }

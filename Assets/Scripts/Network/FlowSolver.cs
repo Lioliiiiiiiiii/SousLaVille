@@ -38,6 +38,7 @@ namespace SousLaVille.Network
         private readonly List<PipeNode> houses = new List<PipeNode>();
         private readonly List<PipeNode> reserves = new List<PipeNode>();
         private readonly HashSet<Vector2Int> connectedReserves = new HashSet<Vector2Int>();
+        private readonly List<PipeNode> fountains = new List<PipeNode>();
 
         /// <summary>Leve apres chaque resolution. Les vues s'y accrochent.</summary>
         public event Action Solved;
@@ -49,6 +50,15 @@ namespace SousLaVille.Network
         public int ServedCount => served.Count;
 
         public int HouseCount => houses.Count;
+
+        /// <summary>Nombre de fontaines du monde. Une seule aujourd'hui.</summary>
+        public int FountainCount => fountains.Count;
+
+        /// <summary>
+        /// Nombre de DESTINATIONS : maisons plus fontaines. C'est ce que le HUD compte en
+        /// gouttes, et ce que le bilan de l'eau multiplie par le volume d'une saison.
+        /// </summary>
+        public int DestinationCount => houses.Count + fountains.Count;
 
         public bool IsServed(Vector2Int houseCell) => served.Contains(houseCell);
 
@@ -123,6 +133,7 @@ namespace SousLaVille.Network
             carrying.Clear();
             served.Clear();
             houses.Clear();
+            fountains.Clear();
             reserves.Clear();
             connectedReserves.Clear();
 
@@ -137,6 +148,10 @@ namespace SousLaVille.Network
                 {
                     houses.Add(node);
                 }
+                else if (node.Type == NodeType.FountainInlet)
+                {
+                    fountains.Add(node);
+                }
                 else if (node.Type == NodeType.ReserveInlet)
                 {
                     reserves.Add(node);
@@ -148,6 +163,17 @@ namespace SousLaVille.Network
                 if (TraceToPlant(house))
                 {
                     served.Add(house.GridPos);
+                }
+            }
+
+            // La fontaine est une destination comme une maison : meme parcours, memes
+            // regles, et elle rejoint le meme ensemble des desservies. Le HUD et le bilan de
+            // l'eau la comptent donc sans une ligne de plus, chacun lisant ServedCount.
+            foreach (PipeNode fountain in fountains)
+            {
+                if (TraceToPlant(fountain))
+                {
+                    served.Add(fountain.GridPos);
                 }
             }
 

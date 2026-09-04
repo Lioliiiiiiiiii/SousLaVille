@@ -251,6 +251,8 @@ namespace SousLaVille.Seasons
         {
             WaterBudget budget = new WaterBudget();
 
+            // ServedCount compte les maisons ET la fontaine depuis la phase 11 : toutes deux
+            // sont des destinations, et toutes deux consomment autant.
             int served = flow != null ? flow.ServedCount : 0;
             int rain = season != null ? season.RainVolume : 0;
             int capacity = plant != null ? plant.CapacityPerSeason : 0;
