@@ -442,6 +442,14 @@ namespace SousLaVille.EditorTools
         public const string VillagerWorker = SpritesFolder + "/villager_worker.png";
 
         /// <summary>
+        /// LE GUIDE, phase 17d. Les huit postes de la phase 12e portaient le sprite de l'artisan
+        /// des plaques : un guide croise dans la rue ressemblait TRAIT POUR TRAIT au boutiquier
+        /// qu'on va voir dans son atelier. Il a desormais son gilet de chantier, le vocabulaire
+        /// de celui qui previent — et c'est celui des panneaux, que Victorien connait.
+        /// </summary>
+        public const string VillagerGuide = SpritesFolder + "/villager_guide.png";
+
+        /// <summary>
         /// Les couleurs des trois personnages de l'usine a panneaux. Franches et distinctes
         /// du vert de l'artisan et du bleu de l'ouvrier : on les reconnait de loin, sans un
         /// mot, ce qui est la regle du projet depuis la phase 0.
@@ -462,7 +470,16 @@ namespace SousLaVille.EditorTools
             Palette.SignBlue,   // l'ouvrier des tuyaux
             Palette.Brick,      // Le Stock
             Palette.Violet,     // La Fabrique
-            Palette.Gold        // Le Plan
+            Palette.Gold,       // Le Plan
+            Palette.Grass       // les huit guides
+        };
+
+        /// <summary>Le metier de chacun des trois, dans l'ordre de SignFactoryVillagers.</summary>
+        private static readonly VillagerTrade[] SignFactoryTrades =
+        {
+            VillagerTrade.Stock,
+            VillagerTrade.Maker,
+            VillagerTrade.Planner
         };
 
         private static readonly Color32[] SignFactoryColors =
@@ -703,10 +720,12 @@ namespace SousLaVille.EditorTools
                 WriteTileTexture("tile_wall", Palette.Wood);
 
                 WriteTexture(DoorTexture, BuildDoor());
+                WriteTexture(VillagerGuide,
+                    BuildVillager(CharacterColors[6], VillagerTrade.Guide), PlayerWidth);
                 WriteTexture(VillagerCraftsman,
-                    BuildVillager(CharacterColors[1]), PlayerWidth);
+                    BuildVillager(CharacterColors[1], VillagerTrade.Covers), PlayerWidth);
                 WriteTexture(VillagerWorker,
-                    BuildVillager(CharacterColors[2]), PlayerWidth);
+                    BuildVillager(CharacterColors[2], VillagerTrade.Pipes), PlayerWidth);
                 WriteTexture(PictoEnter, BuildDoorPicto(entering: true));
                 WriteTexture(PictoExit, BuildDoorPicto(entering: false));
                 WriteTexture(PictoTalk, BuildTalkPicto());
@@ -733,7 +752,7 @@ namespace SousLaVille.EditorTools
                 for (int who = 0; who < SignFactoryVillagers.Length; who++)
                 {
                     WriteTexture(SignFactoryVillagers[who],
-                        BuildVillager(SignFactoryColors[who]), PlayerWidth);
+                        BuildVillager(SignFactoryColors[who], SignFactoryTrades[who]), PlayerWidth);
 
                     for (int line = 0; line < SignFactoryLines[who].Length; line++)
                     {
@@ -790,6 +809,7 @@ namespace SousLaVille.EditorTools
             ConfigureImporter($"{TilesFolder}/tile_workshop.png", null);
             ConfigureImporter($"{TilesFolder}/tile_water.png", null);
             ConfigureImporter(FountainTexture, null);
+            ConfigureImporter(VillagerGuide, PlayerPivot);
             ConfigureImporter(FountainSprite, PlayerPivot);
             ConfigureImporter(TreeTexture, PlayerPivot);
             ConfigureImporter(TreeTileTexture, null);
@@ -1077,9 +1097,10 @@ namespace SousLaVille.EditorTools
                 pipes[pattern] = PipeTexture(pattern, 10);
             }
 
-            string[] people = new string[2 + SignFactoryVillagers.Length];
+            string[] people = new string[3 + SignFactoryVillagers.Length];
             people[0] = VillagerCraftsman;
             people[1] = VillagerWorker;
+            people[2 + SignFactoryVillagers.Length] = VillagerGuide;
             for (int who = 0; who < SignFactoryVillagers.Length; who++)
             {
                 people[2 + who] = SignFactoryVillagers[who];
@@ -1518,7 +1539,7 @@ namespace SousLaVille.EditorTools
                 PlayerUp, PlayerLeft, PlayerRight, PictoSurface, PictoUnderground, PictoDown,
                 PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
-                DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
+                DoorTexture, VillagerCraftsman, VillagerWorker, VillagerGuide, PictoEnter, PictoExit, PictoTalk,
                 FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention,
                 SignBackTexture, PictoCardCursor, SignPostTexture
             };
@@ -3787,7 +3808,38 @@ namespace SousLaVille.EditorTools
         /// L'artisan est vert, l'ouvrier bleu. Ils ne se distinguent que par la couleur, ce
         /// qui est un placeholder de plus a reprendre a l'habillage.
         /// </summary>
-        private static Color32[] BuildVillager(Color32 body)
+        /// <summary>
+        /// LES CINQ METIERS, phase 17d. Chacun se reconnait a SA SILHOUETTE, pas seulement a sa
+        /// couleur : ce qu'il porte sur la tete change son contour, et ce qu'il porte sur la
+        /// poitrine dit son metier. Une couleur se compare, une silhouette se reconnait — et
+        /// c'est la regle du projet depuis la phase 0, on reconnait quelqu'un de loin sans un mot.
+        ///
+        /// Jusqu'ici les cinq etaient LE MEME CORPS repeint, et la liste des placeholders le
+        /// disait deux fois : « l'artisan est le personnage joueur repeint en vert », « les trois
+        /// ne se distinguent que par la couleur ».
+        /// </summary>
+        public enum VillagerTrade
+        {
+            /// <summary>L'artisan des plaques : casquette plate, une plaque ronde sur la poitrine.</summary>
+            Covers,
+
+            /// <summary>L'ouvrier des tuyaux : casque de chantier, un tuyau en travers.</summary>
+            Pipes,
+
+            /// <summary>Le Stock : bonnet et tablier, une caisse dans les bras.</summary>
+            Stock,
+
+            /// <summary>La Fabrique : beret d'atelier, un crayon a la main.</summary>
+            Maker,
+
+            /// <summary>Le Plan : visiere et lunettes, un rouleau de plans sous le bras.</summary>
+            Planner,
+
+            /// <summary>Les huit guides : gilet de chantier et casquette, celui qui previent.</summary>
+            Guide
+        }
+
+        private static Color32[] BuildVillager(Color32 body, VillagerTrade trade)
         {
             const int width = PlayerWidth;
             const int height = PlayerHeight;
@@ -3804,9 +3856,87 @@ namespace SousLaVille.EditorTools
             Fill(pixels, width, 3, 12, 4, 14, body);
             Fill(pixels, width, 3, 12, 15, 22, head);
             Fill(pixels, width, 4, 11, 23, 23, head);
-            Fill(pixels, width, 3, 12, 21, 23, hair);
             Fill(pixels, width, 5, 6, 18, 19, eye);
             Fill(pixels, width, 9, 10, 18, 19, eye);
+
+            switch (trade)
+            {
+                case VillagerTrade.Covers:
+                    // Casquette plate a visiere, et la plaque d'egout sur la poitrine.
+                    Fill(pixels, width, 3, 12, 21, 22, Palette.Charcoal);
+                    Fill(pixels, width, 4, 11, 23, 23, Palette.Charcoal);
+                    Fill(pixels, width, 1, 8, 20, 20, Palette.Charcoal);
+                    DrawDisc(pixels, width, 8, 9, 2.6f, Palette.Steel);
+                    Fill(pixels, width, 6, 10, 9, 9, Palette.Charcoal);
+                    break;
+
+                case VillagerTrade.Pipes:
+                    // Casque de chantier : une calotte qui deborde, et sa crete.
+                    Fill(pixels, width, 2, 13, 21, 22, Palette.Sun);
+                    Fill(pixels, width, 3, 12, 23, 23, Palette.Sun);
+                    Fill(pixels, width, 7, 8, 22, 23, Palette.Gold);
+                    // Un tuyau en travers de la poitrine.
+                    Fill(pixels, width, 2, 13, 10, 11, Palette.SteelLight);
+                    Fill(pixels, width, 2, 13, 9, 9, Palette.SteelDark);
+                    break;
+
+                case VillagerTrade.Stock:
+                    // Bonnet SUR TOUTE LA LARGEUR du crane : dessine de 4 a 11, il laissait deux
+                    // coins de peau nus et le personnage sortait avec des CORNES.
+                    Fill(pixels, width, 3, 12, 21, 23, hair);
+                    Fill(pixels, width, 3, 12, 20, 20, hair);
+                    Fill(pixels, width, 6, 9, 23, 23, Palette.Steel);
+
+                    // Un tablier de toile CLAIRE, et une caisse portee sous le bras.
+                    //
+                    // Premier jet : tablier en Shade(body) sur six rangees, caisse en bois par
+                    // dessus. Shade(Brick) EST WoodDark — le tablier et la caisse devenaient le
+                    // meme brun, et la couleur du corps, qui est justement ce qui distingue les
+                    // cinq de loin, ne se voyait plus du tout. Vu en relisant les pixels.
+                    Fill(pixels, width, 4, 11, 4, 6, Palette.Bone);
+                    Fill(pixels, width, 4, 11, 6, 6, Palette.StoneDark);
+                    Fill(pixels, width, 12, 15, 6, 12, Palette.Wood);
+                    Fill(pixels, width, 12, 15, 12, 12, Palette.WoodDark);
+                    Fill(pixels, width, 12, 15, 6, 6, Palette.WoodDark);
+                    Fill(pixels, width, 12, 15, 9, 9, Palette.WoodDark);
+                    break;
+
+                case VillagerTrade.Maker:
+                    // Beret : une calotte molle qui deborde d'un cote, et un crayon.
+                    Fill(pixels, width, 3, 12, 21, 22, Palette.BlueDeep);
+                    Fill(pixels, width, 4, 13, 23, 23, Palette.BlueDeep);
+                    Fill(pixels, width, 13, 14, 22, 22, Palette.BlueDeep);
+                    Fill(pixels, width, 12, 13, 6, 13, Palette.Sun);
+                    Fill(pixels, width, 12, 13, 13, 13, Palette.Ink);
+                    break;
+
+                case VillagerTrade.Guide:
+                    // Casquette et GILET DE CHANTIER : deux bandes claires en croix sur la
+                    // poitrine, le vetement de celui qui previent. On le reconnait de loin, et
+                    // c'est tout ce qu'on lui demande.
+                    Fill(pixels, width, 3, 12, 21, 23, Palette.Charcoal);
+                    Fill(pixels, width, 2, 8, 20, 20, Palette.Charcoal);
+                    Fill(pixels, width, 3, 12, 4, 14, Palette.Sun);
+                    Fill(pixels, width, 6, 9, 4, 14, body);
+                    Fill(pixels, width, 3, 12, 8, 9, Palette.Paper);
+                    Fill(pixels, width, 3, 12, 12, 13, Palette.Paper);
+                    break;
+
+                default:
+                    // Visiere claire, DE PETITES lunettes, et un rouleau de plans sous le bras.
+                    // Larges de quatre pixels sur quatre, elles couvraient tout le visage et il
+                    // sortait en masque de soudeur : deux verres serres autour des yeux suffisent.
+                    Fill(pixels, width, 3, 12, 21, 23, Palette.Paper);
+                    Fill(pixels, width, 2, 13, 20, 20, Palette.SteelLight);
+                    Fill(pixels, width, 4, 11, 17, 20, Palette.Ice);
+                    Fill(pixels, width, 7, 8, 18, 19, Palette.Skin);
+                    Fill(pixels, width, 5, 6, 18, 19, eye);
+                    Fill(pixels, width, 9, 10, 18, 19, eye);
+                    Fill(pixels, width, 0, 2, 6, 13, Palette.Paper);
+                    Fill(pixels, width, 0, 2, 13, 13, Palette.Steel);
+                    Fill(pixels, width, 0, 2, 9, 9, Palette.SignBlue);
+                    break;
+            }
 
             return pixels;
         }

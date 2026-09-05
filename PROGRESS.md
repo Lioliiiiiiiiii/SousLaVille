@@ -2560,6 +2560,62 @@ endroit, l'un derrière l'autre. Ce qui la rend visible n'est pas sa taille mais
 elle dépasse** : ses montants aux colonnes 1 et 14, hors du corps du joueur qui occupe le milieu.
 Le premier essai a compilé, généré, passé les deux validateurs et n'a **rien changé à l'écran**.
 
+## Phase 17d, ce qui est fait
+
+**Les personnages.** Sept silhouettes distinctes là où il y avait un seul corps repeint six fois.
+
+La liste des placeholders le disait deux fois : *« l'artisan est le personnage joueur repeint en
+vert »*, *« les trois ne se distinguent que par la couleur »*. Une couleur se **compare** ; une
+silhouette se **reconnaît**. Chacun porte désormais quelque chose sur la tête, qui change son
+contour, et quelque chose sur la poitrine, qui dit son métier.
+
+| | ce qu'on voit |
+|---|---|
+| L'artisan des plaques | casquette plate à visière, une plaque ronde sur la poitrine |
+| L'ouvrier des tuyaux | casque de chantier jaune, un tuyau en travers |
+| Le Stock | bonnet, tablier de toile claire, une caisse sous le bras |
+| La Fabrique | béret d'atelier, un crayon à la main |
+| Le Plan | visière claire, lunettes, un rouleau de plans sous le bras |
+| **Les huit guides** | **casquette et gilet de chantier** |
+
+### Le guide était le boutiquier
+
+Les huit postes de la phase 12e portaient le sprite de **l'artisan des plaques**. Un guide croisé
+dans la rue ressemblait trait pour trait au commerçant qu'on va voir dans son atelier — et rien,
+ni dans le code ni à l'écran, ne disait que c'étaient deux rôles.
+
+Il a maintenant son gilet de chantier, sur un vert qui n'appartient qu'à lui : le vocabulaire de
+celui qui prévient, et c'est celui des panneaux. `CharacterColors` passe à **sept couleurs**, et
+le validateur exige toujours qu'elles soient toutes différentes.
+
+## Phase 17d, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs, la palette (263 images) et les
+  familles distinctes — six personnages, sept couleurs de corps.
+- **Les sept regardés côte à côte, agrandis huit fois**, deux fois : le premier passage a montré
+  que Le Stock sortait **avec des cornes** et Le Plan **en masque de soudeur**.
+- **Le Stock relu pixel par pixel**, ce qui a montré que son tablier avait mangé tout son corps.
+- **Les trois de l'usine regardés dans leur pièce**, en jeu.
+
+### Note d'atelier : `Shade(Brick)` est `WoodDark`, et deux vêtements deviennent le même brun
+
+Le tablier du Stock était `Palette.Shade(body)` — le réflexe habituel pour une nuance de
+vêtement — et sa caisse en `Palette.Wood`. Or `Shade(Brick)` **est** `WoodDark` : le tablier et la
+caisse sont sortis du même brun, sur six rangées, et **la couleur du corps ne se voyait plus du
+tout** — c'est-à-dire justement ce qui distingue les cinq de loin.
+
+Une palette de trente-quatre couleurs fait se rencontrer des familles qui n'ont rien à voir. La
+nuance d'un rouge brique **est** le brun d'une caisse. Un vêtement se colore par ce qu'il est —
+un tablier est en toile claire —, jamais par une opération sur la couleur d'à côté.
+
+### Note d'atelier : à huit fois, une rangée d'yeux ressemble à des créneaux
+
+J'ai lu trois fois « le haut du crâne est crénelé » sur la planche agrandie, et cherché le défaut
+dans le dessin des couvre-chefs. Le dump des pixels a montré des casquettes parfaitement pleines :
+ce que je lisais était la **rangée des yeux**, deux blocs sombres de deux pixels dans la peau, à
+sept rangées de là. **Une planche agrandie montre les défauts, elle en invente aussi** — quand
+elle contredit le code, c'est le dump qui tranche, pas l'œil.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2571,11 +2627,11 @@ Le premier essai a compilé, généré, passé les deux validateurs et n'a **rie
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17d : les personnages
+## Prochaine étape, phase 17e : l'interface
 
-Cinq silhouettes distinctes au lieu de cinq recolorations : l'artisan, l'ouvrier et les trois de
-l'usine à panneaux ne se distinguent aujourd'hui que par la couleur du corps. Plus le joueur en
-quatre directions, et les huit guides.
+Les pictogrammes d'action — dont « enlever », à redessiner dans le vocabulaire des panneaux, et
+« parler », qui est un carré blanc opaque —, les gouttes, les quatre saisons, le curseur, les
+cartes du memory, les fonds des écrans et la police, dont le M et le B restent gras.
 
 ## Décisions prises
 

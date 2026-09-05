@@ -176,6 +176,16 @@ C'est la méthode du projet.
 **Un validateur qui dit toujours oui ne vaut rien.** Le vérifier **par sabotage** : casser le
 monde exprès, reconstruire, et exiger qu'il refuse en nommant la case et la raison.
 
+**Dans une palette courte, la nuance d'une couleur EST la couleur d'autre chose.**
+`Palette.Shade(Brick)` vaut `WoodDark` : le tablier du Stock, teint par réflexe en nuance de son
+corps, est sorti du même brun que la caisse qu'il porte, et la couleur du corps — ce qui distingue
+les cinq personnages de loin — a disparu. Un vêtement se colore par **ce qu'il est**, jamais par
+une opération sur la couleur d'à côté. Tombé en phase 17d.
+
+**Une planche agrandie montre les défauts, elle en invente aussi.** Lu trois fois « le haut du
+crâne est crénelé » sur une planche à huit fois : c'était la rangée des yeux, sept rangées plus
+bas. Quand la planche contredit le code, **c'est le dump des pixels qui tranche**, pas l'œil.
+
 **Agrandir un sprite au gabarit de ce qui le cache ne le montre pas.** L'échelle disparaissait
 sous le joueur ; portée à 16x24 avec le même pivot que lui, elle est restée **exactement**
 recouverte — deux rectangles identiques au même endroit. Ce qui rend visible n'est pas la taille

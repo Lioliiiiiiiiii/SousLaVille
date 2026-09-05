@@ -490,7 +490,7 @@ namespace SousLaVille.EditorTools
                 guide.transform.position = SurfaceSceneBuilder.CellCenter(cell);
 
                 SpriteRenderer renderer = guide.AddComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerCraftsman);
+                renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerGuide);
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 5);
 
                 // La bulle « on peut lui parler », au-dessus de SA tete.
