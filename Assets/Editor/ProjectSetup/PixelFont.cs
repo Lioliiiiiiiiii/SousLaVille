@@ -48,7 +48,10 @@ namespace SousLaVille.EditorTools
             new[] { "#####", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.." }, // J
             new[] { "#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#" }, // K
             new[] { "#....", "#....", "#....", "#....", "#....", "#....", "#####" }, // L
-            new[] { "#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#" }, // M
+            // Le M avait TROIS rangees de fut central : a cinq pixels de large, c'est plus
+            // d'encre que n'importe quelle autre lettre, et il sortait gras dans AMSTERDAM
+            // comme dans STATIONNEMENT. Deux suffisent a faire le creux. Phase 17e.
+            new[] { "#...#", "##.##", "#.#.#", "#...#", "#...#", "#...#", "#...#" }, // M
             new[] { "#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#" }, // N
             new[] { ".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###." }, // O
             new[] { "####.", "#...#", "#...#", "####.", "#....", "#....", "#...." }, // P

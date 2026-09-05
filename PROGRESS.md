@@ -2616,6 +2616,47 @@ ce que je lisais était la **rangée des yeux**, deux blocs sombres de deux pixe
 sept rangées de là. **Une planche agrandie montre les défauts, elle en invente aussi** — quand
 elle contredit le code, c'est le dump qui tranche, pas l'œil.
 
+## Phase 17e, ce qui est fait
+
+**L'interface.** Deux défauts nommés dans les placeholders, et une note périmée retirée.
+
+### « Enlever » disait « interdit »
+
+Le picto d'enlèvement était un **disque blanc barré** — c'est-à-dire, à seize pixels, presque un
+sens interdit. Le vocabulaire de l'interdiction pour un geste qui n'interdit rien : on retire ce
+qu'on a posé. Relevé dans les placeholders depuis la phase 3.
+
+C'est désormais **un tuyau vu en bout et une flèche qui l'en sort par le haut** : le geste, pas
+une défense. Et il ne peut plus se confondre avec un panneau du Code, ce qui comptait dans un jeu
+où l'on en expose vingt-quatre.
+
+### Le M était la lettre la plus grasse de la police
+
+Trois rangées de fût central sur cinq pixels de large : plus d'encre que n'importe quelle autre
+lettre, visible dans AMSTERDAM comme dans STATIONNEMENT INTERDIT. Deux rangées suffisent à faire
+le creux.
+
+### Une note périmée
+
+*« Le picto parler est un carré blanc opaque de seize pixels »* — ce n'est plus vrai depuis
+longtemps : c'est une bulle cernée, avec sa queue et ses trois points. Et la crainte qu'il cache
+l'interlocuteur a été réglée autrement, en phase 9b : la bulle est passée **au-dessus de la tête
+du personnage**. La ligne est retirée des placeholders.
+
+## Phase 17e, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs, la palette (263 images) et les
+  familles distinctes.
+- **La planche des pictogrammes regardée**, avant et après.
+
+### Ce qui reste, et qui est assumé
+
+L'apostrophe de `PixelFont` occupe toujours une cellule entière : la police est **à chasse fixe**,
+et lui donner sa largeur propre veut dire passer toute la police en largeur variable — `WidthOf`,
+le rendu, et les validateurs qui mesurent les noms pour vérifier qu'ils tiennent dans une rangée
+du quiz. C'est une refonte, pas un réglage, et elle n'a qu'un blanc un peu large pour bénéfice.
+Le dos de carte du memory et le cadre de choix restent des aplats : ils se lisent.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2627,11 +2668,11 @@ elle contredit le code, c'est le dump qui tranche, pas l'œil.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17e : l'interface
+## Prochaine étape, phase 17f : les panneaux
 
-Les pictogrammes d'action — dont « enlever », à redessiner dans le vocabulaire des panneaux, et
-« parler », qui est un carré blanc opaque —, les gouttes, les quatre saisons, le curseur, les
-cartes du memory, les fonds des écrans et la police, dont le M et le B restent gras.
+Les vingt-neuf panneaux du Code : le STOP avec ses lettres, pour qu'il cesse de ressembler à un
+sens interdit à seize pixels, et la croix d'AB1 assez nette pour qu'un panneau d'INTERSECTION ne
+se lise plus comme un triangle de DANGER. Chaque numéro revérifié sur une source.
 
 ## Décisions prises
 
@@ -3219,9 +3260,9 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   visage. Il se distingue à la couleur et à rien d'autre.
 - **L'apostrophe de `PixelFont` occupe une cellule entière**, la police étant à chasse fixe :
   le blanc autour d'elle est trop large dans `L'ISOLÉ`. À reprendre avec le reste de la police.
-- **Le picto « parler » est un carré blanc opaque de seize pixels.** Une vraie bulle, plus
-  petite et à fond transparent, cacherait beaucoup moins l'interlocuteur. Voir la question
-  ouverte.
+- ~~**Le picto « parler » est un carré blanc opaque de seize pixels.**~~ **Périmé, retiré en
+  phase 17e** : c'est une bulle cernée, avec sa queue et ses trois points, et la crainte qu'elle
+  cache l'interlocuteur a été réglée en phase 9b en la passant au-dessus de SA tête.
 - **Les cinq PNG de la phase 8**, la cuve du bassin : cadre gris, intérieur sombre, eau qui
   monte. Lisible, mais c'est une boîte ; un vrai bassin d'orage vu de dessus reste à dessiner.
 - **Les dix-huit PNG de la phase 7** : les huit plaques, les huit noms, le plan du village et
@@ -3249,8 +3290,8 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   tuiles. À caler à l'habillage.
 - **Les trente PNG de la phase 3** : les six nuances de terre et de galerie, les seize
   canalisations, les quatre personnages, les pictos et le curseur.
-- **Le picto « enlever »** est un disque barré, vocabulaire d'interdiction plutôt que de
-  retrait. À redessiner avec le vocabulaire des panneaux, que Victorien aime.
+- ~~**Le picto « enlever » est un disque barré**~~ **Fait en phase 17e** : un tuyau vu en bout et
+  une flèche qui l'en sort. Le geste, pas une défense.
 - **Les sept PNG de la phase 2** : terre, galerie, échelle, et les quatre pictogrammes. Mêmes
   carrés de couleur que le reste.
 - **L'échelle disparaît sous le personnage** quand il se tient dessus, les deux occupant la

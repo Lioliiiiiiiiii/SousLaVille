@@ -2522,30 +2522,40 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>« Ici on enleve » : un disque barre, comme un panneau.</summary>
+        /// <summary>
+        /// ENLEVER UN TUYAU, redessine en phase 17e. C'etait un DISQUE BLANC BARRE DE ROUGE,
+        /// c'est-a-dire le vocabulaire de l'INTERDICTION — un sens interdit, presque. Or on
+        /// n'interdit rien : on retire ce qu'on avait pose.
+        ///
+        /// Desormais un tuyau vu en bout, et une fleche qui l'en sort par le haut. C'est le
+        /// geste, pas une defense. Releve dans les placeholders depuis la phase 3 : « le picto
+        /// enlever est un disque barre, vocabulaire d'interdiction plutot que de retrait ».
+        /// </summary>
         private static Color32[] BuildRemovePicto()
         {
-            Color32 disc = Palette.Paper;
-            Color32 bar = Palette.Ink;
+            Color32 pipe = Palette.SteelLight;
+            Color32 rim = Palette.SteelDark;
+            Color32 hole = Palette.Charcoal;
+            Color32 arrow = Palette.Sun;
+            Color32 edge = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
-            const float center = (TileSize - 1) * 0.5f;
 
-            for (int y = 0; y < TileSize; y++)
+            // Le tuyau, couche en bas : deux brides et son ouverture sombre.
+            Fill(pixels, TileSize, 1, 14, 1, 6, rim);
+            Fill(pixels, TileSize, 2, 13, 2, 5, pipe);
+            Fill(pixels, TileSize, 6, 9, 2, 5, hole);
+
+            // La fleche qui l'en sort, cernee pour se lire sur la terre comme sur le pave.
+            Fill(pixels, TileSize, 6, 9, 7, 11, arrow);
+            for (int row = 0; row < 4; row++)
             {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    float dx = x - center;
-                    float dy = y - center;
-                    float distance = Mathf.Sqrt(dx * dx + dy * dy);
-
-                    if (distance <= 7f)
-                    {
-                        pixels[y * TileSize + x] = distance > 5.5f ? bar : disc;
-                    }
-                }
+                int half = 4 - row;
+                Fill(pixels, TileSize, 8 - half, 7 + half, 11 + row, 11 + row, arrow);
             }
 
-            Fill(pixels, TileSize, 4, 11, 7, 8, bar);
+            Fill(pixels, TileSize, 5, 5, 7, 11, edge);
+            Fill(pixels, TileSize, 10, 10, 7, 11, edge);
 
             return pixels;
         }
