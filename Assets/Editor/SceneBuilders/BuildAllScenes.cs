@@ -60,6 +60,19 @@ namespace SousLaVille.EditorTools
                 return;
             }
 
+            // LE TRI PAR Y, phase 18b : tout ce qui se dresse se trie par sa position, et ce
+            // reglage vit dans l'asset du Renderer2D, pas dans les ProjectSettings. Pose ici,
+            // idempotent, et verifie : sans lui, un arbre de deux cases cache le joueur qui
+            // passe devant.
+            RendererSetup.EnableYSort();
+            if (!RendererSetup.IsYSortEnabled())
+            {
+                Debug.LogError("[Sous la Ville] Le tri par Y n'est pas actif dans " +
+                               $"{RendererSetup.RendererAssetPath}. Lance « Sous La Ville/Régler " +
+                               "le tri par Y » et regarde ce qu'il dit.");
+                return;
+            }
+
             // LA CHAINE S'ARRETE AU PREMIER REFUS. Jusqu'a la phase 12a, les cinq Build()
             // etaient void et personne ne lisait leur resultat : un generateur qui refusait
             // laissait les quatre autres se construire, et cette methode annoncait quand meme

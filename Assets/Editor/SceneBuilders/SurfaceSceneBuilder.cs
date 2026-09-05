@@ -297,7 +297,7 @@ namespace SousLaVille.EditorTools
                 renderer.sprite = LoadSprite(boards[i]);
 
                 // Devant la facade, derriere le joueur : l'enseigne est sur le mur.
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 1);
+                SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
             }
         }
 
@@ -324,7 +324,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = manhole.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
                 PortalBuilder.Attach(manhole, cells[i], GameLayer.Surface, GameLayer.Underground);
 
@@ -368,8 +368,8 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = tree.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer,
-                    VillageLayout.Height - cell.y);
+                // Phase 18b : plus d'ordre par rangee, c'est le TRI PAR Y qui place chacun.
+                SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
             }
         }
 
@@ -403,8 +403,8 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = signObject.AddComponent<SpriteRenderer>();
                 renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture((int)sign.Kind));
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer,
-                    VillageLayout.Height - sign.Cell.y);
+                // Un panneau ne bloque pas : on marche dessus, il passe donc sous les pieds.
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
             }
         }
 
@@ -491,7 +491,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = guide.AddComponent<SpriteRenderer>();
                 renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerGuide);
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 5);
+                SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
 
                 // La bulle « on peut lui parler », au-dessus de SA tete.
                 GameObject promptObject = new GameObject("Prompt");
@@ -550,7 +550,7 @@ namespace SousLaVille.EditorTools
 
             SpriteRenderer renderer = plant.AddComponent<SpriteRenderer>();
             renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlantWallTexture);
-            SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+            SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
             // La station est un passage comme les autres : on y descend et on en remonte.
             PortalBuilder.Attach(plant, cell, GameLayer.Surface, GameLayer.Underground);
@@ -638,7 +638,7 @@ namespace SousLaVille.EditorTools
                 SpriteRenderer renderer = basin.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
                 renderer.enabled = false;          // PlantBasinsView les allume
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
                 renderers.Add(renderer);
             }
@@ -740,7 +740,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = door.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
                 // Le pendant interieur de ce passage est pose par InteriorsSceneBuilder, sur
                 // la meme paire de cases lue dans les deux plans.
@@ -770,7 +770,7 @@ namespace SousLaVille.EditorTools
 
             SpriteRenderer renderer = fountain.AddComponent<SpriteRenderer>();
             renderer.sprite = LoadSprite(PlaceholderArtGenerator.FountainSprite);
-            SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+            SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
 
             Fountain component = fountain.AddComponent<Fountain>();
             SerializedObject serialized = new SerializedObject(component);

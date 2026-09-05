@@ -82,6 +82,31 @@ namespace SousLaVille.EditorTools
             renderer.sortingOrder = order;
         }
 
+        /// <summary>
+        /// CE QUI SE DRESSE, phase 18b : arbres, maisons, personnages, fontaine, meubles. Tous a
+        /// l'ordre 0, et c'est le TRI PAR Y du Renderer2D qui decide qui passe devant qui — par
+        /// le PIVOT, pose au sol au centre de la case, et non par le centre du sprite, qui monte
+        /// avec la hauteur du dessin. Chaque sprite etant pose au centre de sa case, trier par Y
+        /// est trier par rangee, et le joueur, qui glisse d'une case a l'autre, bascule au
+        /// milieu du pas.
+        /// </summary>
+        public static void ApplyStandingSort(SpriteRenderer renderer, string layerName)
+        {
+            ApplySortingLayer(renderer, layerName, 0);
+            renderer.spriteSortPoint = SpriteSortPoint.Pivot;
+        }
+
+        /// <summary>
+        /// CE QU'ON FOULE : bouches, portes, echelles, panneaux, cuves, echantillons, le
+        /// curseur. A l'ordre -1, sous tout ce qui se dresse : le joueur debout dessus serait
+        /// sinon a EGALITE de Y avec l'objet, et l'ordre de dessin serait celui du hasard.
+        /// </summary>
+        public static void ApplyGroundMarkSort(SpriteRenderer renderer, string layerName)
+        {
+            ApplySortingLayer(renderer, layerName, -1);
+            renderer.spriteSortPoint = SpriteSortPoint.Pivot;
+        }
+
         /// <summary>Ajoute une scene aux Build Settings si elle n'y est pas deja.</summary>
         public static void EnsureInBuildSettings(string scenePath)
         {

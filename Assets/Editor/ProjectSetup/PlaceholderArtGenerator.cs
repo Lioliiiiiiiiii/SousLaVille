@@ -7,12 +7,10 @@ using UnityEngine.Tilemaps;
 namespace SousLaVille.EditorTools
 {
     /// <summary>
-    /// Ecrit les placeholders graphiques : de vrais fichiers PNG, puis les assets Tile
-    /// correspondants. Des carres de couleurs franches, le pixel art viendra a la toute fin,
-    /// une fois le gameplay valide.
-    ///
-    /// Chaque tuile porte un lisere 1 px plus sombre : deux carres de meme couleur poses cote
-    /// a cote restent distincts, ce qui aide a lire la grille.
+    /// Ecrit l'art du jeu : de vrais fichiers PNG, puis les assets Tile correspondants. Le nom
+    /// date de la phase 1, ou c'etaient des carres de couleurs franches ; depuis la phase 18 les
+    /// dessins suivent la feuille de style de PLAN-PHASE-18.md, dans PlaceholderArtGenerator.Style.cs.
+    /// Le nom reste : deux cents references l'appellent, et le renommer n'ameliorerait aucune image.
     /// </summary>
     public static partial class PlaceholderArtGenerator
     {
@@ -637,13 +635,15 @@ namespace SousLaVille.EditorTools
             AssetDatabase.StartAssetEditing();
             try
             {
-                // PHASE 17B : les sols ne sont plus des aplats bordes d'un lisere. Un lisere
-                // sur chaque case dessine une GRILLE, et le village entier se lisait comme du
-                // papier millimetre ; une pelouse n'a pas de bord tous les seize pixels.
-                WriteTexture($"{TilesFolder}/tile_grass.png", BuildGrassTile());
-                WriteTexture($"{TilesFolder}/tile_path.png", BuildDirtTile());
-                WriteTexture($"{TilesFolder}/tile_park.png", BuildPavingTile(Palette.SteelLight));
-                WriteTexture($"{TilesFolder}/tile_plant_floor.png", BuildConcreteTile());
+                // PHASE 18B : les sols de la reference, regle 1 de la feuille de style — aucun
+                // contour, deux tons et une trame reguliere. La phase 17b avait retire le lisere
+                // et mis du bruit ; la trame fait la matiere, le bruit faisait du gravier.
+                WriteTexture($"{TilesFolder}/tile_grass.png", BuildLawnTile());
+                WriteTexture($"{TilesFolder}/tile_path.png", BuildSandTile(DecorMaskCount - 1));
+                WriteTexture($"{TilesFolder}/tile_park.png",
+                    BuildSlabTile(Palette.SteelLight, Palette.Paper, Palette.Steel));
+                WriteTexture($"{TilesFolder}/tile_plant_floor.png",
+                    BuildSlabTile(Palette.Steel, Palette.SteelLight, Palette.SteelDark));
                 WriteTileTexture("tile_hedge", Palette.GrassDeep);
                 WriteTexture($"{TilesFolder}/tile_plant_wall.png", BuildPlantWallTile());
                 WriteTileTexture("tile_house", Palette.Brick);
@@ -709,7 +709,7 @@ namespace SousLaVille.EditorTools
                 for (int mask = 0; mask < DecorMaskCount; mask++)
                 {
                     WriteTexture(HedgeTexture(mask), BuildHedge(mask));
-                    WriteTexture(RoadTexture(mask), BuildRoad(mask));
+                    WriteTexture(RoadTexture(mask), BuildSandTile(mask));
                 }
 
                 WriteTexture(TreeTexture, BuildTree(), PlayerWidth);
@@ -1783,81 +1783,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// LA PELOUSE. Le fond, des touffes plus sombres et quelques brins clairs, SANS AUCUN
-        /// BORD : une tuile d'herbe se raccorde a la suivante sans couture, et le village cesse
-        /// de se lire comme un quadrillage.
-        ///
-        /// Le motif est le meme sur toutes les cases — une seule tuile est peinte partout — mais
-        /// il est assez irregulier pour qu'on ne compte pas les cases a l'oeil.
-        /// </summary>
-        private static Color32[] BuildGrassTile()
-        {
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    pixels[y * TileSize + x] = Palette.Grass;
-                }
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    int noise = Speckle(x, y, 7) % 32;
-
-                    // Une touffe : deux pixels sombres l'un au-dessus de l'autre.
-                    if (noise == 0 && y + 1 < TileSize)
-                    {
-                        pixels[y * TileSize + x] = Palette.GrassDark;
-                        pixels[(y + 1) * TileSize + x] = Palette.GrassDark;
-                    }
-                    else if (noise == 5)
-                    {
-                        pixels[y * TileSize + x] = Palette.GrassDark;
-                    }
-                }
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// LA TERRE BATTUE du chemin de base, sans bord elle aussi : des grains plus sombres et
-        /// plus clairs dans le sable.
-        /// </summary>
-        private static Color32[] BuildDirtTile()
-        {
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = Palette.Stone;
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    int noise = Speckle(x, y, 19) % 24;
-
-                    if (noise == 0)
-                    {
-                        pixels[y * TileSize + x] = Palette.StoneDark;
-                    }
-                    else if (noise == 3)
-                    {
-                        pixels[y * TileSize + x] = Palette.StoneLight;
-                    }
-                }
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
         /// LE PAVAGE : quatre dalles de huit pixels, un joint sombre entre elles, et un eclat
         /// clair en haut a gauche de chaque dalle. Le joint tombe sur le bord de la tuile, donc
         /// les dalles se poursuivent d'une case a l'autre sans decalage.
@@ -2113,35 +2038,6 @@ namespace SousLaVille.EditorTools
             // L'arete du haut, eclairee : c'est elle qui donne l'epaisseur au mur.
             Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 1, TileSize - 1, Palette.Water);
 
-            return pixels;
-        }
-
-        /// <summary>
-        /// LE BETON de la station : uni, un peu granuleux, avec le joint d'une dalle de seize.
-        /// </summary>
-        private static Color32[] BuildConcreteTile()
-        {
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = Palette.SteelDark;
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    if (Speckle(x, y, 31) % 18 == 0)
-                    {
-                        pixels[y * TileSize + x] = Palette.Steel;
-                    }
-                }
-            }
-
-            // PAS DE JOINT. Premier jet, deux bords en Charcoal : vu a l'ecran, la cour de la
-            // station se lisait comme un quadrillage noir, exactement le defaut qu'on venait de
-            // retirer a l'herbe. Le beton est uni ; ce sont les murs de l'enceinte qui le cadrent.
             return pixels;
         }
 
@@ -2981,39 +2877,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// L'eau du village : un bleu SEMI-TRANSPARENT, avec deux trains de vaguelettes.
-        ///
-        /// Semi-transparente parce qu'elle se pose sur l'herbe, sur le chemin et sur la dalle
-        /// du parc : un bleu opaque ferait un carre plein qui cacherait le village, la ou une
-        /// eau qui laisse voir le sol dessous se lit tout de suite comme de l'eau.
-        ///
-        /// Les vaguelettes sont decoupees pour que la tuile se repete sans couture visible :
-        /// chaque train traverse le bord et reprend de l'autre cote.
-        /// </summary>
-        private static Color32[] BuildWater()
-        {
-            Color32 water = Palette.WithAlpha(Palette.Water, 0xB4);
-            Color32 ripple = Palette.WithAlpha(Palette.Ice, 0xC8);
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = water;
-            }
-
-            // Rangee du bas : un train qui repart a droite et reprend a gauche.
-            Fill(pixels, TileSize, 12, 15, 4, 4, ripple);
-            Fill(pixels, TileSize, 0, 1, 4, 4, ripple);
-            Fill(pixels, TileSize, 5, 9, 4, 4, ripple);
-
-            // Rangee du haut, decalee : deux vagues ne se superposent jamais.
-            Fill(pixels, TileSize, 2, 6, 11, 11, ripple);
-            Fill(pixels, TileSize, 9, 13, 11, 11, ripple);
-
-            return pixels;
-        }
-
-        /// <summary>
         /// La fontaine du parc : un bassin rond de pierre, son bord clair, et un jet au
         /// milieu. Ronde plutot que carree pour la meme raison que la bouche d'egout : elle se
         /// distingue au premier coup d'oeil des haies et des dalles qui l'entourent.
@@ -3149,54 +3012,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Une route a masque de raccord, phase 12c. Meme masque que la haie. La chaussee
-        /// s'etend vers ses voisines et se borde d'un accotement clair sur ses cotes libres :
-        /// une route se lit alors comme une route, avec ses virages et ses carrefours, et non
-        /// comme une nappe beige.
-        /// </summary>
-        private static Color32[] BuildRoad(int mask)
-        {
-            Color32 verge = Palette.Stone;
-            Color32 asphalt = Palette.StoneDark;
-            Color32 paint = Palette.Bone;
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = verge;
-            }
-
-            // La chaussee : un carre central, plus un bras vers chaque voisine.
-            Fill(pixels, TileSize, 3, 12, 3, 12, asphalt);
-            if ((mask & 1) != 0) Fill(pixels, TileSize, 3, 12, 12, 15, asphalt);
-            if ((mask & 2) != 0) Fill(pixels, TileSize, 12, 15, 3, 12, asphalt);
-            if ((mask & 4) != 0) Fill(pixels, TileSize, 3, 12, 0, 3, asphalt);
-            if ((mask & 8) != 0) Fill(pixels, TileSize, 0, 3, 3, 12, asphalt);
-
-            // La bande blanche, seulement sur une portion droite : elle dit le sens de la
-            // route. Un carrefour ou un virage n'en porte pas, comme en vrai.
-            bool straightVertical = mask == 5;
-            bool straightHorizontal = mask == 10;
-
-            if (straightVertical)
-            {
-                for (int y = 1; y < TileSize; y += 4)
-                {
-                    Fill(pixels, TileSize, 7, 8, y, y + 1, paint);
-                }
-            }
-            else if (straightHorizontal)
-            {
-                for (int x = 1; x < TileSize; x += 4)
-                {
-                    Fill(pixels, TileSize, x, x + 1, 7, 8, paint);
-                }
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
         /// Un arbre, phase 12c. Seize sur vingt-quatre comme la maison et le personnage : sa
         /// cime deborde vers le haut et son tronc tient dans sa case. Il BLOQUE, et sa tuile
         /// bloquante est une image separee, BuildTreeBase.
@@ -3233,34 +3048,6 @@ namespace SousLaVille.EditorTools
                     }
                 }
             }
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// La tuile bloquante de l'arbre : son pied. Une image separee du sprite, patron de
-        /// house.png / tile_house.png, sans quoi l'arbre serait cloue a la taille d'une case.
-        /// </summary>
-        private static Color32[] BuildTreeBase()
-        {
-            Color32 trunk = Palette.Wood;
-            Color32 root = Palette.Shade(trunk);
-
-            // LA MEME PELOUSE QUE PARTOUT, phase 17b. C'etait un carre de vert sombre borde d'un
-            // lisere : sur l'herbe texturee, chaque arbre se dressait dans une BOITE NOIRE, et
-            // les 126 arbres du village avec lui. Vu a l'ecran, jamais deduit — le validateur de
-            // palette acceptait ce carre, et il avait raison, ce sont de bonnes couleurs.
-            Color32[] pixels = BuildGrassTile();
-
-            // L'ombre portee au pied, en vert sombre : elle pose l'arbre au sol sans le cadrer.
-            for (int y = 2; y <= 7; y++)
-            {
-                int half = y <= 4 ? 5 : 4;
-                Fill(pixels, TileSize, 8 - half, 7 + half, y, y, Palette.GrassDeep);
-            }
-
-            Fill(pixels, TileSize, 5, 10, 3, 12, root);
-            Fill(pixels, TileSize, 6, 9, 4, 11, trunk);
 
             return pixels;
         }
@@ -4176,15 +3963,17 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildVillageMap()
         {
-            Color32 grass = Palette.Grass;
-            Color32 road = Palette.Stone;
+            // Les couleurs du plan sont celles du monde, phase 18b : un plan qui montrait une
+            // herbe verte au-dessus d'un village menthe aurait ete le plan d'un autre village.
+            Color32 grass = Palette.Lawn;
+            Color32 road = Palette.Sand;
             Color32 park = Palette.SteelLight;
-            Color32 plantFloor = Palette.SteelDark;
-            Color32 hedge = Palette.GrassDeep;
+            Color32 plantFloor = Palette.Steel;
+            Color32 hedge = Palette.LeafDark;
             Color32 plantWall = Palette.SignBlue;
             Color32 house = Palette.Brick;
             Color32 facade = Palette.Bark;
-            Color32 tree = Palette.GrassDark;
+            Color32 tree = Palette.LeafShadow;
 
             Color32[] pixels = new Color32[VillageLayout.Width * VillageLayout.Height];
 

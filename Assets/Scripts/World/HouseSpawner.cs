@@ -85,6 +85,9 @@ namespace SousLaVille.World
                 body.sprite = houseSprite;
                 body.sortingLayerName = GameSortingLayers.SurfaceEntities;
                 body.sortingOrder = 0;
+                // Phase 18b : le tri par Y se fait au PIVOT, pose au sol, et non au centre du
+                // sprite, qui monte avec le toit. Meme regle que SceneBuilderUtility.ApplyStandingSort.
+                body.spriteSortPoint = SpriteSortPoint.Pivot;
 
                 GameObject dropObject = new GameObject("Drop");
                 dropObject.transform.SetParent(houseObject.transform, false);

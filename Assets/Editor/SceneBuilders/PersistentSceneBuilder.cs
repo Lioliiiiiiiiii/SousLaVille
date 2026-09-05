@@ -465,7 +465,7 @@ namespace SousLaVille.EditorTools
             // famille Surface. C'est le layer de depart : PlayerController le bascule sur
             // Underground_Entities des qu'il change de couche, sinon le personnage serait
             // noir sous terre.
-            SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.SurfaceEntities, 10);
+            SceneBuilderUtility.ApplyStandingSort(renderer, GameSortingLayers.SurfaceEntities);
 
             PlayerController controller = player.AddComponent<PlayerController>();
 
@@ -536,7 +536,7 @@ namespace SousLaVille.EditorTools
             SpriteRenderer view = cursorObject.AddComponent<SpriteRenderer>();
             view.sprite = LoadSprite(PlaceholderArtGenerator.CursorTarget);
             view.enabled = false;
-            SceneBuilderUtility.ApplySortingLayer(view, GameSortingLayers.SurfaceEntities, 9);
+            SceneBuilderUtility.ApplyGroundMarkSort(view, GameSortingLayers.SurfaceEntities);
 
             TargetCursor cursor = cursorObject.AddComponent<TargetCursor>();
 

@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a faite, planche à valider |
+| 18 | Le style de la référence | 18a et 18b faites, 18c à 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -2785,6 +2785,47 @@ pas une banque d'images : aucun pixel n'en est copié, la ROM n'a pas été ouve
 - Aucune image du jeu n'a changé : `ValidatePalette` et `ValidateDistinct` n'ont rien de neuf à
   lire. Les seize couleurs n'y changent rien, un ajout ne peut pas mettre une image hors palette.
 
+## Phase 18b, ce qui est fait
+
+Planche validée et trois décisions prises le 6 septembre 2026, toutes dans le sens recommandé :
+arbres de deux cases, maisons de deux sur deux, saisons par images.
+
+- **Les cinq sols** redessinés selon la règle 1 : la pelouse (`BuildLawnTile`), le chemin à seize
+  masques aux **coins arrondis en quart de cercle** (`BuildSandTile`, plus de pointillé central),
+  les dalles du parc et le béton de la station (`BuildSlabTile`, une trame et deux fissures en L,
+  sans joint), l'eau (`BuildWater`). Et **le pied d'arbre** passe à la pelouse neuve tout de suite —
+  sinon les 126 arbres se dressaient dans des carrés de vieux vert, le piège exact de 17b.
+- **La carte du village** prend les couleurs du monde : menthe, sable, feuillage.
+- **Le tri par Y.** `RendererSetup` pose `TransparencySortMode.CustomAxis` (0, 1, 0) dans
+  `Assets/Settings/Renderer2D.asset` — pas dans les ProjectSettings —, `BuildAllScenes` le pose et
+  le vérifie, et refuse sinon. Deux aides dans `SceneBuilderUtility` : `ApplyStandingSort` (ordre 0,
+  point de tri **au pivot**, posé au centre de la case) pour tout ce qui se dresse — arbres,
+  fontaine, guides, habitants, meubles, enseignes, joueur — et `ApplyGroundMarkSort` (ordre −1)
+  pour tout ce qu'on foule — bouches, portes, échelles, panneaux, cuves, échantillons, curseur.
+  Sans le −1, le joueur debout sur une bouche serait à égalité de Y avec elle. `HouseSpawner`
+  pose le point de tri au pivot lui aussi.
+- Suppression de `BuildGrassTile`, `BuildDirtTile`, `BuildConcreteTile`, `BuildRoad`, et des anciens
+  `BuildTreeBase` et `BuildWater` : les remplacés ne restent pas.
+
+## Phase 18b, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement.
+- Art régénéré : 266 textures, 115 tuiles ; **palette tenue, 50 couleurs** ; familles distinctes.
+- Cinq scènes construites ; « Tri par Y activé dans le Renderer2D : axe (0, 1, 0) ».
+- **Sabotage** : `m_TransparencySortMode` remis à 0 par script → `IsYSortEnabled()` rend faux ;
+  `EnableYSort()` le répare et il rend vrai. Le filet lit le fichier, pas une supposition.
+- **Quatre captures en jeu** par un pilote de téléportation (`Assets/Editor/Pilot18.cs`, non
+  commité, supprimé en 18h) : départ, routes, parc, station. Regardées. Le tri par Y se voit : le
+  guide au nord d'un arbre passe **derrière** la cime, jambes couvertes.
+- `git diff ProjectSettings/` vide ; `Application.runInBackground` posé à chaud par le pilote.
+
+### Note d'atelier : un pilote armé qui ne tourne jamais
+
+Premier lancement : play en cours, `runInBackground` faux, aucune capture, aucun log. Le pilote
+s'accrochait à `EditorApplication.update` dans un `[InitializeOnLoadMethod]`, en comptant sur le
+rechargement de domaine de l'entrée en play — qui **n'a pas eu lieu**. Il s'accroche désormais
+aussi dans la commande de menu. Consigné dans PIEGES.md.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -2806,11 +2847,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18b, après validation de la planche
+## Prochaine étape : la phase 18c, la végétation
 
-La planche d'essai de 18a attend ta validation, et trois décisions avec elle (PLAN-PHASE-18.md
-§ 7) : les arbres de deux cases, les maisons de deux cases sur deux, les saisons par images. Puis
-18b, les sols et le tri par Y ; 18c à 18h à la suite, une par une. Victorien joue après.
+Arbres de deux cases (le sprite et son pivot au quart), buissons du labyrinthe à seize masques,
+fleurs. Puis 18d à 18h, une par une. Victorien joue après.
 
 ## Décisions prises
 
@@ -2827,8 +2867,10 @@ La planche d'essai de 18a attend ta validation, et trois décisions avec elle (P
   de village, et ce sont les panneaux qui disent « route ».
 - **Les pictos du HUD font 24 px dans une boîte de 32** : l'emprise de la phase 5 ne change pas,
   c'est le cadre qui prend la marge.
-- **En attente de ta décision** : arbres de deux cases, maisons de deux sur deux, saisons par
-  images — PLAN-PHASE-18.md § 7, recommandations comprises.
+- **Tranchées le 6 septembre 2026, dans le sens recommandé** : arbres de deux cases, maisons de
+  deux sur deux, saisons par images.
+- **Phase 18b.** Ce qu'on foule est à l'ordre −1, ce qui se dresse à 0 et se trie par Y au pivot.
+  Le réglage vit dans l'asset du Renderer2D, versionné sous `Assets/Settings`.
 
 ### Phase 17c, tranchée le 5 septembre 2026
 

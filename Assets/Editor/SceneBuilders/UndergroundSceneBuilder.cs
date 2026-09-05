@@ -382,8 +382,7 @@ namespace SousLaVille.EditorTools
                 SpriteRenderer renderer = sign.AddComponent<SpriteRenderer>();
                 renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(
                     PlaceholderArtGenerator.SignFirstArrow + arrow));
-                SceneBuilderUtility.ApplySortingLayer(renderer,
-                    GameSortingLayers.UndergroundEntities, UndergroundLayout.Height - cell.y);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, GameSortingLayers.UndergroundEntities);
             }
         }
 
@@ -465,7 +464,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = guide.AddComponent<SpriteRenderer>();
                 renderer.sprite = LoadSprite(PlaceholderArtGenerator.VillagerGuide);
-                SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 5);
+                SceneBuilderUtility.ApplyStandingSort(renderer, GameSortingLayers.UndergroundEntities);
 
                 // La bulle « on peut lui parler », au-dessus de SA tete.
                 GameObject promptObject = new GameObject("Prompt");
@@ -532,7 +531,7 @@ namespace SousLaVille.EditorTools
 
             SpriteRenderer renderer = reserveObject.AddComponent<SpriteRenderer>();
             renderer.sprite = LoadSprite(PlaceholderArtGenerator.ReserveTexture(0));
-            SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 0);
+            SceneBuilderUtility.ApplyGroundMarkSort(renderer, GameSortingLayers.UndergroundEntities);
 
             WaterReserve reserve = reserveObject.AddComponent<WaterReserve>();
 
@@ -577,8 +576,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = inlet.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                SceneBuilderUtility.ApplySortingLayer(renderer,
-                    GameSortingLayers.UndergroundEntities, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, GameSortingLayers.UndergroundEntities);
             }
         }
 
@@ -591,7 +589,7 @@ namespace SousLaVille.EditorTools
 
             SpriteRenderer renderer = exit.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
-            SceneBuilderUtility.ApplySortingLayer(renderer, GameSortingLayers.UndergroundEntities, 0);
+            SceneBuilderUtility.ApplyGroundMarkSort(renderer, GameSortingLayers.UndergroundEntities);
 
             PortalBuilder.Attach(exit, cell, GameLayer.Underground, GameLayer.Surface);
 

@@ -66,9 +66,9 @@ namespace SousLaVille.EditorTools
 
             // ---- les sols
             Color32[] lawn = BuildLawnTile();
-            Color32[] treeBase = BuildTreeBaseV2();
+            Color32[] treeBase = BuildTreeBase();
             Color32[] flowers = BuildFlowers();
-            Color32[] water = BuildWaterV2();
+            Color32[] water = BuildWater();
 
             for (int y = 0; y < TrialRows; y++)
             {

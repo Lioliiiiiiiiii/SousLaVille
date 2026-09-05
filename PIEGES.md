@@ -21,6 +21,11 @@ l'échec après coup. Et le pilote **prend ses captures lui-même** : s'arrêter
 laisser l'opérateur capturer multiplie les allers-retours, et chacun est une occasion pour une
 autre application de reprendre le premier plan au milieu d'une manche.
 
+**Un pilote accroché par `[InitializeOnLoadMethod]` ne tourne que si l'entrée en play recharge le
+domaine.** Sinon la méthode ne repasse pas, le pilote reste armé dans `SessionState` et rien ne
+s'exécute : play en cours, `runInBackground` faux, aucune capture, aucun log. S'accrocher à
+`EditorApplication.update` **aussi dans la commande de menu** qui lance le play. Tombé en 18b.
+
 **`runInBackground` se repose à chaque session de play.** Il ne survit pas à l'arrêt. Une
 nouvelle session lancée sans focus reste figée à l'image 1 : Boot ne charge même pas Persistent.
 À poser **à chaud**, jamais dans les ProjectSettings, et à vérifier par `git status`.

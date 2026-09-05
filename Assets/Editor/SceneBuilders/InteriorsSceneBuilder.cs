@@ -223,7 +223,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = door.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
                 PortalBuilder.Attach(door, cell, GameLayer.Interior, GameLayer.Surface,
                     VillageLayout.FindSingle(VillageLayout.Doors[i]));
@@ -709,7 +709,7 @@ namespace SousLaVille.EditorTools
                         PlaceholderArtGenerator.FurnitureTextures[piece]);
 
                     // Devant le mur, derriere tout ce qui bouge.
-                    SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 1);
+                    SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
                 }
             }
         }
@@ -732,7 +732,7 @@ namespace SousLaVille.EditorTools
                 renderer.sprite = LoadSprite(spec.Sprite);
 
                 // Un cran devant le decor, un cran derriere le joueur, qui est en ordre 10.
-                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 5);
+                SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
 
                 // La bulle au-dessus de SA tete, au meme decalage que le picto du joueur.
                 // Elle passe devant tout le monde : c'est elle qu'on doit voir.
@@ -796,7 +796,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer view = sign.AddComponent<SpriteRenderer>();
                 view.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(kind));
-                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(view, EntitiesSortingLayer);
 
                 names[slot] = LoadSprite(PlaceholderArtGenerator.SignNameTexture(kind));
             }
@@ -869,7 +869,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
                 view.sprite = catalogue[i].Sample;
-                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(view, EntitiesSortingLayer);
             }
 
             PipeFactory factory = root.AddComponent<PipeFactory>();
@@ -945,7 +945,7 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer view = sample.AddComponent<SpriteRenderer>();
                 view.sprite = catalogue[i].Cover;
-                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+                SceneBuilderUtility.ApplyGroundMarkSort(view, EntitiesSortingLayer);
             }
 
             ManholeFactory factory = root.AddComponent<ManholeFactory>();

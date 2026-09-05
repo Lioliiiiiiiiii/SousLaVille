@@ -241,7 +241,7 @@ namespace SousLaVille.EditorTools
         /// accents circonflexes, deux rangs decales pour que deux cases cote a cote ne fassent pas
         /// une ligne.
         /// </summary>
-        private static Color32[] BuildWaterV2()
+        private static Color32[] BuildWater()
         {
             Color32 water = Palette.WithAlpha(Palette.Water, 0xB4);
             Color32 ripple = Palette.WithAlpha(Palette.Ice, 0xC8);
@@ -266,6 +266,36 @@ namespace SousLaVille.EditorTools
             return pixels;
         }
 
+        /// <summary>
+        /// LES DALLES du parc et LE BETON de la station, regle 1 : un fond, la trame de points de
+        /// la pelouse, et deux fissures en L toujours aux memes places — l'equivalent mineral
+        /// des touffes. Sans joint : le pavage de la phase 17 dessinait une grille de huit
+        /// pixels, et la cour de la station un quadrillage. Une dalle vue de loin est unie.
+        /// </summary>
+        private static Color32[] BuildSlabTile(Color32 stone, Color32 dot, Color32 crack)
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    bool speck = (x % 8 == 1 && y % 8 == 2) || (x % 8 == 5 && y % 8 == 6);
+                    pixels[y * TileSize + x] = speck ? dot : stone;
+                }
+            }
+
+            // Deux fissures en L, trois pixels chacune.
+            Plot(pixels, TileSize, 3, 12, crack);
+            Plot(pixels, TileSize, 4, 12, crack);
+            Plot(pixels, TileSize, 4, 11, crack);
+            Plot(pixels, TileSize, 11, 4, crack);
+            Plot(pixels, TileSize, 11, 5, crack);
+            Plot(pixels, TileSize, 12, 4, crack);
+
+            return pixels;
+        }
+
         // ---------------------------------------------------------------- la vegetation
 
         /// <summary>
@@ -274,7 +304,7 @@ namespace SousLaVille.EditorTools
         /// eclats en haut a gauche ou vient la lumiere, et des traits de feuillage en travers. Le
         /// tronc se cerne de brun, la cime de vert profond — chaque matiere son trait, regle 2.
         ///
-        /// Son ombre au sol n'est pas ici : elle est dans la tuile de son pied, BuildTreeBaseV2,
+        /// Son ombre au sol n'est pas ici : elle est dans la tuile de son pied, BuildTreeBase,
         /// puisque c'est le sol qu'elle assombrit.
         /// </summary>
         private static Color32[] BuildTreeV2()
@@ -345,7 +375,7 @@ namespace SousLaVille.EditorTools
         /// LE PIED DE L'ARBRE : la pelouse, et l'ombre de la cime dessus — une ellipse de deux verts
         /// plus sombres, regle 5. C'est la tuile bloquante ; le tronc du sprite se pose au milieu.
         /// </summary>
-        private static Color32[] BuildTreeBaseV2()
+        private static Color32[] BuildTreeBase()
         {
             Color32[] pixels = BuildLawnTile();
 
