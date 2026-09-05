@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SousLaVille.Buildings;
 using SousLaVille.Core;
+using SousLaVille.Minigames;
 using SousLaVille.Network;
 using SousLaVille.World;
 using UnityEditor;
@@ -240,22 +241,85 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private readonly struct VillagerSpec
         {
-            public VillagerSpec(int room, Vector2Int cell, string sprite, string[] lines)
+            public VillagerSpec(int room, Vector2Int cell, string sprite, string[] lines,
+                MiniGameKind miniGame = MiniGameKind.None)
             {
                 Room = room;
                 Cell = cell;
                 Sprite = sprite;
                 Lines = lines;
+                MiniGame = miniGame;
             }
 
             public int Room { get; }
             public Vector2Int Cell { get; }
             public string Sprite { get; }
             public string[] Lines { get; }
+
+            /// <summary>Le mini-jeu qu'Espace lance apres ses phrases, phase 14.</summary>
+            public MiniGameKind MiniGame { get; }
+        }
+
+        /// <summary>
+        /// Le poste d'un mini-jeu : SA CASE, ecrite a la main.
+        ///
+        /// Cette table et celle des personnages sont DEUX tables independantes qui doivent
+        /// tomber d'accord, et c'est tout l'interet. Declarer Le Stock sur la case de La
+        /// Fabrique laisserait les deux comptes justes et les deux cases occupees ; ce qui
+        /// l'attrape, c'est que ValidateMiniGames exige, case par case, que le personnage
+        /// trouve la porte AUSSI le bon visage — celui de SignFactoryVillagers a ce rang.
+        /// </summary>
+        private readonly struct MiniGamePost
+        {
+            public MiniGamePost(MiniGameKind kind, Vector2Int cell)
+            {
+                Kind = kind;
+                Cell = cell;
+            }
+
+            public MiniGameKind Kind { get; }
+            public Vector2Int Cell { get; }
         }
 
         /// <summary>Rang de l'usine a panneaux dans InteriorsLayout.Rooms.</summary>
         private const int SignFactoryRoom = 2;
+
+        /// <summary>
+        /// Les trois mini-jeux de l'usine, case par case. L'ordre est celui de
+        /// PlaceholderArtGenerator.SignFactoryVillagers, du plus simple au plus lourd : Le
+        /// Stock, La Fabrique, Le Plan.
+        ///
+        /// La Fabrique et Le Plan n'ont pas encore d'ecran — phases 15 et 16. Ils sont declares
+        /// quand meme : MiniGameScreen.Find rend null tant que personne ne les porte, et le
+        /// personnage se contente alors de parler, ce qu'il faisait deja en phase 13.
+        /// </summary>
+        private static readonly MiniGamePost[] MiniGamePosts = BuildMiniGamePosts();
+
+        private static MiniGamePost[] BuildMiniGamePosts()
+        {
+            Vector2Int origin = InteriorsLayout.Rooms[SignFactoryRoom].Origin;
+
+            return new[]
+            {
+                new MiniGamePost(MiniGameKind.Stock, origin + new Vector2Int(3, 4)),
+                new MiniGamePost(MiniGameKind.Fabrique, origin + new Vector2Int(9, 4)),
+                new MiniGamePost(MiniGameKind.Plan, origin + new Vector2Int(15, 4))
+            };
+        }
+
+        /// <summary>Le mini-jeu poste sur cette case, ou None.</summary>
+        private static MiniGameKind MiniGameAt(Vector2Int cell)
+        {
+            foreach (MiniGamePost post in MiniGamePosts)
+            {
+                if (post.Cell == cell)
+                {
+                    return post.Kind;
+                }
+            }
+
+            return MiniGameKind.None;
+        }
 
         /// <summary>Tous les personnages du jeu, case par case.</summary>
         private static readonly VillagerSpec[] VillagerSpecs = BuildVillagerSpecs();
@@ -291,7 +355,8 @@ namespace SousLaVille.EditorTools
                 specs.Add(new VillagerSpec(SignFactoryRoom, cells[who],
                     PlaceholderArtGenerator.SignFactoryVillagers[who],
                     LinePaths(PlaceholderArtGenerator.SignFactoryLines[who].Length,
-                        line => PlaceholderArtGenerator.SignFactoryLineTexture(index, line))));
+                        line => PlaceholderArtGenerator.SignFactoryLineTexture(index, line)),
+                    MiniGameAt(cells[who])));
             }
 
             return specs.ToArray();
@@ -389,7 +454,98 @@ namespace SousLaVille.EditorTools
                 ok = false;
             }
 
-            return ValidateSignBoard() && ok;
+            return ValidateSignBoard() && ValidateMiniGames() && ok;
+        }
+
+        /// <summary>
+        /// LES MINI-JEUX, apparies case par case et VERIFIES DANS LES DEUX SENS, phase 14. Sur
+        /// le patron exact de la planche et des personnages : une case sans table, une table
+        /// sans case.
+        ///
+        /// Compter ne suffirait pas, et l'ordre non plus. Ce qui prouve, c'est que la case du
+        /// poste porte AUSSI le bon visage : un poste declare sur la case du voisin laisserait
+        /// les trois comptes justes, les trois cases occupees, et Le Stock lancerait le memory
+        /// de La Fabrique SANS UN MOT. C'est la lecon des huit guides de la phase 12e, ou un
+        /// poste deplace d'une case aurait change de lecon en silence.
+        /// </summary>
+        private static bool ValidateMiniGames()
+        {
+            bool ok = true;
+
+            HashSet<MiniGameKind> seen = new HashSet<MiniGameKind>();
+
+            // 1. Chaque poste tombe sur un personnage du plan, et sur LE BON.
+            foreach (MiniGamePost post in MiniGamePosts)
+            {
+                if (post.Kind == MiniGameKind.None)
+                {
+                    Debug.LogError($"[Sous la Ville] Un poste de mini-jeu en {post.Cell} ne " +
+                                   "nomme aucun jeu : « None » n'est pas un mini-jeu.");
+                    ok = false;
+                    continue;
+                }
+
+                if (!seen.Add(post.Kind))
+                {
+                    Debug.LogError($"[Sous la Ville] Le mini-jeu « {post.Kind} » est posté deux " +
+                                   "fois : deux personnages lanceraient le même jeu.");
+                    ok = false;
+                }
+
+                int index = SpecIndex(SignFactoryRoom, post.Cell);
+                if (index < 0)
+                {
+                    Debug.LogError($"[Sous la Ville] Le mini-jeu « {post.Kind} » est posté en " +
+                                   $"{post.Cell}, où la table ne met aucun personnage.");
+                    ok = false;
+                    continue;
+                }
+
+                // LE VISAGE DECIDE, pas la case seule. C'est ce qui attrape un poste deplace
+                // d'une case : les comptes resteraient justes, le visage non.
+                int rank = (int)post.Kind - 1;
+                string[] faces = PlaceholderArtGenerator.SignFactoryVillagers;
+
+                if (rank < 0 || rank >= faces.Length)
+                {
+                    Debug.LogError($"[Sous la Ville] Le mini-jeu « {post.Kind} » n'a aucun " +
+                                   $"personnage dessiné : SignFactoryVillagers en porte " +
+                                   $"{faces.Length}.");
+                    ok = false;
+                    continue;
+                }
+
+                if (VillagerSpecs[index].Sprite != faces[rank])
+                {
+                    Debug.LogError($"[Sous la Ville] Le mini-jeu « {post.Kind} » est posté en " +
+                                   $"{post.Cell}, mais c'est « {VillagerSpecs[index].Sprite} » " +
+                                   $"qui s'y tient et non « {faces[rank]} » : le personnage " +
+                                   "lancerait le jeu de son voisin.");
+                    ok = false;
+                }
+            }
+
+            // 2. Et chaque personnage de l'usine tient un poste. Aucun ne peut rester muet par
+            // omission : les trois visages de SignFactoryVillagers sont dessines pour ca.
+            foreach (VillagerSpec spec in VillagerSpecs)
+            {
+                bool ofFactory = System.Array.IndexOf(
+                    PlaceholderArtGenerator.SignFactoryVillagers, spec.Sprite) >= 0;
+
+                if (ofFactory == (spec.MiniGame != MiniGameKind.None))
+                {
+                    continue;
+                }
+
+                Debug.LogError(ofFactory
+                    ? $"[Sous la Ville] Le personnage {spec.Cell} de l'usine à panneaux ne " +
+                      "tient aucun mini-jeu : les trois en tiennent un."
+                    : $"[Sous la Ville] Le personnage {spec.Cell} tient le mini-jeu " +
+                      $"« {spec.MiniGame} » alors qu'il n'est pas de l'usine à panneaux.");
+                ok = false;
+            }
+
+            return ok;
         }
 
         /// <summary>
@@ -532,6 +688,7 @@ namespace SousLaVille.EditorTools
                 SerializedObject serialized = new SerializedObject(component);
                 serialized.FindProperty("cell").vector2IntValue = spec.Cell;
                 serialized.FindProperty("prompt").objectReferenceValue = prompt;
+                serialized.FindProperty("miniGame").enumValueIndex = (int)spec.MiniGame;
 
                 SerializedProperty lines = serialized.FindProperty("lines");
                 lines.arraySize = spec.Lines.Length;

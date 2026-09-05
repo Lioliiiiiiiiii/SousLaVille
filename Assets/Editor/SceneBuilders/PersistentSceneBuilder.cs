@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SousLaVille.Core;
+using SousLaVille.Minigames;
 using SousLaVille.Network;
 using SousLaVille.Player;
 using SousLaVille.Seasons;
@@ -29,9 +30,169 @@ namespace SousLaVille.EditorTools
         // une unite au-dessus de son pivot.
         private static readonly Vector3 PromptOffset = new Vector3(0f, 1.25f, 0f);
 
+        // ------------------------------------------------- Le Stock, le memory de la phase 14
+        //
+        // Toute la geometrie du plateau tient dans ces six nombres, et ValidateMemoryBoard les
+        // rejoue par le calcul a chaque construction. Rien ici n'est libre : voir PLAN-PHASE-14.
+
+        /// <summary>Rangees du plateau. Cinq ne tiennent pas : 5x32 + 4x4 = 176 px pour 156.</summary>
+        private const int MemoryRows = 4;
+
+        /// <summary>
+        /// Cote d'une carte. C'est le plancher de zone cliquable de CLAUDE.md.
+        ///
+        /// static readonly et non const : le compilateur replie « 32f &lt; 32f » et signale le
+        /// filet comme du code mort, ce qui reviendrait a supprimer la garde pour faire taire
+        /// l'avertissement. C'est un reglage, pas une constante de compilation.
+        /// </summary>
+        private static readonly float MemoryCardSize = 32f;
+
+        /// <summary>Le plancher lui-meme, celui de CLAUDE.md.</summary>
+        private const float MinimumTouchSize = 32f;
+
+        private const float MemoryGutter = 4f;
+
+        /// <summary>Le plateau remonte de ceci pour degager la bande du nom, en bas.</summary>
+        private const float MemoryBoardOffsetY = 8f;
+
+        /// <summary>Hauteur reservee en bas au nom de la derniere paire trouvee.</summary>
+        private const float MemoryBandHeight = 16f;
+
+        /// <summary>Marge minimale autour du plateau, de chaque cote.</summary>
+        private const float MemoryMargin = 4f;
+
+        /// <summary>Les quatre familles de la planche : intersection, danger, interdiction, obligation.</summary>
+        private const int MemoryFamilies = 4;
+
+        /// <summary>
+        /// Paires de chaque manche, la derniere tenant ensuite. 8, 12 et 16 sont toutes
+        /// divisibles par quatre : chaque manche tire donc 2, 3 puis 4 panneaux PAR FAMILLE, et
+        /// les quatre formes sont toujours a l'ecran.
+        /// </summary>
+        private static readonly int[] MemoryRoundPairs = { 8, 12, 16 };
+
+        /// <summary>Cartes creees d'avance : la plus grande manche. Aucune allocation en jeu.</summary>
+        private static int MemoryCardCount
+        {
+            get
+            {
+                int most = 0;
+                foreach (int pairs in MemoryRoundPairs)
+                {
+                    most = Mathf.Max(most, pairs);
+                }
+
+                return most * 2;
+            }
+        }
+
+        /// <summary>
+        /// LE PLATEAU TIENT-IL DEBOUT ? Prouve par le calcul, avant qu'une seule carte ne soit
+        /// creee, et rejoue a chaque construction.
+        ///
+        /// Un validateur qui dit toujours oui ne vaut rien : celui-ci refuse une carte sous le
+        /// plancher de 32, un plateau qui deborde des 320x180, une manche impaire, une manche
+        /// qui ne se partage pas entre les quatre familles, et une manche qui demanderait a une
+        /// famille plus de panneaux qu'elle n'en porte.
+        /// </summary>
+        private static bool ValidateMemoryBoard()
+        {
+            bool ok = true;
+
+            if (MemoryCardSize < MinimumTouchSize)
+            {
+                Debug.LogError($"[Sous la Ville] Une carte du memory fait {MemoryCardSize} px de " +
+                               $"côté : CLAUDE.md impose au moins {MinimumTouchSize} px à la " +
+                               "résolution de référence.");
+                ok = false;
+            }
+
+            float height = MemoryRows * MemoryCardSize + (MemoryRows - 1) * MemoryGutter;
+            float roomForHeight = ReferenceHeight - MemoryBandHeight - 2 * MemoryMargin;
+
+            if (height > roomForHeight)
+            {
+                Debug.LogError($"[Sous la Ville] Le plateau du memory fait {height} px de haut " +
+                               $"pour {roomForHeight} disponibles : {MemoryRows} rangées de " +
+                               $"{MemoryCardSize} px ne tiennent pas sous la bande du nom.");
+                ok = false;
+            }
+
+            int slots = PlaceholderArtGenerator.SignBoard.Length;
+
+            if (slots % MemoryFamilies != 0)
+            {
+                Debug.LogError($"[Sous la Ville] La planche porte {slots} panneau(x) pour " +
+                               $"{MemoryFamilies} familles : elles ne sont pas de même taille, " +
+                               "et le tirage par famille n'a plus de sens.");
+                ok = false;
+            }
+
+            foreach (int pairs in MemoryRoundPairs)
+            {
+                int cards = pairs * 2;
+
+                if (pairs <= 0 || cards % MemoryRows != 0)
+                {
+                    Debug.LogError($"[Sous la Ville] Une manche de {pairs} paire(s) fait " +
+                                   $"{cards} carte(s), qui ne se rangent pas en " +
+                                   $"{MemoryRows} rangées pleines.");
+                    ok = false;
+                    continue;
+                }
+
+                int columns = cards / MemoryRows;
+                float width = columns * MemoryCardSize + (columns - 1) * MemoryGutter;
+                float roomForWidth = ReferenceWidth - 2 * MemoryMargin;
+
+                if (width > roomForWidth)
+                {
+                    Debug.LogError($"[Sous la Ville] Une manche de {pairs} paire(s) demande " +
+                                   $"{columns} colonnes, soit {width} px pour {roomForWidth} " +
+                                   "disponibles : le plateau déborde de l'écran.");
+                    ok = false;
+                }
+
+                if (pairs % MemoryFamilies != 0)
+                {
+                    Debug.LogError($"[Sous la Ville] Une manche de {pairs} paire(s) ne se " +
+                                   $"partage pas entre les {MemoryFamilies} familles : le " +
+                                   "tirage en favoriserait une, et la grammaire des formes " +
+                                   "n'aurait plus de sens.");
+                    ok = false;
+                }
+                else if (slots % MemoryFamilies == 0 && pairs / MemoryFamilies > slots / MemoryFamilies)
+                {
+                    Debug.LogError($"[Sous la Ville] Une manche de {pairs} paire(s) demande " +
+                                   $"{pairs / MemoryFamilies} panneaux par famille, alors " +
+                                   $"qu'une famille n'en porte que {slots / MemoryFamilies}.");
+                    ok = false;
+                }
+            }
+
+            // Le nom de la paire trouvee s'affiche en entier ou il ment.
+            foreach (string name in PlaceholderArtGenerator.SignBoardNames)
+            {
+                int width = PixelFont.WidthOf(name);
+                if (width > ReferenceWidth - 2 * MemoryMargin)
+                {
+                    Debug.LogError($"[Sous la Ville] Le nom « {name} » fait {width} px de large : " +
+                                   $"il ne tient pas dans les {ReferenceWidth} px de l'écran.");
+                    ok = false;
+                }
+            }
+
+            return ok;
+        }
+
         [MenuItem("Sous La Ville/Construire la scène Persistent")]
         public static bool Build()
         {
+            if (!ValidateMemoryBoard())
+            {
+                return false;
+            }
+
             Scene scene = SceneBuilderUtility.BeginScene();
             if (!scene.IsValid())
             {
@@ -274,6 +435,7 @@ namespace SousLaVille.EditorTools
             Image seasonIcon = CreateSeasonIcon(canvasObject.transform);
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
             CreateVillageMap(canvasObject);
+            CreateSignMemory(canvasObject);
             CreateSpeechBox(canvasObject);
             CreateItemLabel(canvasObject);
 
@@ -504,6 +666,183 @@ namespace SousLaVille.EditorTools
 
             // Eteint au depart : VillageMapScreen le rallume le temps du choix.
             panel.SetActive(false);
+        }
+
+        /// <summary>
+        /// LE STOCK, le memory de la phase 14. Il vit dans le HUD comme le plan du village et
+        /// la boite de dialogue, cree JUSTE APRES le plan pour passer devant les gouttes et les
+        /// indicateurs.
+        ///
+        /// SON FOND EST OPAQUE, et ce n'est pas de l'esthetique. La rangee de gouttes du HUD
+        /// occupe le coin haut-droit de y = 160 a 176, exactement la ou passe la rangee haute du
+        /// plateau. Le voile a 0,6 du plan du village y laisserait quatorze gouttes transparaitre
+        /// au travers des cartes. C'est le piege de la phase 13 a l'identique, ou la premiere
+        /// famille de la planche etait passee derriere cette meme rangee.
+        ///
+        /// Les trente-deux cartes sont creees D'AVANCE, la plus grande manche : le mini-jeu en
+        /// allume ce qu'il lui faut et n'alloue rien en cours de partie.
+        /// </summary>
+        private static void CreateSignMemory(GameObject canvasObject)
+        {
+            GameObject panel = new GameObject("SignMemory");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            RectTransform panelRect = panel.AddComponent<RectTransform>();
+            panelRect.anchorMin = Vector2.zero;
+            panelRect.anchorMax = Vector2.one;
+            panelRect.offsetMin = Vector2.zero;
+            panelRect.offsetMax = Vector2.zero;
+
+            Image background = panel.AddComponent<Image>();
+            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.raycastTarget = false;
+
+            GameObject boardObject = new GameObject("Board");
+            boardObject.transform.SetParent(panel.transform, false);
+
+            RectTransform boardRect = boardObject.AddComponent<RectTransform>();
+            boardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boardRect.pivot = new Vector2(0.5f, 0.5f);
+            boardRect.anchoredPosition = Vector2.zero;
+            boardRect.sizeDelta = Vector2.zero;
+
+            Sprite back = LoadSprite(PlaceholderArtGenerator.SignBackTexture);
+
+            int count = MemoryCardCount;
+            List<Image> cards = new List<Image>(count);
+            List<Image> faces = new List<Image>(count);
+
+            for (int i = 0; i < count; i++)
+            {
+                GameObject cardObject = new GameObject($"Card_{i + 1:00}");
+                cardObject.transform.SetParent(boardObject.transform, false);
+
+                // Le fond de carte n'a AUCUN sprite : une Image sans sprite est un carre teinte,
+                // comme le voile du fondu depuis la phase 2. Le mini-jeu en change la couleur
+                // pour dire face cachee, face visible ou paire trouvee.
+                Image card = cardObject.AddComponent<Image>();
+                card.raycastTarget = false;
+                card.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                card.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                card.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                card.rectTransform.sizeDelta = new Vector2(MemoryCardSize, MemoryCardSize);
+
+                GameObject faceObject = new GameObject("Face");
+                faceObject.transform.SetParent(cardObject.transform, false);
+
+                // Le panneau a sa taille exacte, 16 sur 24 : celle qu'il a dans le village et
+                // dans la piece. Jamais SetNativeSize, qui multiplierait par 100 / 16.
+                Image face = faceObject.AddComponent<Image>();
+                face.raycastTarget = false;
+                face.sprite = back;
+                face.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                face.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                face.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                face.rectTransform.anchoredPosition = Vector2.zero;
+                face.rectTransform.sizeDelta = new Vector2(back.rect.width, back.rect.height);
+
+                cards.Add(card);
+                faces.Add(face);
+            }
+
+            // Le cadre EN DERNIER, donc dessine par-dessus les cartes : il les cerne sans
+            // qu'aucune ne lui passe devant.
+            GameObject cursorObject = new GameObject("Cursor");
+            cursorObject.transform.SetParent(boardObject.transform, false);
+
+            Image cursor = cursorObject.AddComponent<Image>();
+            cursor.raycastTarget = false;
+            cursor.sprite = LoadSprite(PlaceholderArtGenerator.PictoCardCursor);
+            cursor.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            cursor.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            cursor.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            cursor.rectTransform.sizeDelta = new Vector2(MemoryCardSize, MemoryCardSize);
+
+            // Le nom de la derniere paire trouvee. Il reprend les vingt-quatre images de la
+            // phase 13 : aucun texte neuf n'est dessine pour ce mini-jeu.
+            GameObject nameObject = new GameObject("PairName");
+            nameObject.transform.SetParent(panel.transform, false);
+
+            Image nameBand = nameObject.AddComponent<Image>();
+            nameBand.raycastTarget = false;
+            nameBand.enabled = false;
+            nameBand.rectTransform.anchorMin = new Vector2(0.5f, 0f);
+            nameBand.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+            nameBand.rectTransform.pivot = new Vector2(0.5f, 0f);
+            nameBand.rectTransform.anchoredPosition = new Vector2(0f, MemoryMargin);
+
+            // LE PICTO DE SORTIE EST CELUI DES BATIMENTS, pas un dessin de plus : refermer un
+            // ecran fini et sortir d'une porte sont le meme geste, et il n'y a rien a apprendre.
+            GameObject exitObject = new GameObject("ExitPrompt");
+            exitObject.transform.SetParent(panel.transform, false);
+
+            Image exitPrompt = exitObject.AddComponent<Image>();
+            exitPrompt.raycastTarget = false;
+            exitPrompt.enabled = false;
+            exitPrompt.sprite = LoadSprite(PlaceholderArtGenerator.PictoExit);
+            exitPrompt.rectTransform.anchorMin = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchorMax = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.pivot = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchoredPosition = new Vector2(-MemoryMargin, MemoryMargin);
+            exitPrompt.rectTransform.sizeDelta =
+                new Vector2(exitPrompt.sprite.rect.width, exitPrompt.sprite.rect.height);
+
+            SignMemory memory = canvasObject.AddComponent<SignMemory>();
+
+            SerializedObject serialized = new SerializedObject(memory);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Stock;
+            serialized.FindProperty("cursor").objectReferenceValue = cursor;
+            serialized.FindProperty("nameBand").objectReferenceValue = nameBand;
+            serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
+            serialized.FindProperty("back").objectReferenceValue = back;
+            serialized.FindProperty("families").intValue = MemoryFamilies;
+            serialized.FindProperty("rows").intValue = MemoryRows;
+            serialized.FindProperty("cardSize").floatValue = MemoryCardSize;
+            serialized.FindProperty("gutter").floatValue = MemoryGutter;
+            serialized.FindProperty("boardOffsetY").floatValue = MemoryBoardOffsetY;
+
+            FillArray(serialized.FindProperty("cards"), cards);
+            FillArray(serialized.FindProperty("faces"), faces);
+
+            SerializedProperty rounds = serialized.FindProperty("roundPairs");
+            rounds.arraySize = MemoryRoundPairs.Length;
+            for (int i = 0; i < MemoryRoundPairs.Length; i++)
+            {
+                rounds.GetArrayElementAtIndex(i).intValue = MemoryRoundPairs[i];
+            }
+
+            // LES VINGT-QUATRE PANNEAUX ET LEURS VINGT-QUATRE NOMS, DANS L'ORDRE DE LA PLANCHE,
+            // et non dans celui des rangs. Le mini-jeu ne connait que des places de planche : il
+            // en deduit la famille par tranches de six, ce qui n'est vrai que dans cet ordre-la.
+            int[] board = PlaceholderArtGenerator.SignBoard;
+            SerializedProperty signs = serialized.FindProperty("signs");
+            SerializedProperty names = serialized.FindProperty("names");
+            signs.arraySize = board.Length;
+            names.arraySize = board.Length;
+
+            for (int slot = 0; slot < board.Length; slot++)
+            {
+                signs.GetArrayElementAtIndex(slot).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.SignTexture(board[slot]));
+                names.GetArrayElementAtIndex(slot).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.SignNameTexture(board[slot]));
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : c'est Le Stock qui le rallume, apres ses deux phrases.
+            panel.SetActive(false);
+        }
+
+        private static void FillArray(SerializedProperty property, List<Image> images)
+        {
+            property.arraySize = images.Count;
+            for (int i = 0; i < images.Count; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = images[i];
+            }
         }
 
         /// <summary>

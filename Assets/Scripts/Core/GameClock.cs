@@ -1,4 +1,5 @@
 using System;
+using SousLaVille.Minigames;
 using SousLaVille.UI;
 using UnityEngine;
 
@@ -63,7 +64,11 @@ namespace SousLaVille.Core
             // d'une phrase — geler la route qu'on venait d'expliquer, faire disparaitre le
             // picto que le guide montrait, pendant que sa boite restait ouverte. Le jeu n'a
             // aucune raison de tourner quand le joueur lit.
-            if (SpeechBox.AnyOpen)
+            // ET PENDANT QU'ON JOUE, phase 14. Une manche de seize paires dure plusieurs
+            // minutes quand une saison en dure dix : un tick tomberait au milieu d'une partie
+            // et gelerait le village pendant que l'enfant joue a autre chose, dans une piece
+            // que les saisons ne touchent meme pas.
+            if (SpeechBox.AnyOpen || MiniGameScreen.AnyOpen)
             {
                 return;
             }

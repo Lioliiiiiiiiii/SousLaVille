@@ -12,6 +12,15 @@ pas** : le New Input System laisse la touche enfoncée sur le périphérique et 
 les actions. Vérifier `Application.isFocused` avant de conclure quoi que ce soit d'un test
 d'entrée. Une autre application peut reprendre le focus entre deux appels du pont.
 
+**Et le focus perdu RESSEMBLE EXACTEMENT à un bug du jeu.** En phase 14, le pilote a échoué sur
+« appui sans effet sur le curseur » : la marche, la porte et le dialogue avaient tous réussi, et
+seul le mini-jeu ne répondait pas — le symptôme parfait d'un bug dans le code neuf. Deux
+corrections, et les deux comptent. Le pilote **attend le focus** au lieu de compter les coups
+perdus : un appui injecté sans focus n'arrive nulle part, et le compter ne sert qu'à expliquer
+l'échec après coup. Et le pilote **prend ses captures lui-même** : s'arrêter à chaque étape pour
+laisser l'opérateur capturer multiplie les allers-retours, et chacun est une occasion pour une
+autre application de reprendre le premier plan au milieu d'une manche.
+
 **`runInBackground` se repose à chaque session de play.** Il ne survit pas à l'arrêt. Une
 nouvelle session lancée sans focus reste figée à l'image 1 : Boot ne charge même pas Persistent.
 À poser **à chaud**, jamais dans les ProjectSettings, et à vérifier par `git status`.
@@ -23,6 +32,13 @@ nouvelle session lancée sans focus reste figée à l'image 1 : Boot ne charge m
 **Un rechargement de domaine en plein play vide `GameManager.Instance`.** L'instance est posée
 dans `Awake`, qu'Unity ne rappelle pas après un rechargement. Relancer le play plutôt que
 chercher un bug. (Le poser dans `OnEnable` le réglerait ; question ouverte depuis la phase 7.)
+
+**Un `const` comparé à un `const` fait passer un filet pour du code mort.** `ValidateMemoryBoard`
+commençait par `if (MemoryCardSize < 32f)`, deux constantes : le compilateur replie la
+comparaison, voit le corps comme inatteignable et sort **CS0162**. Et la tentation est alors de
+supprimer la garde pour faire taire l'avertissement, c'est-à-dire de supprimer le filet **parce
+qu'il passe**. Un réglage n'est pas une constante de compilation : `static readonly`, et le
+plancher devient une constante nommée à part. Tombé en phase 14.
 
 **Un champ `static readonly` ne se sabote pas par réflexion.** `FieldInfo.SetValue` remplace bien
 la valeur — `ReferenceEquals` le confirme — mais le runtime a figé la référence à l'initialisation
@@ -59,6 +75,13 @@ pendant l'extinction doit se rattraper au réveil.
 `SetLayerEnabled` parcourt `scene.GetRootGameObjects()` et éteint chacun d'eux. Un objet posé dans
 la scène Surface s'éteint donc en descendant, et sa coroutine s'arrête **sans un mot**. Ce qui doit
 survivre à un changement de couche appartient à Persistent, ou passe par `DontDestroyOnLoad`.
+
+**Une référence sérialisée ne traverse pas deux scènes.** Unity ne sérialise pas une référence
+d'un objet d'une scène vers un objet d'une autre : le champ sort **nul, sans un mot**, et rien à
+la construction ne le signale. Le personnage vit dans `Interiors`, son mini-jeu et sa boîte de
+dialogue dans `Persistent` : ce qui les relie est un **identifiant sérialisé** — un rang d'enum —
+plus un registre statique et une résolution paresseuse. Vu en phase 9a pour `SpeechBox`, écrit
+comme règle en phase 14 pour `MiniGameScreen`.
 
 **Chercher un objet d'une couche éteinte demande `FindObjectsInactive.Include`.** Sans lui,
 `FindAnyObjectByType` ne le voit pas. C'est le cas de l'usine à tuyaux, consultée depuis le
@@ -101,6 +124,14 @@ Vu à l'écran, pas déduit.
 **`Image.SetNativeSize` n'a rien à faire dans ce HUD.** Il divise la largeur du sprite par ses
 pixels par unité (16 ici) puis la multiplie par les 100 du Canvas : une phrase de 109 pixels
 sortait à 681, deux fois l'écran. Poser `sizeDelta` depuis `sprite.rect`.
+
+**Tout écran qui dure doit arrêter l'horloge, et pas seulement la boîte de dialogue.** Une
+saison dure dix minutes ; une manche de seize paires en dure plusieurs. `GameClock` ne
+connaissait que `SpeechBox.AnyOpen` : un tick serait tombé au milieu d'une partie et aurait gelé
+le village pendant que l'enfant joue à autre chose, **dans une pièce que les saisons ne touchent
+même pas**. Chaque famille d'écrans porte donc son compteur statique, remis à zéro par
+`[RuntimeInitializeOnLoadMethod]` — sans quoi un écran laissé ouvert à l'arrêt fige l'horloge de
+la session suivante.
 
 **Le picto d'action se pose au-dessus de la tête du JOUEUR** — sauf la bulle « on peut lui
 parler », qui est au-dessus de celle du **personnage**. La place habituelle tombait exactement

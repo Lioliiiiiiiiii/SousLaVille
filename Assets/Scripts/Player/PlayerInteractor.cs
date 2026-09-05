@@ -1,5 +1,6 @@
 using SousLaVille.Buildings;
 using SousLaVille.Core;
+using SousLaVille.Minigames;
 using SousLaVille.Network;
 using SousLaVille.UI;
 using SousLaVille.World;
@@ -74,6 +75,15 @@ namespace SousLaVille.Player
         private bool isTravelling;
         private bool isChoosing;
         private bool isTalking;
+
+        /// <summary>Vrai pendant un mini-jeu de l'usine a panneaux, phase 14.</summary>
+        private bool isPlaying;
+
+        /// <summary>Celui a qui l'on parle, retenu pour lancer SON mini-jeu a la fin.</summary>
+        private Villager talkingTo;
+
+        /// <summary>Le mini-jeu ouvert, pour s'en desabonner a la fermeture.</summary>
+        private MiniGameScreen playing;
 
         /// <summary>
         /// Image ou un ecran s'est referme, plan du village ou boite de dialogue. Le meme
@@ -164,7 +174,8 @@ namespace SousLaVille.Player
             portal = null;
 
             SceneRouter router = Router;
-            if (isTravelling || isChoosing || isTalking || Time.frameCount == screenClosedFrame
+            if (isTravelling || isChoosing || isTalking || isPlaying
+                || Time.frameCount == screenClosedFrame
                 || router == null || !controller.HasMap)
             {
                 return InteractionKind.None;
@@ -370,6 +381,7 @@ namespace SousLaVille.Player
             }
 
             speech = box;
+            talkingTo = villagerAhead;
             isTalking = true;
             controller.enabled = false;
             ShowPrompt(InteractionKind.None);
@@ -385,8 +397,62 @@ namespace SousLaVille.Player
                 speech = null;
             }
 
-            controller.enabled = true;
             isTalking = false;
+
+            // SON MINI-JEU PREND LA SUITE, phase 14. Le personnage explique d'abord, le jeu
+            // commence ensuite : c'est l'ordre que ses repliques ecrivent depuis la phase 13,
+            // « MES PANNEAUX SONT EN DÉSORDRE » puis « RETROUVE-LES DEUX PAR DEUX ».
+            //
+            // Aucun InteractionKind neuf, et c'est voulu : Espace fait deja parler, et parler
+            // MENE au jeu. Un kind de plus aurait demande un second geste pour la meme chose.
+            //
+            // Le personnage joueur reste eteint : on passe d'un ecran a l'autre sans jamais
+            // rendre les fleches a la marche. Et screenClosedFrame n'est pose qu'a la
+            // fermeture DU MINI-JEU, sinon l'image ou la boite se referme serait rendue a
+            // l'interacteur alors que l'ecran s'ouvre dessus.
+            if (StartMiniGame())
+            {
+                return;
+            }
+
+            talkingTo = null;
+            controller.enabled = true;
+            screenClosedFrame = Time.frameCount;
+        }
+
+        /// <summary>
+        /// Lance le mini-jeu du personnage a qui l'on vient de parler, s'il en tient un. Rend
+        /// false pour les dix autres personnages du jeu, et pour La Fabrique et Le Plan tant
+        /// que les phases 15 et 16 ne leur ont pas donne d'ecran : il ne se passe alors
+        /// simplement rien de plus, ce qui est exactement ce que la phase 13 faisait.
+        /// </summary>
+        private bool StartMiniGame()
+        {
+            MiniGameScreen screen = talkingTo != null ? talkingTo.ResolveMiniGame() : null;
+            if (screen == null || !screen.Open())
+            {
+                return false;
+            }
+
+            playing = screen;
+            isPlaying = true;
+            ShowPrompt(InteractionKind.None);
+
+            playing.Closed += OnMiniGameClosed;
+            return true;
+        }
+
+        private void OnMiniGameClosed()
+        {
+            if (playing != null)
+            {
+                playing.Closed -= OnMiniGameClosed;
+                playing = null;
+            }
+
+            talkingTo = null;
+            controller.enabled = true;
+            isPlaying = false;
             screenClosedFrame = Time.frameCount;
         }
 

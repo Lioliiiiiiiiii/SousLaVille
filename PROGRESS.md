@@ -2051,6 +2051,189 @@ il voit la touche, et ce pas va au bout tout seul ; la touche relâchée, aucun 
 s'engage. Et la marche est **en boucle fermée** — on relit la case où l'on est à chaque tour au
 lieu de compter les pas.
 
+## Phase 14, ce qui est fait
+
+**Le Stock**, le premier des trois mini-jeux de l'usine à panneaux : un memory. Il valide le
+squelette que La Fabrique (15) et Le Plan (16) reprendront. Rien de ce qui s'y passe ne sort du
+bâtiment, et **rien ne s'y sauvegarde**.
+
+### Panneau contre panneau, et le nom en récompense
+
+Le panneau contre son NOM avait été mesuré impossible **avant** d'écrire une ligne. `PixelFont`
+est à chasse fixe, `WidthOf = 6n + 1` : sur les 24 noms réels, le plus court fait **37 px**
+(DANGER), la médiane **121**, le plus long **193** (ARRÊT ET STATIONNEMENT INTERDITS).
+
+| voie | ce qu'elle donne |
+|---|---|
+| cartes de 193 px | 1 colonne. Pas une grille. |
+| cartes de 150 px | 2 colonnes, 4 rangées, **4 paires**, et 2 noms débordent encore |
+| ne garder que les noms courts (≤ 89 px) | il n'y en a que **quatre sur vingt-quatre** |
+| rendu multi-ligne dans `PixelFont` | code neuf, 24 images refaites, et **6 paires** |
+
+Donc panneau contre panneau. Et le nom n'est pas perdu, il est **gagné** : chaque paire trouvée
+affiche son nom en bas de l'écran, par `SignNameTexture`, qui existait déjà. Le nom devient la
+récompense de la trouvaille au lieu d'être l'énigme — ce que le personnage disait depuis la
+phase 13, « RETROUVE-LES DEUX PAR DEUX » — et c'est ce qui prépare La Fabrique, dont le sujet
+**est** de nommer.
+
+### La grille n'est pas libre, elle est calculée
+
+Cartes de **32 px**, le plancher de zone cliquable de CLAUDE.md ; gouttière de 4 ; une bande de
+13 px en bas pour le nom.
+
+| grille | cartes | paires | plateau | marges |
+|---|---|---|---|---|
+| 4 × 4 | 16 | 8 | 140 × 140 | 90 / 12 |
+| 4 × 6 | 24 | 12 | 212 × 140 | 54 / 12 |
+| 4 × 8 | 32 | 16 | 284 × 140 | 18 / 12 |
+
+Et les deux bornes dures : **5 rangées font 176 px pour 156 disponibles**, **9 colonnes font
+320 px pour 312**. Le panneau reste à **1:1, 16 × 24**, la taille qu'il a dans le village et
+dans la pièce ; le doubler plafonnerait à 3 rangées et 9 paires, mesuré aussi.
+
+**Le fond de l'écran est opaque, et ce n'est pas de l'esthétique.** La rangée de gouttes du HUD
+occupe le coin haut-droit de y = 160 à 176, exactement là où passe la rangée haute du plateau.
+Le voile à 0,6 de `VillageMapScreen` y aurait laissé quatorze gouttes transparaître au travers
+des cartes. C'est le piège de la phase 13 à l'identique.
+
+### 8, puis 12, puis 16 — et 2, 3 puis 4 par famille
+
+Les trois tailles sont **divisibles par quatre** : chaque manche tire donc un nombre égal de
+panneaux **dans chacune des quatre familles**, au hasard dans la famille. Les quatre formes sont
+toujours à l'écran, et la leçon de la pièce — *la forme dit la famille avant que le dessin dise
+le détail* — tient dans le mini-jeu au lieu d'y être contredite par un tirage de six triangles
+rouges.
+
+**Une manche par lancement**, plus grande à chaque fois, plafonnée à 16 paires. Le compteur est
+un **champ du composant**, jamais un octet de `partie.json` : il survit à une sortie du bâtiment,
+puisque le `SceneRouter` éteint la couche sans la détruire, et pas à une fermeture du jeu.
+`SaveSystem.TryLoad` n'est pas touché.
+
+**On sort après chaque manche**, délibérément : le jeu n'a qu'Espace, et enchaîner quatre manches
+d'office enfermerait l'enfant dans un écran dont aucune touche ne permet de sortir.
+
+### Aucune minuterie, nulle part
+
+Deux cartes qui ne vont pas ensemble **restent visibles jusqu'à la prochaine action du joueur,
+quelle qu'elle soit** — une flèche ou un Espace les retourne. L'enfant regarde aussi longtemps
+qu'il veut, et rien ne lui est demandé dans un délai. C'est la seule façon trouvée de tenir
+« aucun timing serré » sans lui reprendre l'information qu'il vient de voir — et c'est aussi la
+seule qui se vérifie de façon déterministe, ce qu'un délai n'est pas.
+
+Le curseur **saute les cartes déjà appariées**, et se repose tout seul sur la plus proche carte
+encore en jeu quand la sienne vient d'être trouvée : aucun coup perdu, aucun appui dans le vide.
+Aucun score, aucun compte de coups, aucun chrono.
+
+### Le squelette, puisque 15 et 16 le reprendront
+
+`Assets/Scripts/Minigames/`, imposé par CLAUDE.md et vide depuis le début, s'ouvre ici.
+
+- **`MiniGameScreen`**, abstraite, porte tout ce que les trois partagent : le panneau éteint, la
+  garde `openedFrame` jumelle de `PlayerInteractor.screenClosedFrame`, la lecture des flèches au
+  seul changement de direction, le garde-fou de rechargement de domaine, l'événement `Closed`, un
+  registre statique, et le compteur `AnyOpen`. C'est le patron de `VillageMapScreen` assemblé
+  avec celui de `SpeechBox` ; ni l'un ni l'autre n'est redoublé.
+- **`GameClock` lit désormais `SpeechBox.AnyOpen || MiniGameScreen.AnyOpen`.** Sans cela une
+  manche de seize paires — plusieurs minutes — verrait tomber un tick de saison, et le village
+  gèlerait pendant que l'enfant joue à autre chose, dans une pièce que les saisons ne touchent
+  même pas.
+- **`Move` et `Validate` sont publiques**, séparées de la lecture du clavier, comme
+  `VillageMapScreen.Select` depuis la phase 7. Et **`Deal` est statique, pure et déterministe** :
+  c'est elle qui se vérifie par le calcul, sans écran et sans hasard.
+
+### Le lancement : après la phrase, et sans un `InteractionKind` de plus
+
+`Villager` gagne un champ `miniGame`, nul pour les dix autres personnages. `PlayerInteractor`
+ouvre l'écran dans `OnSpeechClosed` : Le Stock dit ses deux phrases, **puis** le jeu commence,
+l'ordre que ses répliques écrivaient déjà. Le personnage joueur reste éteint d'un écran à
+l'autre, et `screenClosedFrame` n'est posé qu'à la fermeture **du mini-jeu**.
+
+**Aucune référence sérialisée ne va du personnage à l'écran**, et ne le pourrait pas : le
+personnage vit dans `Interiors`, l'écran dans `Persistent`, et Unity ne sérialise pas une
+référence d'une scène vers une autre. Le registre statique de `MiniGameScreen` les relie, comme
+la boîte de dialogue l'était déjà.
+
+### Deux images neuves, et pas une de plus
+
+| image | pourquoi |
+|---|---|
+| `sign_back.png`, 16 × 24 | **le dos d'un panneau** : plaque grise, liseré, bride et deux boulons. Un panneau a un dos, et Victorien le sait. |
+| `picto_card_cursor.png`, 32 × 32 | `cursor_target` fait 16 px et flotterait au milieu d'une carte de 32. `BuildCursor` prend une taille en paramètre ; l'image de 16 est au pixel près celle d'avant. |
+
+Le picto de fin de manche est **`picto_exit`**, celui qui sort déjà des bâtiments : même geste,
+rien à apprendre. **Aucun texte neuf** : la bande de nom réutilise les 24 images de la phase 13.
+
+## Phase 14, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**.
+- **Les six validateurs passent** sur le monde neuf, aux chiffres exacts de la phase 13 :
+  2233 cases praticables, 32 panneaux dérivés, 2844 sur 2880, 14 destinations sur 14, 4 alcôves,
+  bilan de l'eau tenable. Rien n'a bougé, et c'était le but : le memory est un écran, il
+  n'ajoute rien à la carte ni à la pièce.
+- **Le tirage vérifié par le calcul, sur 1000 graines et pour les trois tailles** : exactement
+  `2 × paires` cartes, exactement deux exemplaires de chaque rang, aucun rang hors planche, et
+  exactement `paires / 4` par famille — 999 tirages sur 999 différents du premier. Et quatre
+  refus attendus obtenus : 13 paires (non divisible par 4), 28 paires (plus que 6 par famille),
+  une planche de 25, et 0 paire.
+- **Cinq sabotages, cinq refus nommés**, chacun par le fichier et une vraie recompilation :
+  - `MemoryRows = 5` → « Le plateau du memory fait 176 px de haut pour 156 disponibles » ;
+  - une manche de 20 paires → « demande 10 colonnes, soit 356 px pour 312 disponibles » ;
+  - `MemoryCardSize = 30f` → « fait 30 px de côté : CLAUDE.md impose au moins 32 px » ;
+  - Le Stock posté sur la case de La Fabrique → **les deux filets tirent séparément** : « c'est
+    villager_maker.png qui s'y tient et non villager_stock.png : le personnage lancerait le jeu
+    de son voisin », puis « Le personnage (3, 4) de l'usine ne tient aucun mini-jeu » ;
+  - et le filet de la phase 13 refuse toujours : un `V` effacé → « porte 2 personnage(s), il en
+    faut exactement 3 ».
+  Les cinq fois, `BuildAllScenes` **s'arrête** : « Construction interrompue : une scène a refusé ».
+- **Test en play, entrées clavier vraiment injectées**, trajet complet : entrée par la porte
+  (31, 34) → couche Interior en (9, 0) → marche jusqu'en (3, 5), demi-tour vers Le Stock en
+  (3, 4) → ses deux phrases → **manche de 8 paires jouée jusqu'à la dernière**, y compris une
+  erreur volontaire pour éprouver le chemin des cartes dépareillées → Espace referme → l'écran
+  **ne se rouvre pas** → sortie par la porte intérieure (9, 0) → retour en surface en (31, 34).
+  **Zéro appui injecté sans focus.**
+- **La montée en difficulté vérifiée en jeu** : lancements 2, 3 et 4 → 12 paires en 4 × 6 puis
+  16 en 4 × 8 puis 16 encore, familles 3/3/3/3 puis 4/4/4/4.
+- **L'horloge s'arrête bien pendant qu'on joue**, et repart à la fermeture. Vérifié par
+  `MiniGameScreen.AnyOpen` aux deux instants.
+- **Les deux dessins neufs ont été REGARDÉS**, agrandis six fois et posés sur les trois fonds de
+  carte — cachée, visible, appariée — avant toute construction.
+- **Captures** dans `Captures/` : le plateau au début, une manche en cours avec deux paires
+  trouvées et le nom À DROITE OU À GAUCHE en bas, la fin avec le picto de sortie, le plateau le
+  plus serré à 16 paires, et la planche des cartes agrandie.
+- `Application.runInBackground = true` posé **à chaud à chaque session de play**, jamais dans les
+  ProjectSettings. Le pilote de test passait par `DontDestroyOnLoad`, et il a été **supprimé**.
+- `git diff ProjectSettings/` : **vide**.
+
+### Note d'atelier : un `const` replié fait passer un filet pour du code mort
+
+`ValidateMemoryBoard` commençait par `if (MemoryCardSize < 32f)`, deux `const` : le compilateur
+replie la comparaison, voit le corps comme inatteignable, et sort **CS0162**. La tentation est de
+supprimer la garde pour faire taire l'avertissement — c'est-à-dire de supprimer le filet parce
+qu'il passe. Un réglage n'est pas une constante de compilation : `MemoryCardSize` est passé en
+`static readonly`, le plancher de 32 est devenu une constante nommée, et le filet garde ses dents
+— le sabotage à 30 px l'a prouvé ensuite.
+
+### Note d'atelier : le focus perdu ressemble exactement à un bug du jeu
+
+Le premier passage du pilote a échoué sur « appui sans effet sur le curseur ». Rien dans le
+symptôme ne disait le focus : la marche, le passage de la porte et le dialogue avaient tous
+réussi, et c'est seulement le memory qui ne répondait pas — un résultat qui aurait fait chercher
+un bug dans le code neuf. Le compteur d'appuis sans focus, lui, disait 5.
+
+Deux corrections, et les deux comptent. D'abord **le pilote ATTEND le focus au lieu de compter
+les coups perdus** : un appui injecté sans focus n'arrive nulle part, et le compter ne sert qu'à
+expliquer l'échec après coup. Ensuite **le pilote prend ses captures lui-même** : s'arrêter à
+chaque étape pour laisser l'opérateur capturer multiplie les allers-retours, et chacun est une
+occasion pour une autre application de reprendre le premier plan au milieu d'une manche.
+
+### Note d'atelier : deux triangles que l'œil confond, et que le programme ne confond pas
+
+En relisant la capture de fin, j'ai compté 1/2/3/2 par famille là où le tirage garantit 2/2/2/2 :
+AB1, un triangle bordé de rouge portant une croix noire, se lit comme un triangle de danger à
+seize pixels. Le programme, interrogé, a rendu les huit noms et les familles justes. **C'est mon
+œil qui avait tort, pas le tirage** — mais le fait qu'un panneau d'INTERSECTION se lise comme un
+panneau de DANGER est une remarque pour l'habillage, notée aux placeholders.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2062,24 +2245,50 @@ lieu de compter les pas.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 14 : Le Stock
+## Prochaine étape, phase 15 : La Fabrique
 
-Le premier des trois mini-jeux de l'usine à panneaux, un memory. Ce que la phase 13 laisse en
-place :
+Le deuxième des trois mini-jeux. Ce que la phase 14 laisse en place :
 
-- **Le catalogue est prêt** : 24 panneaux du Code, quatre familles de six, chacun avec son
-  numéro et son nom dessiné. `PlaceholderArtGenerator.SignBoard` et `SignBoardNames` sont les
-  deux seules listes à consulter.
-- **Le personnage est posé** : Le Stock se tient en (3, 4) de la pièce de l'usine, il explique
-  son problème et invite. Il ne reste qu'à brancher le mini-jeu sur son Espace.
-- **Le patron du bâtiment sert trois fois** : façade et porte au plan du village, pièce dans un
-  créneau, personnages appariés case par case. **Trois créneaux de pièce restent libres.**
-- **`ValidateRooms` accepte plusieurs personnages par pièce** depuis la phase 13, et refuse
-  toute case que sa table ne connaît pas.
-- **Rien ne se sauvegarde dans l'usine**, et rien ne doit s'y sauvegarder : elle est une pure
-  récréation, sans lien avec le réseau.
+- **Le squelette existe et il est prouvé** : `MiniGameScreen` porte le panneau, les deux gardes,
+  les flèches au changement de direction, l'événement de fermeture, le registre statique et
+  l'arrêt de l'horloge. La Fabrique n'écrit que sa règle, comme `SignMemory` n'a écrit que la
+  sienne.
+- **Le lancement est branché pour les trois** : `MiniGamePosts` déclare déjà La Fabrique en
+  (9, 4) et Le Plan en (15, 4), et `ValidateMiniGames` vérifie l'appariement dans les deux sens.
+  `MiniGameScreen.Find` rend null tant que personne ne porte l'écran : les deux personnages se
+  contentent de parler, exactement comme en phase 13. **Il ne reste qu'à ajouter la sous-classe
+  et à la construire dans le HUD.**
+- **Le sujet est décidé depuis le 3 septembre** : demander le nom parmi **trois noms écrits**.
+  Les 24 images de noms existent, et la phase 14 vient de montrer qu'un nom s'affiche en entier
+  à l'écran — le plus long fait 193 px sur 320. Trois noms empilés tiennent en hauteur ; c'est la
+  géométrie à calculer avant d'écrire, comme celle du plateau.
+- **Rien ne se sauvegarde dans l'usine**, et rien ne doit s'y sauvegarder.
 
 ## Décisions prises
+
+### Phase 14, tranchées le 5 septembre 2026
+
+- **Le memory apparie un panneau AVEC LE MÊME PANNEAU**, et le nom de la paire s'affiche à la
+  trouvaille. Le panneau contre son nom est mesuré impossible : il diviserait le jeu par deux et
+  demanderait un rendu multi-ligne, et c'est déjà le sujet de La Fabrique.
+- **8, puis 12, puis 16 paires**, en 4 × 4, 4 × 6, 4 × 8, cartes de 32 px. Toutes divisibles par
+  quatre : **2, 3 puis 4 panneaux par famille**, jamais un tirage global.
+- **Une manche par lancement**, plafonnée à 16 paires, remise à zéro à la fermeture du jeu. On
+  sort après chaque manche : le jeu n'a qu'Espace, et un écran dont on ne peut pas sortir serait
+  un piège.
+- **Rien ne se sauvegarde**, conformément à la décision du 3 septembre. Le compteur de manches
+  est un champ du composant.
+- **Le mini-jeu est un écran modal**, sur le patron de `VillageMapScreen`. Dans la pièce, une
+  carte ferait 16 px — sous le plancher de 32 —, les 24 cases de panneaux sont déjà prises,
+  chaque tour demanderait deux traversées du plateau, et il faudrait construire le plateau à
+  chaud dans une scène que le builder Editor écrit. Et les phases 15 et 16 sont aussi des écrans.
+- **Aucun `InteractionKind` neuf** : Espace fait déjà parler, et parler mène au jeu. Un kind de
+  plus aurait demandé un second geste pour la même chose.
+- **`MiniGameKind` est un enum sérialisé** : tout ajout se fait à la fin, comme `GameLayer` et
+  `NodeType`. La Fabrique et Le Plan y sont déjà, sans écran derrière eux.
+- **Le fond de l'écran est opaque**, pas un voile : la rangée de gouttes du HUD passe exactement
+  où passe la rangée haute du plateau.
+- **Aucune minuterie** : deux cartes dépareillées restent visibles jusqu'au geste suivant.
 
 ### Phase 10
 
@@ -2559,6 +2768,14 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   sur `FacingCell` ; rien à changer côté logique, `Facing` est déjà correct.
 
 ## Placeholders à remplacer
+
+- **AB1 se lit comme un panneau de danger à seize pixels.** Le triangle bordé de rouge portant
+  une croix noire — priorité à droite, famille INTERSECTION — est passé pour un triangle de
+  danger en relisant une capture de la phase 14. La forme est juste, c'est la croix qui ne se
+  distingue pas des pictogrammes des triangles A1b et A1c à cette taille. À reprendre à
+  l'habillage : c'est exactement la grammaire que la planche prétend enseigner.
+- **Le dos d'un panneau et le cadre de carte de la phase 14** : une plaque grise à bride et deux
+  boulons, et quatre équerres jaune pâle. Les deux se lisent, les deux sont des aplats.
 
 - **La tuile d'eau de la phase 10** est un bleu semi-transparent avec deux trains de
   vaguelettes. Elle se lit comme de l'eau sur les trois sols, mais elle ne bouge pas : une eau

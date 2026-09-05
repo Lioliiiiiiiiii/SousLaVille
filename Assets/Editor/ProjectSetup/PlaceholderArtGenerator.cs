@@ -276,6 +276,22 @@ namespace SousLaVille.EditorTools
             return $"{SpritesFolder}/sign_{Mathf.Clamp(kind, 0, SignCount - 1):00}.png";
         }
 
+        /// <summary>
+        /// LE DOS D'UN PANNEAU, phase 14. C'est la face cachee d'une carte du memory : une
+        /// plaque grise, son lisere et la bride qui la tient au poteau.
+        ///
+        /// Un carre de couleur aurait fait l'affaire, mais un panneau A un dos, et Victorien
+        /// le sait : une carte retournee montre donc ce qu'on voit d'un panneau par derriere.
+        /// Meme gabarit que les vingt-neuf autres, 16 sur 24, poteau compris.
+        /// </summary>
+        public const string SignBackTexture = SpritesFolder + "/sign_back.png";
+
+        /// <summary>
+        /// Le cadre de choix du memory, 32 px de cote. cursor_target en fait 16 et flotterait
+        /// au milieu d'une carte : la carte fait 32, le plancher de CLAUDE.md.
+        /// </summary>
+        public const string PictoCardCursor = PictosFolder + "/picto_card_cursor.png";
+
         public static string HedgeTexture(int mask)
         {
             return $"{TilesFolder}/tile_hedge_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
@@ -559,7 +575,7 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoUp, BuildArrow(pointingDown: false));
                 WriteTexture(PictoDig, BuildDigPicto());
                 WriteTexture(PictoRemove, BuildRemovePicto());
-                WriteTexture(CursorTarget, BuildCursor());
+                WriteTexture(CursorTarget, BuildCursor(TileSize));
                 WriteTexture(PictoDropFull, BuildDrop(full: true));
                 WriteTexture(PictoDropEmpty, BuildDrop(full: false));
                 WriteTexture(PictoRepair, BuildRepairPicto());
@@ -590,6 +606,10 @@ namespace SousLaVille.EditorTools
                 {
                     WriteTexture(SignTexture(kind), BuildSign(kind), PlayerWidth);
                 }
+
+                // Phase 14 : le dos d'une carte du memory, et son cadre de choix.
+                WriteTexture(SignBackTexture, BuildSignBack(), PlayerWidth);
+                WriteTexture(PictoCardCursor, BuildCursor(PictoSize), PictoSize);
 
                 // Le nom de chaque panneau de la planche, phase 13. Nomme par le RANG : la
                 // place sur la planche peut changer, le rang non.
@@ -702,6 +722,9 @@ namespace SousLaVille.EditorTools
             {
                 ConfigureImporter(SignTexture(kind), PlayerPivot);
             }
+
+            ConfigureImporter(SignBackTexture, PlayerPivot);
+            ConfigureImporter(PictoCardCursor, null);
 
             foreach (int kind in SignBoard)
             {
@@ -945,7 +968,8 @@ namespace SousLaVille.EditorTools
                 PictoUp, PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
-                FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention
+                FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention,
+                SignBackTexture, PictoCardCursor
             };
 
             foreach (string path in sprites)
@@ -2915,27 +2939,72 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>Le cadre de la case regardee : quatre equerres, centre libre.</summary>
-        private static Color32[] BuildCursor()
+        /// <summary>
+        /// Le cadre de choix : quatre equerres, jamais un rectangle plein, pour qu'il cerne
+        /// sans rien cacher de ce qu'il designe.
+        ///
+        /// La taille est un parametre depuis la phase 14 : la cible du monde fait 16 px comme
+        /// une case, le cadre du memory 32 comme une carte. Les branches valent le quart du
+        /// cote dans les deux cas, donc l'image de 16 est au pixel pres celle d'avant.
+        /// </summary>
+        private static Color32[] BuildCursor(int size)
         {
             Color32 mark = new Color32(0xFF, 0xF4, 0xC2, 0xFF);
-            const int arm = 4;
+            int arm = size / 4;
 
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
+            Color32[] pixels = NewTransparent(size * size);
 
             for (int i = 0; i < arm; i++)
             {
-                int far = TileSize - 1 - i;
+                int far = size - 1 - i;
 
                 // Quatre coins, deux traits chacun.
-                Fill(pixels, TileSize, i, i, 0, 0, mark);
-                Fill(pixels, TileSize, 0, 0, i, i, mark);
-                Fill(pixels, TileSize, far, far, 0, 0, mark);
-                Fill(pixels, TileSize, TileSize - 1, TileSize - 1, i, i, mark);
-                Fill(pixels, TileSize, i, i, TileSize - 1, TileSize - 1, mark);
-                Fill(pixels, TileSize, 0, 0, far, far, mark);
-                Fill(pixels, TileSize, far, far, TileSize - 1, TileSize - 1, mark);
-                Fill(pixels, TileSize, TileSize - 1, TileSize - 1, far, far, mark);
+                Fill(pixels, size, i, i, 0, 0, mark);
+                Fill(pixels, size, 0, 0, i, i, mark);
+                Fill(pixels, size, far, far, 0, 0, mark);
+                Fill(pixels, size, size - 1, size - 1, i, i, mark);
+                Fill(pixels, size, i, i, size - 1, size - 1, mark);
+                Fill(pixels, size, 0, 0, far, far, mark);
+                Fill(pixels, size, far, far, size - 1, size - 1, mark);
+                Fill(pixels, size, size - 1, size - 1, far, far, mark);
             }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Le dos d'un panneau : une plaque grise, son lisere sombre, et la bride verticale
+        /// qui la tient au poteau avec ses deux boulons.
+        ///
+        /// Meme poteau et meme emprise de plaque que les vingt-neuf faces — poteau en x 7 a 8
+        /// de y 0 a 13, plaque centree sur (8, 18) — pour qu'une carte retournee ne saute pas
+        /// d'un pixel a l'endroit.
+        /// </summary>
+        private static Color32[] BuildSignBack()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
+            Color32 plate = new Color32(0xB4, 0xB2, 0xAC, 0xFF);
+            Color32 edge = new Color32(0x6E, 0x6C, 0x68, 0xFF);
+            Color32 clamp = new Color32(0x88, 0x86, 0x82, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            Fill(pixels, width, 7, 8, 0, 13, post);
+
+            // La plaque, puis son lisere : douze sur douze, l'emprise commune des faces.
+            Fill(pixels, width, 2, 13, 12, 23, plate);
+            Fill(pixels, width, 2, 13, 12, 12, edge);
+            Fill(pixels, width, 2, 13, 23, 23, edge);
+            Fill(pixels, width, 2, 2, 12, 23, edge);
+            Fill(pixels, width, 13, 13, 12, 23, edge);
+
+            // La bride et ses deux boulons : ce qui rend un dos reconnaissable comme un dos.
+            Fill(pixels, width, 7, 8, 14, 21, clamp);
+            Fill(pixels, width, 6, 9, 15, 15, edge);
+            Fill(pixels, width, 6, 9, 20, 20, edge);
 
             return pixels;
         }

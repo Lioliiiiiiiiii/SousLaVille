@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SousLaVille.Minigames;
 using SousLaVille.UI;
 using UnityEngine;
 
@@ -33,13 +34,20 @@ namespace SousLaVille.Buildings
         [Tooltip("La bulle affichee au-dessus de SA tete quand le joueur le regarde.")]
         [SerializeField] private SpriteRenderer prompt;
 
+        [Tooltip("Le mini-jeu que Espace lance APRES ses phrases. None pour les dix autres.")]
+        [SerializeField] private MiniGameKind miniGame = MiniGameKind.None;
+
         // La couche qui dort est desactivee : ses personnages se desinscrivent tout seuls,
         // et la recherche ne voit donc que celui de la piece ou l'on se tient.
         private static readonly List<Villager> Active = new List<Villager>();
 
         private SpeechBox box;
+        private MiniGameScreen game;
 
         public Vector2Int Cell => cell;
+
+        /// <summary>Le mini-jeu qu'il tient, ou None. Sert aux verifications.</summary>
+        public MiniGameKind Game => miniGame;
 
         private void OnEnable()
         {
@@ -119,6 +127,31 @@ namespace SousLaVille.Buildings
             }
 
             return box;
+        }
+
+        /// <summary>
+        /// L'ecran de son mini-jeu, ou null s'il n'en tient pas — ou si personne ne le porte
+        /// encore, ce qui sera le cas de La Fabrique et du Plan jusqu'aux phases 15 et 16 : il
+        /// se contente alors de parler, ce qu'il faisait deja.
+        ///
+        /// Resolu PARESSEUSEMENT, comme la boite de dialogue juste au-dessus : l'ecran vit
+        /// dans Persistent et le personnage dans une couche de jeu, donc aucune reference
+        /// serialisee ne peut aller de l'un a l'autre — Unity ne serialise pas une reference
+        /// d'une scene vers une autre. Le registre statique de MiniGameScreen les relie.
+        /// </summary>
+        public MiniGameScreen ResolveMiniGame()
+        {
+            if (miniGame == MiniGameKind.None)
+            {
+                return null;
+            }
+
+            if (game == null)
+            {
+                game = MiniGameScreen.Find(miniGame);
+            }
+
+            return game;
         }
 
         /// <summary>Le personnage pose sur cette case, ou null. Sert a l'interacteur.</summary>
