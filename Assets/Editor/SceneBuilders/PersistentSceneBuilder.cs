@@ -58,8 +58,8 @@ namespace SousLaVille.EditorTools
         /// <summary>Hauteur reservee en bas au nom de la derniere paire trouvee.</summary>
         private const float MemoryBandHeight = 16f;
 
-        /// <summary>Marge minimale autour du plateau, de chaque cote.</summary>
-        private const float MemoryMargin = 4f;
+        /// <summary>Marge minimale autour de ce qu'un ecran modal affiche, de chaque cote.</summary>
+        private const float ScreenMargin = 4f;
 
         /// <summary>Les quatre familles de la planche : intersection, danger, interdiction, obligation.</summary>
         private const int MemoryFamilies = 4;
@@ -108,7 +108,7 @@ namespace SousLaVille.EditorTools
             }
 
             float height = MemoryRows * MemoryCardSize + (MemoryRows - 1) * MemoryGutter;
-            float roomForHeight = ReferenceHeight - MemoryBandHeight - 2 * MemoryMargin;
+            float roomForHeight = ReferenceHeight - MemoryBandHeight - 2 * ScreenMargin;
 
             if (height > roomForHeight)
             {
@@ -143,7 +143,7 @@ namespace SousLaVille.EditorTools
 
                 int columns = cards / MemoryRows;
                 float width = columns * MemoryCardSize + (columns - 1) * MemoryGutter;
-                float roomForWidth = ReferenceWidth - 2 * MemoryMargin;
+                float roomForWidth = ReferenceWidth - 2 * ScreenMargin;
 
                 if (width > roomForWidth)
                 {
@@ -174,7 +174,7 @@ namespace SousLaVille.EditorTools
             foreach (string name in PlaceholderArtGenerator.SignBoardNames)
             {
                 int width = PixelFont.WidthOf(name);
-                if (width > ReferenceWidth - 2 * MemoryMargin)
+                if (width > ReferenceWidth - 2 * ScreenMargin)
                 {
                     Debug.LogError($"[Sous la Ville] Le nom « {name} » fait {width} px de large : " +
                                    $"il ne tient pas dans les {ReferenceWidth} px de l'écran.");
@@ -185,10 +185,122 @@ namespace SousLaVille.EditorTools
             return ok;
         }
 
+        // ------------------------------------------------ La Fabrique, le quiz de la phase 15
+        //
+        // Le panneau agrandi a gauche, trois noms a droite sur des rangees de 32 px. Meme
+        // discipline que le memory : six nombres, et ValidateQuizBoard les rejoue par le calcul.
+
+        /// <summary>Hauteur d'une rangee de choix. Le plancher de zone cliquable de CLAUDE.md.</summary>
+        private static readonly float QuizRowHeight = 32f;
+
+        /// <summary>Largeur d'une rangee. Le plus long nom fait 193 px ; il y tient avec ses marges.</summary>
+        private static readonly float QuizRowWidth = 204f;
+
+        /// <summary>Blanc entre deux rangees.</summary>
+        private const float QuizRowGutter = 4f;
+
+        /// <summary>Le panneau est agrandi d'autant par le Canvas, a filtre point : 16x24 devient 48x72.</summary>
+        private const int QuizSignScale = 3;
+
+        /// <summary>Blanc entre le panneau et les rangees.</summary>
+        private const float QuizGap = 12f;
+
+        /// <summary>Questions par manche. Divisible par les quatre familles : deux par famille.</summary>
+        private const int QuizQuestions = 8;
+
+        /// <summary>Cote d'un carre de la jauge, et blanc entre deux.</summary>
+        private const float QuizProgressSize = 8f;
+
+        private const float QuizProgressGap = 2f;
+
+        /// <summary>
+        /// Leurres de la MEME famille a chaque lancement, la derniere valeur tenant ensuite.
+        /// 0 : la grammaire des formes suffit. 1 : un des deux faux noms ressemble. 2 : il faut
+        /// lire le pictogramme.
+        /// </summary>
+        private static readonly int[] QuizSameFamilyLures = { 0, 1, 2 };
+
+        /// <summary>
+        /// LE QUIZ TIENT-IL DEBOUT ? Rangee sous le plancher, largeur qui deborde, nom qui ne
+        /// tient pas dans sa rangee, questions non partageables entre les familles, plus de
+        /// leurres de meme famille qu'il n'y a de choix ou qu'une famille n'en offre : refuse.
+        /// </summary>
+        private static bool ValidateQuizBoard()
+        {
+            bool ok = true;
+
+            if (QuizRowHeight < MinimumTouchSize)
+            {
+                Debug.LogError($"[Sous la Ville] Une rangée du quiz fait {QuizRowHeight} px de haut : " +
+                               $"CLAUDE.md impose au moins {MinimumTouchSize} px.");
+                ok = false;
+            }
+
+            float signWidth = 16f * QuizSignScale;
+            float signHeight = 24f * QuizSignScale;
+            float width = signWidth + QuizGap + QuizRowWidth;
+            float roomForWidth = ReferenceWidth - 2 * ScreenMargin;
+
+            if (width > roomForWidth)
+            {
+                Debug.LogError($"[Sous la Ville] Le quiz fait {width} px de large pour {roomForWidth} " +
+                               "disponibles : panneau, blanc et rangées débordent de l'écran.");
+                ok = false;
+            }
+
+            float rowsHeight = 3 * QuizRowHeight + 2 * QuizRowGutter;
+            float roomForHeight = ReferenceHeight - 2 * ScreenMargin
+                                  - 2 * (QuizProgressSize + 2 * ScreenMargin);
+
+            if (rowsHeight > roomForHeight || signHeight > roomForHeight)
+            {
+                Debug.LogError($"[Sous la Ville] Le quiz fait {Mathf.Max(rowsHeight, signHeight)} px " +
+                               $"de haut pour {roomForHeight} disponibles entre la jauge et le bas.");
+                ok = false;
+            }
+
+            foreach (string name in PlaceholderArtGenerator.SignBoardNames)
+            {
+                int nameWidth = PixelFont.WidthOf(name);
+                if (nameWidth > QuizRowWidth - 2 * ScreenMargin)
+                {
+                    Debug.LogError($"[Sous la Ville] Le nom « {name} » fait {nameWidth} px : il ne " +
+                                   $"tient pas dans une rangée de {QuizRowWidth} px.");
+                    ok = false;
+                }
+            }
+
+            int slots = PlaceholderArtGenerator.SignBoard.Length;
+            int perFamily = MemoryFamilies > 0 ? slots / MemoryFamilies : 0;
+
+            if (QuizQuestions % MemoryFamilies != 0 || perFamily == 0
+                || QuizQuestions / MemoryFamilies > perFamily)
+            {
+                Debug.LogError($"[Sous la Ville] {QuizQuestions} question(s) ne se partagent pas " +
+                               $"entre {MemoryFamilies} familles de {perFamily} panneaux.");
+                ok = false;
+            }
+
+            foreach (int lures in QuizSameFamilyLures)
+            {
+                if (lures >= 0 && lures <= 2 && lures <= perFamily - 1)
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] {lures} leurre(s) de la même famille : il n'y a que " +
+                               $"deux faux noms par question, et {perFamily - 1} autres panneaux " +
+                               "dans une famille.");
+                ok = false;
+            }
+
+            return ok;
+        }
+
         [MenuItem("Sous La Ville/Construire la scène Persistent")]
         public static bool Build()
         {
-            if (!ValidateMemoryBoard())
+            if (!ValidateMemoryBoard() || !ValidateQuizBoard())
             {
                 return false;
             }
@@ -436,6 +548,7 @@ namespace SousLaVille.EditorTools
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
             CreateVillageMap(canvasObject);
             CreateSignMemory(canvasObject);
+            CreateSignQuiz(canvasObject);
             CreateSpeechBox(canvasObject);
             CreateItemLabel(canvasObject);
 
@@ -770,7 +883,7 @@ namespace SousLaVille.EditorTools
             nameBand.rectTransform.anchorMin = new Vector2(0.5f, 0f);
             nameBand.rectTransform.anchorMax = new Vector2(0.5f, 0f);
             nameBand.rectTransform.pivot = new Vector2(0.5f, 0f);
-            nameBand.rectTransform.anchoredPosition = new Vector2(0f, MemoryMargin);
+            nameBand.rectTransform.anchoredPosition = new Vector2(0f, ScreenMargin);
 
             // LE PICTO DE SORTIE EST CELUI DES BATIMENTS, pas un dessin de plus : refermer un
             // ecran fini et sortir d'une porte sont le meme geste, et il n'y a rien a apprendre.
@@ -784,7 +897,7 @@ namespace SousLaVille.EditorTools
             exitPrompt.rectTransform.anchorMin = new Vector2(1f, 0f);
             exitPrompt.rectTransform.anchorMax = new Vector2(1f, 0f);
             exitPrompt.rectTransform.pivot = new Vector2(1f, 0f);
-            exitPrompt.rectTransform.anchoredPosition = new Vector2(-MemoryMargin, MemoryMargin);
+            exitPrompt.rectTransform.anchoredPosition = new Vector2(-ScreenMargin, ScreenMargin);
             exitPrompt.rectTransform.sizeDelta =
                 new Vector2(exitPrompt.sprite.rect.width, exitPrompt.sprite.rect.height);
 
@@ -834,6 +947,141 @@ namespace SousLaVille.EditorTools
 
             // Eteint au depart : c'est Le Stock qui le rallume, apres ses deux phrases.
             panel.SetActive(false);
+        }
+
+        /// <summary>
+        /// LA FABRIQUE, le quiz de la phase 15. Meme HUD, meme fond opaque, meme raison que le
+        /// memory. Le panneau a gauche, agrandi trois fois par le Canvas — a filtre point, un
+        /// pixel en fait neuf, rien n'est lisse — et trois rangees de choix a droite.
+        ///
+        /// AUCUNE IMAGE NEUVE : les rangees et la jauge sont des Image teintees sans sprite,
+        /// et les noms sont les vingt-quatre de la phase 13.
+        /// </summary>
+        private static void CreateSignQuiz(GameObject canvasObject)
+        {
+            GameObject panel = new GameObject("SignQuiz");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            RectTransform panelRect = panel.AddComponent<RectTransform>();
+            panelRect.anchorMin = Vector2.zero;
+            panelRect.anchorMax = Vector2.one;
+            panelRect.offsetMin = Vector2.zero;
+            panelRect.offsetMax = Vector2.zero;
+
+            Image background = panel.AddComponent<Image>();
+            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.raycastTarget = false;
+
+            float signWidth = 16f * QuizSignScale;
+            float signHeight = 24f * QuizSignScale;
+            float contentWidth = signWidth + QuizGap + QuizRowWidth;
+            float left = -contentWidth * 0.5f;
+
+            // Le panneau, centre verticalement, a gauche.
+            Image sign = CreateCenteredImage(panel.transform, "Sign",
+                new Vector2(left + signWidth * 0.5f, 0f), new Vector2(signWidth, signHeight));
+            sign.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(
+                PlaceholderArtGenerator.SignBoard[0]));
+
+            // Les trois rangees, de haut en bas, et le nom centre dans chacune.
+            float rowsCenterX = left + signWidth + QuizGap + QuizRowWidth * 0.5f;
+            float pitch = QuizRowHeight + QuizRowGutter;
+            List<Image> rows = new List<Image>(3);
+            List<Image> rowNames = new List<Image>(3);
+
+            for (int i = 0; i < 3; i++)
+            {
+                Image row = CreateCenteredImage(panel.transform, $"Row_{i + 1}",
+                    new Vector2(rowsCenterX, (1 - i) * pitch), new Vector2(QuizRowWidth, QuizRowHeight));
+                Image name = CreateCenteredImage(row.transform, "Name", Vector2.zero, Vector2.one);
+                rows.Add(row);
+                rowNames.Add(name);
+            }
+
+            // La jauge, en haut : un carre par question.
+            float progressWidth = QuizQuestions * QuizProgressSize + (QuizQuestions - 1) * QuizProgressGap;
+            float progressY = ReferenceHeight * 0.5f - ScreenMargin - QuizProgressSize * 0.5f;
+            List<Image> progress = new List<Image>(QuizQuestions);
+
+            for (int i = 0; i < QuizQuestions; i++)
+            {
+                float x = -progressWidth * 0.5f + QuizProgressSize * 0.5f
+                          + i * (QuizProgressSize + QuizProgressGap);
+                progress.Add(CreateCenteredImage(panel.transform, $"Progress_{i + 1}",
+                    new Vector2(x, progressY), new Vector2(QuizProgressSize, QuizProgressSize)));
+            }
+
+            // Le picto de sortie, celui des batiments, en bas a droite comme au memory.
+            GameObject exitObject = new GameObject("ExitPrompt");
+            exitObject.transform.SetParent(panel.transform, false);
+
+            Image exitPrompt = exitObject.AddComponent<Image>();
+            exitPrompt.raycastTarget = false;
+            exitPrompt.enabled = false;
+            exitPrompt.sprite = LoadSprite(PlaceholderArtGenerator.PictoExit);
+            exitPrompt.rectTransform.anchorMin = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchorMax = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.pivot = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchoredPosition = new Vector2(-ScreenMargin, ScreenMargin);
+            exitPrompt.rectTransform.sizeDelta =
+                new Vector2(exitPrompt.sprite.rect.width, exitPrompt.sprite.rect.height);
+
+            SignQuiz quiz = canvasObject.AddComponent<SignQuiz>();
+
+            SerializedObject serialized = new SerializedObject(quiz);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Fabrique;
+            serialized.FindProperty("sign").objectReferenceValue = sign;
+            serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
+            serialized.FindProperty("families").intValue = MemoryFamilies;
+            serialized.FindProperty("questionsPerRound").intValue = QuizQuestions;
+
+            FillArray(serialized.FindProperty("rows"), rows);
+            FillArray(serialized.FindProperty("rowNames"), rowNames);
+            FillArray(serialized.FindProperty("progress"), progress);
+
+            SerializedProperty lures = serialized.FindProperty("sameFamilyLuresPerRound");
+            lures.arraySize = QuizSameFamilyLures.Length;
+            for (int i = 0; i < QuizSameFamilyLures.Length; i++)
+            {
+                lures.GetArrayElementAtIndex(i).intValue = QuizSameFamilyLures[i];
+            }
+
+            // Les memes vingt-quatre panneaux et noms que le memory, dans l'ordre de la planche.
+            int[] board = PlaceholderArtGenerator.SignBoard;
+            SerializedProperty signs = serialized.FindProperty("signs");
+            SerializedProperty names = serialized.FindProperty("names");
+            signs.arraySize = board.Length;
+            names.arraySize = board.Length;
+
+            for (int slot = 0; slot < board.Length; slot++)
+            {
+                signs.GetArrayElementAtIndex(slot).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.SignTexture(board[slot]));
+                names.GetArrayElementAtIndex(slot).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.SignNameTexture(board[slot]));
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : c'est La Fabrique qui le rallume, apres ses deux phrases.
+            panel.SetActive(false);
+        }
+
+        /// <summary>Une Image sans sprite, ancree au centre de son parent, a une position et une taille donnees.</summary>
+        private static Image CreateCenteredImage(Transform parent, string name, Vector2 position, Vector2 size)
+        {
+            GameObject imageObject = new GameObject(name);
+            imageObject.transform.SetParent(parent, false);
+
+            Image image = imageObject.AddComponent<Image>();
+            image.raycastTarget = false;
+            image.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            image.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            image.rectTransform.anchoredPosition = position;
+            image.rectTransform.sizeDelta = size;
+            return image;
         }
 
         private static void FillArray(SerializedProperty property, List<Image> images)

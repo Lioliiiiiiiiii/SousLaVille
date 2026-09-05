@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -136,56 +135,25 @@ namespace SousLaVille.Minigames
         /// C'est lui qui se verifie par le calcul sur mille graines, et c'est pour cela qu'il
         /// est statique.
         ///
-        /// Il tire pairs / families panneaux DANS CHAQUE FAMILLE, jamais au hasard dans le
-        /// tas : les quatre formes sont donc toujours presentes, et la lecon de la piece — la
-        /// forme dit la famille avant que le dessin dise le detail — tient dans le mini-jeu
-        /// au lieu d'y etre contredite par un tirage de six triangles rouges.
+        /// Il tire pairs / families panneaux DANS CHAQUE FAMILLE par SignDraw.PerFamily, jamais
+        /// au hasard dans le tas : les quatre formes sont donc toujours presentes, et la lecon
+        /// de la piece — la forme dit la famille avant que le dessin dise le detail — tient
+        /// dans le mini-jeu au lieu d'y etre contredite par un tirage de six triangles rouges.
         ///
         /// Rend null plutot que de distribuer une manche bancale : une taille impaire, une
         /// taille qui ne se partage pas entre les familles, ou plus de panneaux demandes qu'une
         /// famille n'en porte.
+        ///
+        /// Phase 15 : le tirage par famille est parti dans SignDraw pour servir aussi a La
+        /// Fabrique. L'ordre des appels au generateur est le meme qu'avant : une graine donne
+        /// le meme plateau qu'en phase 14, verifie donne pour donne.
         /// </summary>
         public static int[] Deal(int pairs, int slots, int families, System.Random random)
         {
-            if (pairs <= 0 || slots <= 0 || families <= 0 || random == null)
+            int[] chosen = SignDraw.PerFamily(pairs, slots, families, random);
+            if (chosen == null)
             {
                 return null;
-            }
-
-            if (pairs % families != 0 || slots % families != 0)
-            {
-                return null;
-            }
-
-            int perFamily = slots / families;
-            int takePerFamily = pairs / families;
-
-            if (takePerFamily > perFamily)
-            {
-                return null;
-            }
-
-            List<int> chosen = new List<int>(pairs);
-            int[] pool = new int[perFamily];
-
-            for (int family = 0; family < families; family++)
-            {
-                for (int i = 0; i < perFamily; i++)
-                {
-                    pool[i] = family * perFamily + i;
-                }
-
-                // Fisher-Yates partiel : les takePerFamily premiers suffisent.
-                for (int i = perFamily - 1; i > 0; i--)
-                {
-                    int j = random.Next(i + 1);
-                    (pool[i], pool[j]) = (pool[j], pool[i]);
-                }
-
-                for (int i = 0; i < takePerFamily; i++)
-                {
-                    chosen.Add(pool[i]);
-                }
             }
 
             int[] dealt = new int[pairs * 2];
@@ -195,14 +163,7 @@ namespace SousLaVille.Minigames
                 dealt[i * 2 + 1] = chosen[i];
             }
 
-            // Puis le melange complet. i > 0 et non i > 1 : la derniere carte doit pouvoir
-            // bouger, sinon une carte reste a sa place a chaque donne.
-            for (int i = dealt.Length - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                (dealt[i], dealt[j]) = (dealt[j], dealt[i]);
-            }
-
+            SignDraw.Shuffle(dealt, random);
             return dealt;
         }
 

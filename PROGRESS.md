@@ -2234,6 +2234,53 @@ seize pixels. Le programme, interrogé, a rendu les huit noms et les familles ju
 œil qui avait tort, pas le tirage** — mais le fait qu'un panneau d'INTERSECTION se lise comme un
 panneau de DANGER est une remarque pour l'habillage, notée aux placeholders.
 
+## Phase 15, ce qui est fait
+
+**La Fabrique**, le deuxième mini-jeu : un panneau, trois noms écrits, on choisit. Le squelette
+de la phase 14 est repris **sans une ligne changée** dans `MiniGameScreen` ; `SignQuiz` n'écrit
+que sa règle, comme `SignMemory` n'avait écrit que la sienne. Le lancement était déjà branché :
+`MiniGamePosts` déclarait La Fabrique en (9, 4) depuis la phase 14, et `MiniGameScreen.Find` la
+trouve dès que l'écran existe.
+
+### La forme, tranchée le 5 septembre 2026
+
+- **Le panneau à gauche, agrandi trois fois par le Canvas** — à filtre point un pixel en fait
+  neuf, rien n'est lissé — et **trois noms à droite** sur des rangées de 32 px, le plancher de
+  CLAUDE.md. La rangée fait 204 px : le plus long nom, 193, y tient. 48 + 12 + 204 = 264 ≤ 312.
+- **8 questions par lancement, 2 par famille**, tirées par `SignDraw.PerFamily`, **sorti de
+  `SignMemory.Deal`** pour servir aux deux. Le memory ressort identique : la graine 100 donne
+  les mêmes huit panneaux qu'en phase 14, comparés nom pour nom.
+- **Les leurres se resserrent d'un lancement à l'autre** : 0, puis 1, puis 2 faux noms de la
+  même famille que le panneau. Au premier, la grammaire des formes suffit — un disque bleu n'est
+  pas un SENS INTERDIT. Au troisième, il faut lire le pictogramme. Compteur dans le composant,
+  rien sur le disque.
+- **Un nom faux s'éteint, on rechoisit.** Au plus deux erreurs par question, jamais de
+  révélation. Un nom juste passe au vert, les deux autres s'éteignent, et **le geste suivant,
+  quel qu'il soit, passe à la question d'après** — aucune minuterie, comme en 14.
+- **Une jauge de huit carrés** en haut dit où l'on en est. **Aucune image neuve** : le panneau
+  est le sprite de la planche, les rangées et la jauge sont des `Image` teintées sans sprite,
+  les noms sont les vingt-quatre de la phase 13.
+
+## Phase 15, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs aux chiffres de la phase 13.
+- **`SignQuiz.Build` sur 1000 graines et les trois réglages de leurres** : 8 questions, 2 cibles
+  par famille, 3 noms distincts, la cible parmi eux, exactement le nombre demandé de leurres de
+  la même famille — 999 manches sur 999 différentes de la première. Refus obtenus : 3 leurres,
+  7 questions.
+- **`SignMemory.Deal` identique avant et après le refactor**, graine 100, nom pour nom.
+- **Trois sabotages, trois refus nommés** dans une même construction, chaîne interrompue :
+  rangée à 30 px → « CLAUDE.md impose au moins 32 px » ; rangée à 260 px → « Le quiz fait 320 px
+  de large pour 312 disponibles » ; trois leurres → « il n'y a que deux faux noms par question ».
+- **Test en play, touches injectées**, trajet complet : porte (31, 34) → (9, 5), demi-tour vers
+  La Fabrique → deux phrases → **huit questions jouées**, une faute volontaire à la première
+  (« nom faux éteint, on rechoisit ; le choix s'est posé sur la rangée 0 »), passage à la
+  suivante tantôt par Espace, tantôt par une flèche → Espace referme, l'écran ne se rouvre pas →
+  sortie par (9, 0) → surface en (31, 34). **Zéro attente de focus.**
+- **La rampe des leurres vérifiée en jeu**, lancements 2, 3, 4 : 1, 2, 2 de la même famille.
+- Horloge arrêtée pendant le quiz, repartie après. Captures : début, en cours, fin.
+- Pilote supprimé, `git diff ProjectSettings/` vide.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2245,26 +2292,28 @@ panneau de DANGER est une remarque pour l'habillage, notée aux placeholders.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 15 : La Fabrique
+## Prochaine étape, phase 16 : Le Plan
 
-Le deuxième des trois mini-jeux. Ce que la phase 14 laisse en place :
-
-- **Le squelette existe et il est prouvé** : `MiniGameScreen` porte le panneau, les deux gardes,
-  les flèches au changement de direction, l'événement de fermeture, le registre statique et
-  l'arrêt de l'horloge. La Fabrique n'écrit que sa règle, comme `SignMemory` n'a écrit que la
-  sienne.
-- **Le lancement est branché pour les trois** : `MiniGamePosts` déclare déjà La Fabrique en
-  (9, 4) et Le Plan en (15, 4), et `ValidateMiniGames` vérifie l'appariement dans les deux sens.
-  `MiniGameScreen.Find` rend null tant que personne ne porte l'écran : les deux personnages se
-  contentent de parler, exactement comme en phase 13. **Il ne reste qu'à ajouter la sous-classe
-  et à la construire dans le HUD.**
-- **Le sujet est décidé depuis le 3 septembre** : demander le nom parmi **trois noms écrits**.
-  Les 24 images de noms existent, et la phase 14 vient de montrer qu'un nom s'affiche en entier
-  à l'écran — le plus long fait 193 px sur 320. Trois noms empilés tiennent en hauteur ; c'est la
-  géométrie à calculer avant d'écrire, comme celle du plateau.
-- **Rien ne se sauvegarde dans l'usine**, et rien ne doit s'y sauvegarder.
+Le troisième et dernier mini-jeu, décidé le 5 septembre 2026 : **le Code de la route tel que
+`RoadSigns` l'applique**. Chaque plan est une petite carte de rues en ASCII ; les postes vides et
+le panneau attendu à chacun sont **dérivés** par les mêmes règles que les 32 panneaux du village,
+une fois ces règles sorties de `VillageLayout` dans une classe partagée — les 32 doivent ressortir
+identiques. Le joueur choisit parmi les **cinq panneaux de rue**. Le plan vérifie **quand tous les
+postes sont remplis** : les justes se fixent, les faux se retirent. Le rang du plan atteint vit
+dans le composant, **rien sur le disque**.
 
 ## Décisions prises
+
+### Phase 15, tranchées le 5 septembre 2026
+
+- **Huit questions par lancement, deux par famille**, le panneau agrandi trois fois à gauche et
+  trois noms à droite sur des rangées de 32 px.
+- **Les leurres se resserrent** : 0, 1 puis 2 faux noms de la même famille. La grammaire des
+  formes d'abord, la lecture du pictogramme ensuite.
+- **Un nom faux s'éteint et on rechoisit**, jamais de révélation : la variante « le bon nom se
+  révèle à la faute » permettait de cliquer au hasard sans jamais lire.
+- **Le tirage par famille est partagé** (`SignDraw`), le memory doit ressortir identique.
+- **Aucune image neuve.**
 
 ### Phase 14, tranchées le 5 septembre 2026
 
