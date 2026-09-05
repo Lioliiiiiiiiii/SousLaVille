@@ -176,6 +176,31 @@ namespace SousLaVille.EditorTools
             return Ink;
         }
 
+        /// <summary>
+        /// LA NUANCE PLUS CLAIRE, symetrique exacte de Shade : c'est la couleur dont celle-ci
+        /// est la nuance sombre. Un eclat sur une dalle, une arete eclairee. Refuse en nommant,
+        /// comme Shade : la palette n'invente pas de couleur.
+        /// </summary>
+        public static Color32 Tint(Color32 color)
+        {
+            foreach (KeyValuePair<int, Color32> pair in Shades)
+            {
+                if (Key(pair.Value) == Key(color) && pair.Key != Key(color))
+                {
+                    return FromKey(pair.Key);
+                }
+            }
+
+            Debug.LogError($"[Sous la Ville] La couleur {NameOf(color)} n'est la nuance sombre " +
+                           "d'aucune autre : elle n'a pas d'éclat déclaré dans la palette.");
+            return color;
+        }
+
+        private static Color32 FromKey(int key)
+        {
+            return Rgb((byte)(key >> 16), (byte)((key >> 8) & 0xFF), (byte)(key & 0xFF));
+        }
+
         /// <summary>Vrai si deux couleurs sont la meme, l'alpha mis a part.</summary>
         public static bool Same(Color32 a, Color32 b)
         {

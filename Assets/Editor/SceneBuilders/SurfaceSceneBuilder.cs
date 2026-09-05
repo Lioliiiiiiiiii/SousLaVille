@@ -56,6 +56,7 @@ namespace SousLaVille.EditorTools
             Grid grid = CreateGrid(root, out ground, out blocking, out water);
 
             PaintVillage(ground, blocking);
+            CreateBuildingSigns(root);
             CreateManholes(root);
             CreateTrees(root);
             CreateSigns(root);
@@ -120,7 +121,16 @@ namespace SousLaVille.EditorTools
             Tile plantFloor = LoadTile(PlaceholderArtGenerator.TilePlantFloor);
             Tile plantWall = LoadTile(PlaceholderArtGenerator.TilePlantWall);
             Tile house = LoadTile(PlaceholderArtGenerator.TileHouse);
-            Tile facade = LoadTile(PlaceholderArtGenerator.TileFacade);
+            // PHASE 17B : la facade est masquee comme les routes et les haies. Une facade fait
+            // quatre cases sur deux, donc les cases sans voisin au nord sont la rangee du haut :
+            // le masque leur donne le TOIT sans que le builder ait a savoir ou commence un
+            // batiment. Le masque se calcule sur le marqueur de CE batiment-la — F, G ou N —,
+            // ce qui evite qu'un batiment se raccorde a son voisin s'ils se touchaient un jour.
+            Tile[] facades = new Tile[PlaceholderArtGenerator.DecorMaskCount];
+            for (int mask = 0; mask < PlaceholderArtGenerator.DecorMaskCount; mask++)
+            {
+                facades[mask] = LoadTile(PlaceholderArtGenerator.TileFacadeMasked(mask));
+            }
             Tile fountainTile = LoadTile(PlaceholderArtGenerator.TileFountain);
             Tile tree = LoadTile(PlaceholderArtGenerator.TileTree);
 
@@ -190,7 +200,8 @@ namespace SousLaVille.EditorTools
                             : marker == VillageLayout.Tree ? tree
                             : marker == VillageLayout.Facade
                               || marker == VillageLayout.PipeFacade
-                              || marker == VillageLayout.SignFacade ? facade
+                              || marker == VillageLayout.SignFacade
+                                ? facades[BlockingMask(x, y, marker)]
                             : marker == VillageLayout.PlantWall ? plantWall
                             : hedges[BlockingMask(x, y, VillageLayout.Hedge)];
                     }
@@ -239,6 +250,55 @@ namespace SousLaVille.EditorTools
             if (VillageLayout.At(x - 1, y) == kind) mask |= 8;
 
             return mask;
+        }
+
+        /// <summary>
+        /// LES TROIS ENSEIGNES, phase 17b. Chacune se pose sur la case de facade JUSTE AU-DESSUS
+        /// de la porte de son batiment — le mur, jamais le toit, puisque la porte ouvre au sud
+        /// et que la facade fait deux rangees.
+        ///
+        /// Jusqu'ici trois facades ocres identiques se dressaient sur l'herbe et RIEN ne disait
+        /// laquelle etait l'atelier des plaques : il fallait entrer pour le savoir. L'ordre est
+        /// celui des portes de VillageLayout, donc celui des pieces d'InteriorsLayout.
+        /// </summary>
+        private static void CreateBuildingSigns(GameObject root)
+        {
+            string[] boards = PlaceholderArtGenerator.SignboardTextures;
+
+            if (VillageLayout.Doors.Length != boards.Length)
+            {
+                Debug.LogError($"[Sous la Ville] {VillageLayout.Doors.Length} porte(s) pour " +
+                               $"{boards.Length} enseigne(s) : il en faut autant.");
+                return;
+            }
+
+            GameObject parent = new GameObject("BuildingSigns");
+            parent.transform.SetParent(root.transform, false);
+
+            for (int i = 0; i < boards.Length; i++)
+            {
+                Vector2Int door = VillageLayout.FindSingle(VillageLayout.Doors[i]);
+                Vector2Int cell = door + Vector2Int.up;
+
+                if (VillageLayout.At(cell.x, cell.y) != VillageLayout.Facades[i])
+                {
+                    Debug.LogError($"[Sous la Ville] L'enseigne du bâtiment {i + 1} devrait se " +
+                                   $"poser en {cell}, au-dessus de sa porte {door}, mais le plan " +
+                                   $"n'y met pas la façade « {VillageLayout.Facades[i]} ». Une " +
+                                   "enseigne dans le vide ne dirait rien à personne.");
+                    continue;
+                }
+
+                GameObject board = new GameObject($"Signboard_{i + 1:00}");
+                board.transform.SetParent(parent.transform, false);
+                board.transform.position = CellCenter(cell);
+
+                SpriteRenderer renderer = board.AddComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite(boards[i]);
+
+                // Devant la facade, derriere le joueur : l'enseigne est sur le mur.
+                SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 1);
+            }
         }
 
         private static void CreateManholes(GameObject root)

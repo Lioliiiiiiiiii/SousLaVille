@@ -322,6 +322,37 @@ namespace SousLaVille.EditorTools
             return $"{TilesFolder}/Tile_Path_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
         }
 
+        /// <summary>
+        /// LES SEIZE FACADES, phase 17b, sur le patron des routes et des haies. Une facade fait
+        /// quatre cases sur deux : les cases SANS VOISIN AU NORD sont la rangee du haut, donc le
+        /// TOIT, et les autres le mur. Le masque le dit tout seul, sans que le builder ait a
+        /// savoir ou commence un batiment.
+        /// </summary>
+        public static string FacadeTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_facade_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileFacadeMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Facade_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        /// <summary>
+        /// LES TROIS ENSEIGNES, phase 17b. Rien ne disait de l'exterieur lequel des trois
+        /// batiments etait l'atelier des plaques : trois facades ocres identiques sur l'herbe.
+        /// Chacune porte desormais au-dessus de sa porte le SIGNE DE SON METIER — une plaque,
+        /// un tuyau, un panneau —, dans l'ordre des pieces d'InteriorsLayout.
+        ///
+        /// C'est la regle du projet depuis la phase 0 : on reconnait sans un mot.
+        /// </summary>
+        public static readonly string[] SignboardTextures =
+        {
+            SpritesFolder + "/signboard_covers.png",
+            SpritesFolder + "/signboard_pipes.png",
+            SpritesFolder + "/signboard_signs.png"
+        };
+
         public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
         public const string TileWall = TilesFolder + "/Tile_Wall.asset";
         public const string DoorTexture = SpritesFolder + "/door.png";
@@ -572,12 +603,15 @@ namespace SousLaVille.EditorTools
             AssetDatabase.StartAssetEditing();
             try
             {
-                WriteTileTexture("tile_grass", Palette.Grass);
-                WriteTileTexture("tile_path", Palette.Stone);
-                WriteTileTexture("tile_park", Palette.SteelLight);
-                WriteTileTexture("tile_plant_floor", Palette.SteelDark);
+                // PHASE 17B : les sols ne sont plus des aplats bordes d'un lisere. Un lisere
+                // sur chaque case dessine une GRILLE, et le village entier se lisait comme du
+                // papier millimetre ; une pelouse n'a pas de bord tous les seize pixels.
+                WriteTexture($"{TilesFolder}/tile_grass.png", BuildGrassTile());
+                WriteTexture($"{TilesFolder}/tile_path.png", BuildDirtTile());
+                WriteTexture($"{TilesFolder}/tile_park.png", BuildPavingTile(Palette.SteelLight));
+                WriteTexture($"{TilesFolder}/tile_plant_floor.png", BuildConcreteTile());
                 WriteTileTexture("tile_hedge", Palette.GrassDeep);
-                WriteTileTexture("tile_plant_wall", Palette.SignBlue);
+                WriteTexture($"{TilesFolder}/tile_plant_wall.png", BuildPlantWallTile());
                 WriteTileTexture("tile_house", Palette.Brick);
 
                 for (int depth = 1; depth <= DepthCount; depth++)
@@ -622,7 +656,17 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoAutumn, BuildAutumnPicto(), PictoSize);
                 WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
 
-                WriteTileTexture("tile_workshop", Palette.Steel);
+                WriteTexture($"{TilesFolder}/tile_workshop.png", BuildPavingTile(Palette.Steel));
+
+                for (int mask = 0; mask < DecorMaskCount; mask++)
+                {
+                    WriteTexture(FacadeTexture(mask), BuildFacade(mask));
+                }
+
+                for (int who = 0; who < SignboardTextures.Length; who++)
+                {
+                    WriteTexture(SignboardTextures[who], BuildSignboard(who));
+                }
                 WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
                 WriteTexture(FountainTexture, BuildFountainBase());
                 WriteTexture(FountainSprite, BuildFountainSprite(), PlayerWidth);
@@ -761,6 +805,16 @@ namespace SousLaVille.EditorTools
                 ConfigureImporter(SignTexture(kind), PlayerPivot);
             }
 
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                ConfigureImporter(FacadeTexture(mask), null);
+            }
+
+            foreach (string signboard in SignboardTextures)
+            {
+                ConfigureImporter(signboard, null);
+            }
+
             ConfigureImporter(SignBackTexture, PlayerPivot);
             ConfigureImporter(PictoCardCursor, null);
             ConfigureImporter(SignPostTexture, PlayerPivot);
@@ -849,6 +903,11 @@ namespace SousLaVille.EditorTools
                          PictoSpring, PictoSummer, PictoAutumn, PictoWinter })
             {
                 ConfigureImporter(path, null);
+            }
+
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                CreateTileAsset(TileFacadeMasked(mask), FacadeTexture(mask));
             }
 
             CreateTileAsset(TileGrass, $"{TilesFolder}/tile_grass.png");
@@ -1402,7 +1461,16 @@ namespace SousLaVille.EditorTools
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
                 if (AssetDatabase.LoadAssetAtPath<Tile>(TileHedgeMasked(mask)) == null
-                    || AssetDatabase.LoadAssetAtPath<Tile>(TileRoadMasked(mask)) == null)
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileRoadMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileFacadeMasked(mask)) == null)
+                {
+                    return false;
+                }
+            }
+
+            foreach (string signboard in SignboardTextures)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(signboard) == null)
                 {
                     return false;
                 }
@@ -1508,6 +1576,332 @@ namespace SousLaVille.EditorTools
         }
 
         // ---------------------------------------------------------------- dessin
+
+        /// <summary>
+        /// UNE CASE DE FACADE. Le masque dit ou l'on se trouve dans le batiment : pas de voisin
+        /// au NORD veut dire rangee du haut, donc le TOIT ; sinon le mur, avec sa fenetre.
+        ///
+        /// Le bord se cerne d'un trait sombre du cote ou il n'y a pas de voisin, exactement
+        /// comme une haie ou une route : le batiment a donc une silhouette nette au lieu d'etre
+        /// un aplat ocre pose sur l'herbe.
+        /// </summary>
+        private static Color32[] BuildFacade(int mask)
+        {
+            bool north = (mask & 1) != 0;
+            bool east = (mask & 2) != 0;
+            bool south = (mask & 4) != 0;
+            bool west = (mask & 8) != 0;
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            if (!north)
+            {
+                // LE TOIT. Des rangees de tuiles decalees, et le faite en arete claire tout en
+                // haut : c'est ce qui manquait le plus, une facade sans toit ne se lit pas
+                // comme un batiment.
+                for (int y = 0; y < TileSize; y++)
+                {
+                    for (int x = 0; x < TileSize; x++)
+                    {
+                        pixels[y * TileSize + x] = Palette.Brick;
+                    }
+                }
+
+                for (int row = 2; row < TileSize - 2; row += 4)
+                {
+                    Fill(pixels, TileSize, 0, TileSize - 1, row, row, Palette.Shade(Palette.Brick));
+                }
+
+                // Le decalage d'une rangee sur deux : les tuiles ne s'alignent pas en colonnes.
+                for (int y = 0; y < TileSize; y++)
+                {
+                    int band = y / 4;
+                    for (int x = (band % 2) * 4; x < TileSize; x += 8)
+                    {
+                        pixels[y * TileSize + x] = Palette.Shade(Palette.Brick);
+                    }
+                }
+
+                Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 2, TileSize - 1, Palette.Orange);
+            }
+            else
+            {
+                // LE MUR, et une fenetre au milieu.
+                for (int y = 0; y < TileSize; y++)
+                {
+                    for (int x = 0; x < TileSize; x++)
+                    {
+                        pixels[y * TileSize + x] = Palette.Bark;
+                    }
+                }
+
+                for (int y = 0; y < TileSize; y++)
+                {
+                    for (int x = 0; x < TileSize; x++)
+                    {
+                        if (Speckle(x, y, 41) % 20 == 0)
+                        {
+                            pixels[y * TileSize + x] = Palette.Wood;
+                        }
+                    }
+                }
+
+                Fill(pixels, TileSize, 5, 10, 5, 10, Palette.WoodDark);
+                Fill(pixels, TileSize, 6, 9, 6, 9, Palette.Ice);
+                Fill(pixels, TileSize, 6, 7, 8, 9, Palette.Paper);
+            }
+
+            // Le contour, du cote ou le batiment s'arrete.
+            Color32 edge = Palette.Ink;
+            if (!north) Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 1, TileSize - 1, edge);
+            if (!south) Fill(pixels, TileSize, 0, TileSize - 1, 0, 0, edge);
+            if (!east) Fill(pixels, TileSize, TileSize - 1, TileSize - 1, 0, TileSize - 1, edge);
+            if (!west) Fill(pixels, TileSize, 0, 0, 0, TileSize - 1, edge);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// UNE ENSEIGNE : un panonceau de bois porte au mur, et dessus le signe du metier.
+        /// Zero pour les plaques, un pour les tuyaux, deux pour les panneaux.
+        /// </summary>
+        private static Color32[] BuildSignboard(int trade)
+        {
+            Color32[] pixels = NewTransparent(TileSize * TileSize);
+
+            // Le panonceau, avec son ombre portee sur le mur.
+            Fill(pixels, TileSize, 2, 13, 2, 13, Palette.WoodDark);
+            Fill(pixels, TileSize, 3, 12, 3, 12, Palette.Wood);
+
+            switch (trade)
+            {
+                case 0:
+                    // Une plaque d'egout : un disque et ses deux barres.
+                    DrawDisc(pixels, TileSize, 8, 8, 4.2f, Palette.Steel);
+                    Fill(pixels, TileSize, 5, 10, 8, 8, Palette.Charcoal);
+                    Fill(pixels, TileSize, 5, 10, 6, 6, Palette.Charcoal);
+                    break;
+
+                case 1:
+                    // Un tuyau vu en bout : un anneau clair et son trou sombre.
+                    DrawDisc(pixels, TileSize, 8, 8, 4.2f, Palette.SteelLight);
+                    DrawDisc(pixels, TileSize, 8, 8, 2.2f, Palette.Charcoal);
+                    break;
+
+                default:
+                    // Un panneau : le triangle borde de rouge, la forme que Victorien lit
+                    // en premier.
+                    for (int row = 0; row < 7; row++)
+                    {
+                        int half = 6 - row;
+                        Fill(pixels, TileSize, 8 - half, 7 + half, 4 + row, 4 + row, Palette.SignRed);
+                    }
+
+                    for (int row = 0; row < 4; row++)
+                    {
+                        int half = 3 - row;
+                        if (half > 0)
+                        {
+                            Fill(pixels, TileSize, 8 - half, 7 + half, 6 + row, 6 + row, Palette.Paper);
+                        }
+                    }
+
+                    break;
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// UN BRUIT STABLE, phase 17b. Le meme (x, y) rend toujours la meme valeur : la texture
+        /// d'un sol est donc reproductible d'une generation a l'autre, et un diff d'image ne
+        /// bouge pas sans raison. Ce n'est pas du hasard, c'est un motif qu'on ne lit pas comme
+        /// un motif.
+        /// </summary>
+        private static int Speckle(int x, int y, int salt)
+        {
+            int hash = x * 374761393 + y * 668265263 + salt * 2147483647;
+            hash = (hash ^ (hash >> 13)) * 1274126177;
+            return (hash ^ (hash >> 16)) & 0x7FFFFFFF;
+        }
+
+        /// <summary>
+        /// LA PELOUSE. Le fond, des touffes plus sombres et quelques brins clairs, SANS AUCUN
+        /// BORD : une tuile d'herbe se raccorde a la suivante sans couture, et le village cesse
+        /// de se lire comme un quadrillage.
+        ///
+        /// Le motif est le meme sur toutes les cases — une seule tuile est peinte partout — mais
+        /// il est assez irregulier pour qu'on ne compte pas les cases a l'oeil.
+        /// </summary>
+        private static Color32[] BuildGrassTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    pixels[y * TileSize + x] = Palette.Grass;
+                }
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    int noise = Speckle(x, y, 7) % 32;
+
+                    // Une touffe : deux pixels sombres l'un au-dessus de l'autre.
+                    if (noise == 0 && y + 1 < TileSize)
+                    {
+                        pixels[y * TileSize + x] = Palette.GrassDark;
+                        pixels[(y + 1) * TileSize + x] = Palette.GrassDark;
+                    }
+                    else if (noise == 5)
+                    {
+                        pixels[y * TileSize + x] = Palette.GrassDark;
+                    }
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// LA TERRE BATTUE du chemin de base, sans bord elle aussi : des grains plus sombres et
+        /// plus clairs dans le sable.
+        /// </summary>
+        private static Color32[] BuildDirtTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Palette.Stone;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    int noise = Speckle(x, y, 19) % 24;
+
+                    if (noise == 0)
+                    {
+                        pixels[y * TileSize + x] = Palette.StoneDark;
+                    }
+                    else if (noise == 3)
+                    {
+                        pixels[y * TileSize + x] = Palette.StoneLight;
+                    }
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// LE PAVAGE : quatre dalles de huit pixels, un joint sombre entre elles, et un eclat
+        /// clair en haut a gauche de chaque dalle. Le joint tombe sur le bord de la tuile, donc
+        /// les dalles se poursuivent d'une case a l'autre sans decalage.
+        /// </summary>
+        private static Color32[] BuildPavingTile(Color32 stone)
+        {
+            Color32 joint = Palette.Shade(stone);
+
+            // L'eclat est la nuance CLAIRE de la dalle. Ecrit d'abord « = stone », il ne faisait
+            // rien du tout : la dalle etait uniforme et personne ne l'aurait su sans la regarder.
+            Color32 shine = Palette.Tint(stone);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    bool onJoint = x % 8 == 0 || y % 8 == 0;
+                    pixels[y * TileSize + x] = onJoint ? joint : stone;
+                }
+            }
+
+            // L'eclat : le coin haut-gauche de chaque dalle prend la nuance claire du dessus.
+            for (int slab = 0; slab < 4; slab++)
+            {
+                int ox = (slab % 2) * 8 + 1;
+                int oy = (slab / 2) * 8 + 6;
+
+                Fill(pixels, TileSize, ox, ox + 4, oy, oy, shine);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// LE MUR DE L'ENCEINTE de la station : des blocs de beton peint, decales d'une assise a
+        /// l'autre, et l'arete du haut eclairee. C'etait un aplat bleu borde d'un lisere, donc
+        /// une boite de plus sur l'herbe texturee.
+        /// </summary>
+        private static Color32[] BuildPlantWallTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Palette.SignBlue;
+            }
+
+            Color32 joint = Palette.Shade(Palette.SignBlue);
+
+            // Quatre assises de quatre pixels, les joints verticaux decales d'une sur deux.
+            for (int y = 0; y < TileSize; y++)
+            {
+                if (y % 4 == 0)
+                {
+                    Fill(pixels, TileSize, 0, TileSize - 1, y, y, joint);
+                    continue;
+                }
+
+                int course = y / 4;
+                for (int x = (course % 2) * 4; x < TileSize; x += 8)
+                {
+                    pixels[y * TileSize + x] = joint;
+                }
+            }
+
+            // L'arete du haut, eclairee : c'est elle qui donne l'epaisseur au mur.
+            Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 1, TileSize - 1, Palette.Water);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// LE BETON de la station : uni, un peu granuleux, avec le joint d'une dalle de seize.
+        /// </summary>
+        private static Color32[] BuildConcreteTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Palette.SteelDark;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    if (Speckle(x, y, 31) % 18 == 0)
+                    {
+                        pixels[y * TileSize + x] = Palette.Steel;
+                    }
+                }
+            }
+
+            // PAS DE JOINT. Premier jet, deux bords en Charcoal : vu a l'ecran, la cour de la
+            // station se lisait comme un quadrillage noir, exactement le defaut qu'on venait de
+            // retirer a l'herbe. Le beton est uni ; ce sont les murs de l'enceinte qui le cadrent.
+            return pixels;
+        }
 
         /// <summary>Carre plein borde d'un lisere 1 px assombri.</summary>
         private static Color32[] BuildTile(Color32 fill)
@@ -2574,7 +2968,18 @@ namespace SousLaVille.EditorTools
             Color32 trunk = Palette.Wood;
             Color32 root = Palette.Shade(trunk);
 
-            Color32[] pixels = BuildTile(Palette.GrassDeep);
+            // LA MEME PELOUSE QUE PARTOUT, phase 17b. C'etait un carre de vert sombre borde d'un
+            // lisere : sur l'herbe texturee, chaque arbre se dressait dans une BOITE NOIRE, et
+            // les 126 arbres du village avec lui. Vu a l'ecran, jamais deduit — le validateur de
+            // palette acceptait ce carre, et il avait raison, ce sont de bonnes couleurs.
+            Color32[] pixels = BuildGrassTile();
+
+            // L'ombre portee au pied, en vert sombre : elle pose l'arbre au sol sans le cadrer.
+            for (int y = 2; y <= 7; y++)
+            {
+                int half = y <= 4 ? 5 : 4;
+                Fill(pixels, TileSize, 8 - half, 7 + half, y, y, Palette.GrassDeep);
+            }
 
             Fill(pixels, TileSize, 5, 10, 3, 12, root);
             Fill(pixels, TileSize, 6, 9, 4, 11, trunk);

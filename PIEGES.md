@@ -176,6 +176,13 @@ C'est la méthode du projet.
 **Un validateur qui dit toujours oui ne vaut rien.** Le vérifier **par sabotage** : casser le
 monde exprès, reconstruire, et exiger qu'il refuse en nommant la case et la raison.
 
+**Retirer un défaut de style à un endroit le rend visible partout où il restait.** Chaque sol du
+jeu était un aplat bordé d'un liseré : cent fois de suite, cela dessine une grille. L'herbe
+texturée de la phase 17b a réglé la grille — et révélé d'un coup que les 126 arbres se dressaient
+chacun dans une **boîte noire**, leur tuile de sol étant restée un carré bordé. Aucun filet ne
+pouvait le dire : ce sont de bonnes couleurs et des images distinctes. **Après chaque changement
+de style, regarder ce qui n'a PAS changé.**
+
 **Une palette fond ce que le jeu distinguait, et RIEN ne le dit.** Le joueur portait `#E05A2B`,
 Le Stock `#D07A2E` : deux oranges distincts, choisis à deux phases d'écart, que la palette de
 trente-quatre a réunis sur la même couleur. Ni la compilation, ni le contrôle de palette — ce sont

@@ -2452,6 +2452,62 @@ une seule table, et `ValidateDistinct` exige qu'elles soient six.
 
 **Une contrainte qui porte sur un ENSEMBLE ne se vérifie pas en regardant ses membres un par un.**
 
+## Phase 17b, ce qui est fait
+
+**La surface.** Le village ne se lit plus comme du papier millimétré.
+
+### Les sols n'ont plus de liseré
+
+Depuis la phase 1, chaque sol était un aplat **bordé d'un liseré d'un pixel**. Cent fois de
+suite, ce liseré dessine une **grille** : le village entier se lisait comme un quadrillage. Une
+pelouse n'a pas de bord tous les seize pixels.
+
+Cinq sols sont redessinés, tous **sans bord** et donc raccordés sans couture : la pelouse et ses
+touffes, la terre battue et ses grains, le pavé du parc et de l'atelier — quatre dalles de huit
+pixels, joint sur le bord de la tuile pour que les dalles se poursuivent d'une case à l'autre —,
+et le béton de la station. Le motif vient d'un **bruit stable** : le même (x, y) rend toujours la
+même valeur, donc un diff d'image ne bouge pas sans raison.
+
+### Les trois bâtiments ont un toit, et une enseigne
+
+`ValidateVillage` disait « une façade se lit comme un bâtiment sur l'herbe, mais elle n'a ni toit,
+ni fenêtre, ni enseigne ». Les seize **façades masquées**, sur le patron des routes et des haies,
+règlent les deux premiers : une façade fait quatre cases sur deux, donc **les cases sans voisin au
+nord sont la rangée du haut, donc le toit** — le masque le dit tout seul, sans que le builder ait
+à savoir où commence un bâtiment. Le mur porte une fenêtre, et le contour se cerne du côté où le
+bâtiment s'arrête.
+
+Et **trois enseignes**, posées sur la case de façade juste au-dessus de chaque porte : une plaque,
+un tuyau, un panneau. Rien ne disait de l'extérieur lequel était l'atelier des plaques ; il fallait
+entrer pour le savoir. Le builder **refuse** de poser une enseigne si le plan ne met pas la façade
+attendue au-dessus de la porte : une enseigne dans le vide ne dirait rien à personne.
+
+### Le mur de l'enceinte
+
+Un aplat bleu bordé d'un liseré devient des blocs de béton peint, décalés d'une assise à l'autre,
+l'arête du haut éclairée : c'est elle qui donne son épaisseur au mur.
+
+## Phase 17b, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs aux chiffres de la phase 13,
+  plus la palette (262 images, 34 couleurs) et les familles distinctes.
+- **Les cinq sols regardés en 3×3**, pour juger le raccord — et c'est ce qui a montré deux
+  défauts : l'éclat des dalles ne faisait **rien du tout** (écrit `= stone`, il repeignait la
+  dalle de sa propre couleur), et le joint du béton dessinait une **grille noire**, exactement le
+  défaut qu'on venait de retirer à l'herbe.
+- **Le village regardé en jeu**, devant l'usine à panneaux et devant la station.
+
+### Note d'atelier : retirer un défaut à un endroit le laisse ailleurs
+
+Les 126 arbres se dressaient chacun dans une **boîte noire**. Leur tuile de sol était
+`BuildTile(GrassDeep)` — un carré de vert sombre bordé d'un liseré — et tant que l'herbe autour
+était elle-même un carré bordé, personne ne voyait la boîte. **L'herbe texturée l'a révélée d'un
+coup, sur toute la carte.**
+
+Le contrôle de palette l'acceptait, et il avait raison : ce sont de bonnes couleurs. Le validateur
+des familles aussi : la tuile est bien distincte des autres. Corriger un défaut de style à un
+endroit **le rend visible partout où il restait**, et seule une capture le dit.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2463,11 +2519,11 @@ une seule table, et `ValidateDistinct` exige qu'elles soient six.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17b : la surface
+## Prochaine étape, phase 17c : le sous-sol
 
-L'habillage se poursuit sur le patron posé par 17a : palette, `Palette.Shade`, les deux
-validateurs et la planche. Ce qui reste à dessiner en surface est listé aux placeholders —
-maisons sans toit, façades sans enseigne, station sans sprite propre.
+Terre et galeries aux trois profondeurs — l'écart entre 1 et 2 est à creuser, c'est une question
+ouverte depuis la phase 3 —, les 48 canalisations, l'échelle qui doit déborder vers le haut pour
+ne plus disparaître sous le personnage, l'arrivée de maison, la cuve et les bassins.
 
 ## Décisions prises
 
