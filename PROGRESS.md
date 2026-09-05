@@ -2693,6 +2693,54 @@ les placeholders plutôt que laissée comme un défaut à réparer.
 - **Les vingt-neuf regardés sur une planche à sept fois**, puis les cinq qui se ressemblent
   — stop, sens interdit, circulation interdite, AB1, AB25 — **à douze fois, côte à côte**.
 
+## Phase 17g, ce qui est fait
+
+**Les intérieurs**, et la fin de l'habillage.
+
+### Un mur d'atelier, et trois meubles
+
+Le mur des pièces était un aplat de bois bordé d'un liseré. Ce sont désormais des **planches
+verticales** avec leur grain et deux lisses horizontales qui courent d'une case à l'autre sans se
+couper.
+
+Et trois meubles par pièce — **un établi, un râtelier d'outils, une pile de caisses** — pour que
+les salles cessent d'être *« propres, mais pas encore un lieu »*.
+
+**Ils se posent sur des cases de MUR, jamais sur le sol**, et c'est ce qui rend cet ajout gratuit :
+une case de mur ne se traverse déjà pas, donc `IsWalkable` ne bouge pas, `ValidateRooms` n'a aucun
+marqueur de plus à connaître, et rien de ce que le joueur peut faire ne change. Un meuble posé sur
+le sol aurait demandé un marqueur dans les trois plans, une règle de blocage et une case retirée à
+chaque pièce. Le builder refuse en nommant la case si le plan n'y met pas de mur.
+
+## Phase 17g, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs, la palette (266 images,
+  34 couleurs) et les familles distinctes.
+- **La pièce de l'usine à panneaux regardée en jeu**, deux fois — et c'est le premier passage qui
+  a montré la faute.
+
+### Note d'atelier : je suis retombé dans le piège de la phase 13
+
+Les trois meubles étaient d'abord adossés au **mur du fond**, qui est leur place naturelle dans
+une vue de trois quarts. La rangée de gouttes du HUD les a recouverts aux deux tiers : sur trois
+meubles, **un seul se devinait**.
+
+C'est exactement ce que la phase 13 avait trouvé et écrit — *« une pièce d'intérieur fait dix
+lignes quand la caméra en montre 11,25, donc sa rangée du haut tombe derrière la rangée de gouttes
+du HUD »* — et c'est écrit dans PIEGES.md depuis. **Je l'ai relu au début de la session et je l'ai
+quand même refait**, parce que « adosser un meuble au mur du fond » est un réflexe de dessin et
+non une décision qu'on prend en consultant une liste. Les meubles sont au mur du bas.
+
+## L'habillage est terminé
+
+Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
+sous-sol, les personnages, l'interface, les panneaux, les intérieurs. **266 images, 34 couleurs**,
+deux validateurs qui barrent la construction, et une planche qu'on regarde.
+
+Le jeu est complet de la phase 1 à la phase 17 : le réseau, les saisons, les bâtiments, l'usine à
+panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victorien** — décision du
+2 septembre 2026 : il ne joue qu'à la fin.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2704,11 +2752,11 @@ les placeholders plutôt que laissée comme un défaut à réparer.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17g : les intérieurs
+## Prochaine étape : Victorien joue
 
-La dernière sous-phase de l'habillage. Les pièces sont propres mais vides : *« trois échantillons
-et deux personnages dans une salle de vingt sur dix : c'est propre, mais ce n'est pas encore un
-lieu »*. Mobilier, établi, étagères.
+Il n'y a plus de phase. Ce qui reste est d'une autre nature : le regarder jouer, et corriger ce
+que la partie montre. Les questions ouvertes du bas de ce fichier sont celles qu'une vraie partie
+tranchera — le tableau de la phase 8, la difficulté des crêtes, le contraste des saisons.
 
 ## Décisions prises
 
@@ -3306,9 +3354,8 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 - **La police de 5 sur 7 pixels** se lit **au HUD**, sur fond uni, et ne se lisait pas dans le
   décor : c'est ce qui a fait passer les noms au cartel le 4 septembre 2026. Quelques lettres
   restent grasses à cette taille, le M et le B surtout. À reprendre à l'habillage.
-- **Les pièces sont vides** depuis que les noms et les pictos ont quitté le décor. Trois
-  échantillons et deux personnages dans une salle de vingt sur dix : c'est propre, mais ce n'est
-  pas encore un lieu. Mobilier, établi, étagères : à l'habillage.
+- ~~**Les pièces sont vides**~~ **Fait en phase 17g** : un établi, un râtelier d'outils et une
+  pile de caisses par pièce, posés sur des cases de mur pour ne rien retirer au jeu.
 - **L'atelier n'a ni mur ni toit.** Une cour pavée posée sur l'herbe se lit comme un lieu, mais
   ce n'est pas encore une usine. À habiller.
 - **Les cinq PNG de la phase 5** : les quatre pictos de saison et la clé de réparation. La

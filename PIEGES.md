@@ -116,6 +116,12 @@ Un pas de pilote se fait par un **appui bref** : le contrôleur engage le pas et
 tout seul, la touche relâchée n'en engage pas de second. Et la marche se fait **en boucle
 fermée**, en relisant la case où l'on est, jamais en comptant les pas.
 
+**LA RANGÉE DU HAUT D'UNE PIÈCE EST INUTILISABLE, ET ON Y RETOMBE.** Tombé en phase 13 avec la
+première famille de la planche, consigné ici, **relu au début de la phase 17 — et refait en 17g**
+avec les trois meubles, adossés au mur du fond. Sur trois, un seul se devinait. « Adosser un
+meuble au mur du fond » est un réflexe de dessin, pas une décision qu'on prend en consultant une
+liste : c'est pour cela qu'une liste ne suffit pas et qu'il faut **regarder**.
+
 **Une pièce d'intérieur fait dix lignes quand la caméra en montre 11,25.** La pièce est donc
 centrée, et sa rangée du haut tombe **derrière la rangée de gouttes du HUD**. La première famille
 de la planche de l'usine y était à moitié cachée ; tout le tableau est descendu d'une rangée.

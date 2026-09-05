@@ -353,6 +353,23 @@ namespace SousLaVille.EditorTools
             SpritesFolder + "/signboard_signs.png"
         };
 
+        /// <summary>
+        /// LE MOBILIER DES PIECES, phase 17g. Trois meubles adosses au mur du fond : un etabli,
+        /// un rateaux d'outils, une pile de caisses. Les pieces etaient propres et VIDES —
+        /// « trois echantillons et deux personnages dans une salle de vingt sur dix : c'est
+        /// propre, mais ce n'est pas encore un lieu ».
+        ///
+        /// Ils se posent SUR LE MUR, jamais sur le sol : une case de mur ne se traverse deja
+        /// pas, donc rien de ce que le joueur peut faire ne change, et aucun validateur de
+        /// piece n'a a apprendre un marqueur de plus.
+        /// </summary>
+        public static readonly string[] FurnitureTextures =
+        {
+            SpritesFolder + "/furniture_bench.png",
+            SpritesFolder + "/furniture_rack.png",
+            SpritesFolder + "/furniture_crates.png"
+        };
+
         public const string TileFacade = TilesFolder + "/Tile_Facade.asset";
         public const string TileWall = TilesFolder + "/Tile_Wall.asset";
         public const string DoorTexture = SpritesFolder + "/door.png";
@@ -717,7 +734,12 @@ namespace SousLaVille.EditorTools
                     WriteWord(SignNameTexture(SignBoard[slot]), SignBoardNames[slot]);
                 }
                 WriteTileTexture("tile_facade", Palette.Bark);
-                WriteTileTexture("tile_wall", Palette.Wood);
+                WriteTexture($"{TilesFolder}/tile_wall.png", BuildRoomWallTile());
+
+                for (int piece = 0; piece < FurnitureTextures.Length; piece++)
+                {
+                    WriteTexture(FurnitureTextures[piece], BuildFurniture(piece), PlayerWidth);
+                }
 
                 WriteTexture(DoorTexture, BuildDoor());
                 WriteTexture(VillagerGuide,
@@ -810,6 +832,12 @@ namespace SousLaVille.EditorTools
             ConfigureImporter($"{TilesFolder}/tile_water.png", null);
             ConfigureImporter(FountainTexture, null);
             ConfigureImporter(VillagerGuide, PlayerPivot);
+
+            foreach (string furniture in FurnitureTextures)
+            {
+                ConfigureImporter(furniture, PlayerPivot);
+            }
+
             ConfigureImporter(FountainSprite, PlayerPivot);
             ConfigureImporter(TreeTexture, PlayerPivot);
             ConfigureImporter(TreeTileTexture, null);
@@ -1497,6 +1525,14 @@ namespace SousLaVille.EditorTools
                 }
             }
 
+            foreach (string furniture in FurnitureTextures)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(furniture) == null)
+                {
+                    return false;
+                }
+            }
+
             for (int kind = 0; kind < SignCount; kind++)
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(SignTexture(kind)) == null)
@@ -1944,6 +1980,102 @@ namespace SousLaVille.EditorTools
                 Vector2Int place = places[i];
                 Fill(pixels, TileSize, place.x, place.x + 1, place.y, place.y + 1, pebble);
             }
+        }
+
+        /// <summary>
+        /// LE MUR D'UNE PIECE : des planches verticales et deux lisses horizontales, plutot
+        /// qu'un aplat de bois borde d'un lisere. C'est un mur d'atelier, on doit y accrocher
+        /// des choses.
+        /// </summary>
+        private static Color32[] BuildRoomWallTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Palette.Wood;
+            }
+
+            Color32 joint = Palette.Shade(Palette.Wood);
+
+            // Les planches, quatre par case, et leur grain.
+            for (int x = 0; x < TileSize; x += 4)
+            {
+                Fill(pixels, TileSize, x, x, 0, TileSize - 1, joint);
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    if (Speckle(x, y, 97) % 17 == 0)
+                    {
+                        pixels[y * TileSize + x] = Palette.Bark;
+                    }
+                }
+            }
+
+            // Les deux lisses : elles courent d'une case a l'autre sans se couper.
+            Fill(pixels, TileSize, 0, TileSize - 1, 3, 4, Palette.Bark);
+            Fill(pixels, TileSize, 0, TileSize - 1, 11, 12, Palette.Bark);
+            Fill(pixels, TileSize, 0, TileSize - 1, 2, 2, joint);
+            Fill(pixels, TileSize, 0, TileSize - 1, 10, 10, joint);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// UN MEUBLE adosse au mur du fond : un etabli, un rateau d'outils, une pile de caisses.
+        /// Meme gabarit qu'un personnage, 16 sur 24, pour deborder vers le haut comme tout ce
+        /// qui se dresse dans ce jeu depuis la phase 1.
+        /// </summary>
+        private static Color32[] BuildFurniture(int piece)
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            switch (piece)
+            {
+                case 0:
+                    // L'ETABLI : un plateau epais, deux pieds, et un tiroir.
+                    Fill(pixels, width, 1, 14, 10, 13, Palette.Bark);
+                    Fill(pixels, width, 1, 14, 13, 13, Palette.Wood);
+                    Fill(pixels, width, 2, 4, 1, 9, Palette.Wood);
+                    Fill(pixels, width, 11, 13, 1, 9, Palette.Wood);
+                    Fill(pixels, width, 5, 10, 5, 9, Palette.WoodDark);
+                    Fill(pixels, width, 6, 9, 7, 7, Palette.Steel);
+                    break;
+
+                case 1:
+                    // LE RATEAU D'OUTILS : une planche murale et trois outils pendus.
+                    Fill(pixels, width, 0, 15, 14, 16, Palette.WoodDark);
+                    Fill(pixels, width, 0, 15, 16, 16, Palette.Bark);
+                    Fill(pixels, width, 2, 3, 6, 14, Palette.SteelLight);
+                    Fill(pixels, width, 1, 4, 5, 6, Palette.Steel);
+                    Fill(pixels, width, 7, 8, 8, 14, Palette.SteelLight);
+                    Fill(pixels, width, 6, 9, 7, 8, Palette.Steel);
+                    Fill(pixels, width, 12, 13, 7, 14, Palette.Gold);
+                    Fill(pixels, width, 11, 14, 6, 7, Palette.Sun);
+                    break;
+
+                default:
+                    // LA PILE DE CAISSES : deux en bas, une posee de travers dessus.
+                    Fill(pixels, width, 0, 7, 1, 8, Palette.Wood);
+                    Fill(pixels, width, 8, 15, 1, 8, Palette.Wood);
+                    Fill(pixels, width, 3, 12, 9, 16, Palette.Bark);
+                    Fill(pixels, width, 0, 7, 1, 1, Palette.WoodDark);
+                    Fill(pixels, width, 8, 15, 1, 1, Palette.WoodDark);
+                    Fill(pixels, width, 0, 15, 8, 8, Palette.WoodDark);
+                    Fill(pixels, width, 3, 12, 16, 16, Palette.WoodDark);
+                    Fill(pixels, width, 3, 12, 12, 12, Palette.WoodDark);
+                    Fill(pixels, width, 7, 7, 1, 8, Palette.WoodDark);
+                    Fill(pixels, width, 7, 8, 9, 16, Palette.WoodDark);
+                    break;
+            }
+
+            return pixels;
         }
 
         /// <summary>

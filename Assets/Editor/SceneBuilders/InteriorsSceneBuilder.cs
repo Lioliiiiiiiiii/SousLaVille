@@ -69,6 +69,7 @@ namespace SousLaVille.EditorTools
             PaintRooms(ground, blocking);
             AttachInteriorMap(root, grid, ground, blocking);
             CreateDoors(root);
+            CreateRoomFurniture(root);
             CreateVillagers(root);
             CreateCoverWorkshop(root);
             CreatePipeWorks(root);
@@ -652,6 +653,67 @@ namespace SousLaVille.EditorTools
         /// ValidateRooms a deja prouve que le plan et la table portent exactement les memes
         /// cases : on peut donc creer sans re-verifier.
         /// </summary>
+        /// <summary>
+        /// LE MOBILIER, phase 17g. Trois meubles par piece, adosses au MUR DU FOND.
+        ///
+        /// Ils se posent sur des cases de MUR, jamais sur le sol, et c'est ce qui rend cet ajout
+        /// gratuit : une case de mur ne se traverse deja pas, donc `IsWalkable` ne bouge pas,
+        /// `ValidateRooms` n'a aucun marqueur de plus a connaitre, et rien de ce que le joueur
+        /// peut faire ne change. Un meuble pose sur le sol aurait demande un marqueur, une
+        /// regle de blocage et une case retiree a chaque piece.
+        ///
+        /// Le filet est le meme que partout : chaque case declaree doit porter un MUR dans le
+        /// plan, et le builder refuse en la nommant. Un meuble flottant au milieu d'une piece
+        /// serait sinon pose sans un mot.
+        /// </summary>
+        private static void CreateRoomFurniture(GameObject root)
+        {
+            // Trois meubles par piece, SUR LA RANGEE DU BAS : etabli, rateau d'outils, caisses.
+            //
+            // PAS LA RANGEE DU HAUT, et c'est la meme raison qu'en phase 13. Premier jet, les
+            // trois etaient adosses au mur du fond, ce qui est leur place naturelle dans une
+            // vue de trois quarts — et la rangee de gouttes du HUD les recouvrait aux deux
+            // tiers : un seul des trois se devinait. Une piece fait dix rangees quand la camera
+            // en montre 11,25, donc sa rangee du haut tombe derriere le HUD, toujours.
+            //
+            // Les colonnes evitent la porte, en 9.
+            int[] columns = { 3, 6, 14 };
+
+            GameObject parent = new GameObject("Furniture");
+            parent.transform.SetParent(root.transform, false);
+
+            for (int room = 0; room < InteriorsLayout.Rooms.Length; room++)
+            {
+                Vector2Int origin = InteriorsLayout.Rooms[room].Origin;
+
+                for (int piece = 0; piece < columns.Length; piece++)
+                {
+                    Vector2Int cell = origin + new Vector2Int(columns[piece], 0);
+
+                    if (InteriorsLayout.At(cell.x, cell.y) != InteriorsLayout.Wall)
+                    {
+                        Debug.LogError($"[Sous la Ville] Le meuble {piece + 1} de la pièce " +
+                                       $"« {InteriorsLayout.Rooms[room].Name} » se poserait en " +
+                                       $"{cell}, où le plan ne met pas de mur : un meuble au " +
+                                       "milieu d'une pièce flotterait sans rien fermer.");
+                        continue;
+                    }
+
+                    GameObject furniture = new GameObject(
+                        $"Furniture_{room + 1:00}_{piece + 1}");
+                    furniture.transform.SetParent(parent.transform, false);
+                    furniture.transform.position = CellCenter(cell);
+
+                    SpriteRenderer renderer = furniture.AddComponent<SpriteRenderer>();
+                    renderer.sprite = LoadSprite(
+                        PlaceholderArtGenerator.FurnitureTextures[piece]);
+
+                    // Devant le mur, derriere tout ce qui bouge.
+                    SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 1);
+                }
+            }
+        }
+
         private static void CreateVillagers(GameObject root)
         {
             GameObject parent = new GameObject("Villagers");
