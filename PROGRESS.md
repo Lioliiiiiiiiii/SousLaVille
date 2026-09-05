@@ -2387,6 +2387,71 @@ Lancer la génération d'art et une construction de scène dans le même tour a 
 session disconnected » trois fois — la commande s'exécutait quand même jusqu'au bout, mais sa
 réponse était perdue et il fallait relire la console pour le savoir. Un menu long à la fois.
 
+## Phase 17a, ce qui est fait
+
+**La palette et la méthode.** Aucune forme n'a changé : cette sous-phase installe ce qui rend
+l'habillage vérifiable, et ramène les couleurs du jeu à une table. C'est délibéré — redessiner
+486 images sans règle de couleur donnerait 486 images cohérentes par chance.
+
+### Trente-quatre couleurs, nommées par ce qu'elles sont
+
+Avant : **88 valeurs** choisies une par une au fil de seize phases, sans nom ni table, dont trois
+gris qu'aucun œil ne séparait. Après : `Palette`, **34 couleurs**, chacune nommée par son emploi —
+`Stone` est la chaussée, `SignRed` le rouge du Code. Les 135 littéraux du générateur ont été
+remplacés ; il n'en reste **aucun**.
+
+Six couleurs sont **imposées par le gameplay** et ne fondent avec rien : les trois profondeurs de
+terre et les trois de galerie. La règle de profondeur croissante EST le puzzle, et elle se lit
+d'abord à la nuance du sol. Deux autres sont imposées par les personnages — le violet et le
+sarcelle : sans elles, deux des cinq habitants porteraient la même couleur.
+
+**`Darken` a disparu.** Il multipliait les canaux : le résultat n'était dans aucune table, personne
+ne l'avait choisi, et il échappait par construction à tout contrôle. Les neuf appels passent par
+`Palette.Shade`, qui rend **une autre couleur de la palette** et refuse en nommant celle dont la
+nuance n'est pas déclarée.
+
+### Deux filets neufs, et ils barrent la construction
+
+- **`ValidatePalette`** : chaque pixel de chaque image écrite sur le disque est une couleur de la
+  palette, ou transparent. Relu **sur les fichiers**, jamais sur ce que le code croit avoir
+  dessiné. L'alpha ne compte pas — l'eau et le voile sont des couleurs de la palette qu'on voit au
+  travers.
+- **`ValidateDistinct`** : ce que le jeu distingue ne doit pas être deux fois la même image. Huit
+  plaques, trois motifs de tuyau, cinq personnages, 29 panneaux, six sols, quatre saisons — et les
+  **six couleurs de corps**, qui ne sont pas des images mais un ensemble.
+
+### Et une planche, parce que rien ne se déclare fini sans être regardé
+
+`Sous La Ville/Planche de l'art` rend la palette, les tuiles, les sprites et les pictos agrandis
+sur quatre feuilles. C'est la leçon des phases 13, 14 et 16 : trois fois le code compilait, les
+validateurs passaient, et seule une image agrandie a montré six dessins ratés, puis une rangée
+cachée derrière le HUD, puis un panneau coupé par le bord.
+
+## Phase 17a, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs aux chiffres de la phase 13.
+- **243 images, 34 couleurs et pas une de plus.**
+- **Deux sabotages, deux refus nommés** : une couleur magenta écrite en dur dans le dos d'un
+  panneau → « sign_back.png porte en (7, 0) la couleur #7F007F, qui n'est pas de la palette » ;
+  Le Stock remis sur l'orange du joueur → « Les personnages 0 et 3 portent tous deux la couleur
+  « Orange » : on ne les distinguerait pas de loin ». Les deux fois, `BuildAllScenes` s'arrête.
+- **Le village vu en jeu**, identique à l'œil aux teintes près.
+- **Les six personnages regardés côte à côte, agrandis huit fois.**
+
+### Note d'atelier : une palette fond ce que le jeu distinguait, et rien ne le dit
+
+Le personnage joueur portait `#E05A2B`, Le Stock `#D07A2E` — deux oranges distincts à l'œil,
+choisis à deux phases d'écart. La palette de trente-quatre les a fondus **sur la même couleur**, et
+Le Stock est devenu le sosie du joueur.
+
+Rien ne pouvait le dire. La compilation, non. Le contrôle de palette, non — ce sont de bonnes
+couleurs. La comparaison des images entre elles, **non plus** : les deux sprites diffèrent par le
+repère de direction du joueur, donc ils ne sont pas identiques au pixel près. C'est **la capture du
+village** qui l'a montré. Le Stock passe en brique, les six couleurs de corps vivent désormais dans
+une seule table, et `ValidateDistinct` exige qu'elles soient six.
+
+**Une contrainte qui porte sur un ENSEMBLE ne se vérifie pas en regardant ses membres un par un.**
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2398,15 +2463,23 @@ réponse était perdue et il fallait relire la console pour le savoir. Un menu l
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17 : l'habillage
+## Prochaine étape, phase 17b : la surface
 
-L'usine à panneaux est complète : le bâtiment, le catalogue et ses trois mini-jeux. L'arc du
-réseau (phases 1 à 12) et l'usine (13 à 16) sont en place. Reste l'habillage, décidé le
-3 septembre 2026 comme la dernière phase : le pixel art vient à la toute fin, une fois le gameplay
-validé (règle 4). La liste des placeholders à remplacer est tenue plus bas ; les panneaux du Code,
-eux, sont déjà presque leur forme finale et ne se redessinent qu'une fois.
+L'habillage se poursuit sur le patron posé par 17a : palette, `Palette.Shade`, les deux
+validateurs et la planche. Ce qui reste à dessiner en surface est listé aux placeholders —
+maisons sans toit, façades sans enseigne, station sans sprite propre.
 
 ## Décisions prises
+
+### Phase 17, tranchées le 5 septembre 2026
+
+- **Art original dessiné par code.** Aucun fichier externe, aucun asset Nintendo ou Pokémon : la
+  ROM de Pokémon Rubis proposée ce jour-là n'a pas été ouverte, CLAUDE.md l'interdit. L'inspiration
+  de style se prend sans copier un pixel.
+- **Une palette de trente-quatre couleurs nommées**, et un validateur qui refuse tout pixel hors
+  palette. La cohérence devient vérifiable, pas seulement souhaitée.
+- **L'eau reste immobile**, mieux dessinée : pas de composant, pas d'horloge.
+- **Sept sous-phases**, 17a à 17g, dans l'ordre de ce que Victorien voit en premier.
 
 ### Phase 16, tranchées le 5 septembre 2026
 

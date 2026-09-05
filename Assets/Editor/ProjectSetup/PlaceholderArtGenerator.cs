@@ -415,11 +415,36 @@ namespace SousLaVille.EditorTools
         /// du vert de l'artisan et du bleu de l'ouvrier : on les reconnait de loin, sans un
         /// mot, ce qui est la regle du projet depuis la phase 0.
         /// </summary>
+        /// <summary>
+        /// LES SIX COULEURS DE CORPS DU JEU, dans un seul endroit : le personnage joueur, les
+        /// deux artisans et les trois de l'usine a panneaux. Elles doivent etre SIX COULEURS
+        /// DIFFERENTES — c'est la regle du projet depuis la phase 0, on reconnait quelqu'un de
+        /// loin sans un mot — et ValidateDistinct l'exige.
+        ///
+        /// Elles vivent ici et non dans les fonctions de dessin, parce qu'une contrainte qui
+        /// porte sur un ENSEMBLE ne se verifie pas en regardant ses membres un par un.
+        /// </summary>
+        public static readonly Color32[] CharacterColors =
+        {
+            Palette.Orange,     // le personnage joueur
+            Palette.Teal,       // l'artisan des plaques
+            Palette.SignBlue,   // l'ouvrier des tuyaux
+            Palette.Brick,      // Le Stock
+            Palette.Violet,     // La Fabrique
+            Palette.Gold        // Le Plan
+        };
+
         private static readonly Color32[] SignFactoryColors =
         {
-            new Color32(0xD0, 0x7A, 0x2E, 0xFF),   // Le Stock, orange
-            new Color32(0x7A, 0x4E, 0xA8, 0xFF),   // La Fabrique, violet
-            new Color32(0xC0, 0xA8, 0x30, 0xFF)    // Le Plan, ocre
+            // BRIQUE ET NON ORANGE, phase 17a. La phase 13 avait choisi un orange (#D07A2E)
+            // voisin de celui du joueur (#E05A2B) : deux teintes distinctes a l'oeil, mais la
+            // palette de trente-quatre les a fondues sur la meme. Le Stock et le personnage
+            // joueur se seraient reconnus l'un pour l'autre, et RIEN ne l'aurait dit — ni la
+            // compilation, ni le controle de palette, ni la comparaison des images, les sprites
+            // differant par le repere de direction. Vu a l'ecran, puis reglé ici.
+            Palette.Brick,    // Le Stock
+            Palette.Violet,   // La Fabrique, violet
+            Palette.Gold    // Le Plan, ocre
         };
 
         /// <summary>Image du nom d'un type de tuyau.</summary>
@@ -448,16 +473,16 @@ namespace SousLaVille.EditorTools
         // profond : la nuance se lit sans legende.
         private static readonly Color32[] EarthColors =
         {
-            new Color32(0x6B, 0x4F, 0x38, 0xFF),
-            new Color32(0x55, 0x40, 0x2D, 0xFF),
-            new Color32(0x3E, 0x32, 0x26, 0xFF)
+            Palette.Earth,
+            Palette.EarthMid,
+            Palette.EarthDeep
         };
 
         private static readonly Color32[] TunnelColors =
         {
-            new Color32(0xC2, 0xB3, 0x93, 0xFF),
-            new Color32(0x9C, 0x91, 0x79, 0xFF),
-            new Color32(0x77, 0x80, 0x8A, 0xFF)
+            Palette.Tunnel,
+            Palette.TunnelMid,
+            Palette.TunnelDeep
         };
 
         // Fichiers remplaces par une phase ulterieure. La phase 3 avait retire ceux de la
@@ -518,12 +543,12 @@ namespace SousLaVille.EditorTools
                  + $"_{Mathf.Clamp(mask, 0, PipeMaskCount - 1):00}.png";
         }
 
-        private static string TunnelTexture(int depth)
+        public static string TunnelTexture(int depth)
         {
             return $"{TilesFolder}/tile_tunnel_{depth}.png";
         }
 
-        private static string EarthTexture(int depth)
+        public static string EarthTexture(int depth)
         {
             return $"{TilesFolder}/tile_earth_{depth}.png";
         }
@@ -547,13 +572,13 @@ namespace SousLaVille.EditorTools
             AssetDatabase.StartAssetEditing();
             try
             {
-                WriteTileTexture("tile_grass", new Color32(0x4E, 0x9A, 0x3E, 0xFF));
-                WriteTileTexture("tile_path", new Color32(0xC8, 0xA9, 0x6E, 0xFF));
-                WriteTileTexture("tile_park", new Color32(0xB8, 0xB8, 0xB0, 0xFF));
-                WriteTileTexture("tile_plant_floor", new Color32(0x6E, 0x7B, 0x8B, 0xFF));
-                WriteTileTexture("tile_hedge", new Color32(0x1F, 0x5C, 0x2E, 0xFF));
-                WriteTileTexture("tile_plant_wall", new Color32(0x3A, 0x6E, 0xA5, 0xFF));
-                WriteTileTexture("tile_house", new Color32(0xA0, 0x44, 0x2B, 0xFF));
+                WriteTileTexture("tile_grass", Palette.Grass);
+                WriteTileTexture("tile_path", Palette.Stone);
+                WriteTileTexture("tile_park", Palette.SteelLight);
+                WriteTileTexture("tile_plant_floor", Palette.SteelDark);
+                WriteTileTexture("tile_hedge", Palette.GrassDeep);
+                WriteTileTexture("tile_plant_wall", Palette.SignBlue);
+                WriteTileTexture("tile_house", Palette.Brick);
 
                 for (int depth = 1; depth <= DepthCount; depth++)
                 {
@@ -597,7 +622,7 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoAutumn, BuildAutumnPicto(), PictoSize);
                 WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
 
-                WriteTileTexture("tile_workshop", new Color32(0x8E, 0x87, 0x78, 0xFF));
+                WriteTileTexture("tile_workshop", Palette.Steel);
                 WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
                 WriteTexture(FountainTexture, BuildFountainBase());
                 WriteTexture(FountainSprite, BuildFountainSprite(), PlayerWidth);
@@ -630,14 +655,14 @@ namespace SousLaVille.EditorTools
                 {
                     WriteWord(SignNameTexture(SignBoard[slot]), SignBoardNames[slot]);
                 }
-                WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
-                WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
+                WriteTileTexture("tile_facade", Palette.Bark);
+                WriteTileTexture("tile_wall", Palette.Wood);
 
                 WriteTexture(DoorTexture, BuildDoor());
                 WriteTexture(VillagerCraftsman,
-                    BuildVillager(new Color32(0x3E, 0x8E, 0x7A, 0xFF)), PlayerWidth);
+                    BuildVillager(CharacterColors[1]), PlayerWidth);
                 WriteTexture(VillagerWorker,
-                    BuildVillager(new Color32(0x2E, 0x5F, 0xA8, 0xFF)), PlayerWidth);
+                    BuildVillager(CharacterColors[2]), PlayerWidth);
                 WriteTexture(PictoEnter, BuildDoorPicto(entering: true));
                 WriteTexture(PictoExit, BuildDoorPicto(entering: false));
                 WriteTexture(PictoTalk, BuildTalkPicto());
@@ -873,6 +898,450 @@ namespace SousLaVille.EditorTools
 
             Debug.Log($"[Sous la Ville] Art placeholder généré : {textures} textures, " +
                       $"{tiles} tuiles.");
+
+            // LE CONTROLE DE PALETTE SUIT LA GENERATION, phase 17a : une image hors palette
+            // s'apprend dans la foulee, jamais trois phases plus tard.
+            ValidatePalette();
+            ValidateDistinct();
+        }
+
+        /// <summary>
+        /// CHAQUE PIXEL DE CHAQUE IMAGE EST UNE COULEUR DE LA PALETTE, OU TRANSPARENT.
+        /// Phase 17a. Relu sur les fichiers reellement ecrits sur le disque, jamais sur ce que
+        /// le code croit avoir dessine — c'est la seule lecture qui ne puisse pas mentir.
+        ///
+        /// Sans ce filet, une palette n'est qu'une intention : rien n'empeche un `new Color32`
+        /// de se glisser dans un dessin, et personne ne le verrait — quatre-vingt-huit couleurs
+        /// s'etaient accumulees ainsi en seize phases, dont trois gris qu'aucun oeil ne separait.
+        ///
+        /// L'ALPHA NE COMPTE PAS : l'eau et le voile sont des couleurs de la palette qu'on voit
+        /// au travers. Un pixel totalement transparent passe quelle que soit sa couleur, les
+        /// canaux d'un pixel invisible n'etant regardes par personne.
+        /// </summary>
+        public static bool ValidatePalette()
+        {
+            string[] folders = { TilesFolder, SpritesFolder, PictosFolder };
+            int checkedFiles = 0;
+            int faults = 0;
+
+            foreach (string folder in folders)
+            {
+                string absolute = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(Application.dataPath), folder);
+
+                if (!System.IO.Directory.Exists(absolute))
+                {
+                    continue;
+                }
+
+                foreach (string file in System.IO.Directory.GetFiles(absolute, "*.png",
+                             System.IO.SearchOption.TopDirectoryOnly))
+                {
+                    checkedFiles++;
+
+                    // Les textures importees ne sont PAS lisibles : on relit le PNG du disque.
+                    Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    if (!texture.LoadImage(System.IO.File.ReadAllBytes(file)))
+                    {
+                        Debug.LogError($"[Sous la Ville] Image illisible : {file}");
+                        Object.DestroyImmediate(texture);
+                        faults++;
+                        continue;
+                    }
+
+                    Color32[] pixels = texture.GetPixels32();
+                    int width = texture.width;
+                    Object.DestroyImmediate(texture);
+
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        Color32 pixel = pixels[i];
+                        if (pixel.a == 0 || Palette.Contains(pixel))
+                        {
+                            continue;
+                        }
+
+                        faults++;
+
+                        // Un seul pixel suffit a dire la faute : on nomme le fichier, la case et
+                        // la couleur, et on passe a l'image suivante plutot que de noyer la
+                        // console sous mille lignes identiques.
+                        Debug.LogError($"[Sous la Ville] {System.IO.Path.GetFileName(file)} " +
+                                       $"porte en ({i % width}, {i / width}) la couleur " +
+                                       $"#{pixel.r:X2}{pixel.g:X2}{pixel.b:X2}, qui n'est pas de " +
+                                       "la palette. Ajoute-la à Palette, ou dessine avec une " +
+                                       "couleur qui y est.");
+                        break;
+                    }
+                }
+            }
+
+            if (faults > 0)
+            {
+                Debug.LogError($"[Sous la Ville] {faults} image(s) hors palette sur " +
+                               $"{checkedFiles} : l'art ne tient pas ses {Palette.All.Length} couleurs.");
+                return false;
+            }
+
+            Debug.Log($"[Sous la Ville] Palette tenue : {checkedFiles} image(s), " +
+                      $"{Palette.All.Length} couleurs et pas une de plus.");
+            return true;
+        }
+
+        /// <summary>
+        /// CE QUE LE JEU DISTINGUE NE DOIT PAS ETRE DEUX FOIS LA MEME IMAGE, phase 17a.
+        ///
+        /// Une palette limitee fond des couleurs ensemble, et l'habillage redessine tout : deux
+        /// plaques d'egout, deux motifs de tuyau, deux personnages ou deux panneaux du Code
+        /// peuvent devenir identiques au pixel pres SANS QU'AUCUN AUTRE FILET NE LE DISE. Le
+        /// contrôle de palette les accepterait — ce sont de bonnes couleurs — et la compilation
+        /// aussi. Seule la comparaison des images entre elles l'attrape.
+        ///
+        /// Ce n'est pas une precaution en l'air : la phase 13 a sorti AB1 et AB25 indiscernables,
+        /// puis A1b et A1c, et il a fallu une planche agrandie huit fois pour s'en apercevoir.
+        /// Ici, c'est refuse en nommant les deux fichiers.
+        /// </summary>
+        public static bool ValidateDistinct()
+        {
+            bool ok = true;
+
+            string[] covers = new string[CoverCount];
+            for (int i = 0; i < CoverCount; i++)
+            {
+                covers[i] = CoverTexture(i);
+            }
+
+            // Le motif est-ouest : celui que la vitrine expose et que le joueur reconnait.
+            string[] pipes = new string[PipePatternCount];
+            for (int pattern = 0; pattern < PipePatternCount; pattern++)
+            {
+                pipes[pattern] = PipeTexture(pattern, 10);
+            }
+
+            string[] people = new string[2 + SignFactoryVillagers.Length];
+            people[0] = VillagerCraftsman;
+            people[1] = VillagerWorker;
+            for (int who = 0; who < SignFactoryVillagers.Length; who++)
+            {
+                people[2 + who] = SignFactoryVillagers[who];
+            }
+
+            string[] signs = new string[SignCount];
+            for (int kind = 0; kind < SignCount; kind++)
+            {
+                signs[kind] = SignTexture(kind);
+            }
+
+            string[] grounds = new string[DepthCount * 2];
+            for (int depth = 1; depth <= DepthCount; depth++)
+            {
+                grounds[depth - 1] = EarthTexture(depth);
+                grounds[DepthCount + depth - 1] = TunnelTexture(depth);
+            }
+
+            string[] seasons = { PictoSpring, PictoSummer, PictoAutumn, PictoWinter };
+
+            ok &= AllDistinct("les plaques d'égout", covers);
+            ok &= AllDistinct("les motifs de canalisation", pipes);
+            ok &= AllDistinct("les personnages", people);
+            ok &= AllDistinct("les panneaux du Code", signs);
+            ok &= AllDistinct("les profondeurs de terre et de galerie", grounds);
+            ok &= AllDistinct("les pictogrammes de saison", seasons);
+
+            // ET LES SIX COULEURS DE CORPS, qui ne sont pas des images mais un ensemble : deux
+            // personnages de la meme couleur portent des sprites differents — le joueur a son
+            // repere de direction — donc AllDistinct les laisserait passer, alors qu'a l'ecran
+            // on ne les distinguerait pas. Tombé en phase 17a.
+            for (int i = 0; i < CharacterColors.Length; i++)
+            {
+                for (int j = i + 1; j < CharacterColors.Length; j++)
+                {
+                    if (!Palette.Same(CharacterColors[i], CharacterColors[j]))
+                    {
+                        continue;
+                    }
+
+                    Debug.LogError($"[Sous la Ville] Les personnages {i} et {j} portent tous " +
+                                   $"deux la couleur « {Palette.NameOf(CharacterColors[i])} » : " +
+                                   "on ne les distinguerait pas de loin.");
+                    ok = false;
+                }
+            }
+
+            if (ok)
+            {
+                Debug.Log($"[Sous la Ville] Familles distinctes : {covers.Length} plaques, " +
+                          $"{pipes.Length} motifs, {people.Length} personnages, {signs.Length} " +
+                          $"panneaux, {grounds.Length} sols, {seasons.Length} saisons, " +
+                          $"{CharacterColors.Length} couleurs de corps — aucune paire identique.");
+            }
+
+            return ok;
+        }
+
+        private static bool AllDistinct(string family, string[] paths)
+        {
+            bool ok = true;
+            Dictionary<string, string> seen = new Dictionary<string, string>();
+
+            foreach (string path in paths)
+            {
+                string signature = Signature(path);
+                if (signature == null)
+                {
+                    Debug.LogError($"[Sous la Ville] Image illisible dans {family} : {path}");
+                    ok = false;
+                    continue;
+                }
+
+                if (seen.TryGetValue(signature, out string twin))
+                {
+                    Debug.LogError($"[Sous la Ville] Dans {family}, « " +
+                                   $"{System.IO.Path.GetFileName(path)} » est identique au pixel " +
+                                   $"près à « {System.IO.Path.GetFileName(twin)} » : rien ne les " +
+                                   "distinguerait à l'écran.");
+                    ok = false;
+                    continue;
+                }
+
+                seen[signature] = path;
+            }
+
+            return ok;
+        }
+
+        /// <summary>Les pixels d'une image, relus du disque, en une chaine comparable.</summary>
+        private static string Signature(string assetPath)
+        {
+            string absolute = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Application.dataPath), assetPath);
+
+            if (!System.IO.File.Exists(absolute))
+            {
+                return null;
+            }
+
+            Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (!texture.LoadImage(System.IO.File.ReadAllBytes(absolute)))
+            {
+                Object.DestroyImmediate(texture);
+                return null;
+            }
+
+            Color32[] pixels = texture.GetPixels32();
+            int width = texture.width;
+            Object.DestroyImmediate(texture);
+
+            System.Text.StringBuilder builder = new System.Text.StringBuilder(pixels.Length * 4 + 8);
+            builder.Append(width).Append(':');
+
+            foreach (Color32 pixel in pixels)
+            {
+                // Un pixel transparent ne se voit pas : ses canaux ne comptent pas.
+                if (pixel.a == 0)
+                {
+                    builder.Append('.');
+                    continue;
+                }
+
+                builder.Append((char)('a' + pixel.r % 26))
+                       .Append((char)('a' + pixel.g % 26))
+                       .Append((char)('a' + pixel.b % 26))
+                       .Append((char)('a' + pixel.a % 26));
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// LA PLANCHE DE L'ART, phase 17a. Toutes les images du jeu agrandies sur une feuille
+        /// par dossier, plus la palette elle-meme.
+        ///
+        /// Rien ne se declare fini sans l'avoir regardee. C'est la lecon des phases 13, 14 et
+        /// 16 : trois fois le code compilait, les validateurs passaient, et c'est une image
+        /// agrandie qui a montre six dessins rates, puis une rangee cachee derriere le HUD,
+        /// puis un panneau coupe par le bord de l'ecran. Aucun validateur ne pouvait le dire.
+        /// </summary>
+        [MenuItem("Sous La Ville/Planche de l'art")]
+        public static void BuildArtSheets()
+        {
+            System.IO.Directory.CreateDirectory("Captures");
+
+            WriteSheet("Captures/planche_palette.png", PaletteSheet());
+
+            string[][] folders =
+            {
+                new[] { TilesFolder, "Captures/planche_tuiles.png" },
+                new[] { SpritesFolder, "Captures/planche_sprites.png" },
+                new[] { PictosFolder, "Captures/planche_pictos.png" }
+            };
+
+            foreach (string[] entry in folders)
+            {
+                Texture2D sheet = FolderSheet(entry[0]);
+                if (sheet != null)
+                {
+                    WriteSheet(entry[1], sheet);
+                }
+            }
+
+            Debug.Log("[Sous la Ville] Planches écrites dans Captures/ : palette, tuiles, " +
+                      "sprites, pictos. À REGARDER, pas seulement à produire.");
+        }
+
+        /// <summary>La palette, une bande par couleur, dans l'ordre de la declaration.</summary>
+        private static Texture2D PaletteSheet()
+        {
+            const int swatch = 48;
+            const int columns = 6;
+
+            int rows = (Palette.All.Length + columns - 1) / columns;
+            Texture2D sheet = NewSheet(columns * swatch, rows * swatch);
+
+            for (int i = 0; i < Palette.All.Length; i++)
+            {
+                int column = i % columns;
+                int row = i / columns;
+
+                for (int y = 1; y < swatch - 1; y++)
+                {
+                    for (int x = 1; x < swatch - 1; x++)
+                    {
+                        sheet.SetPixel(column * swatch + x,
+                            sheet.height - 1 - (row * swatch + y), Palette.All[i]);
+                    }
+                }
+            }
+
+            sheet.Apply();
+            return sheet;
+        }
+
+        /// <summary>
+        /// Toutes les images d'un dossier, agrandies trois fois, posees en lignes qui se
+        /// replient. Les tailles sont libres : les noms de villes font 55 px de large, les
+        /// phrases jusqu'a 193, les tuiles 16.
+        /// </summary>
+        private static Texture2D FolderSheet(string folder)
+        {
+            const int scale = 3;
+            const int gap = 3;
+            const int maxWidth = 1500;
+
+            string absolute = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Application.dataPath), folder);
+
+            if (!System.IO.Directory.Exists(absolute))
+            {
+                return null;
+            }
+
+            string[] files = System.IO.Directory.GetFiles(absolute, "*.png",
+                System.IO.SearchOption.TopDirectoryOnly);
+            System.Array.Sort(files);
+
+            List<Texture2D> images = new List<Texture2D>();
+            foreach (string file in files)
+            {
+                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (texture.LoadImage(System.IO.File.ReadAllBytes(file)))
+                {
+                    images.Add(texture);
+                }
+                else
+                {
+                    Object.DestroyImmediate(texture);
+                }
+            }
+
+            if (images.Count == 0)
+            {
+                return null;
+            }
+
+            // Premiere passe : ou tombe chaque image, et quelle taille fait la feuille.
+            List<Vector2Int> places = new List<Vector2Int>(images.Count);
+            int penX = gap;
+            int penY = gap;
+            int lineHeight = 0;
+            int sheetWidth = 0;
+
+            foreach (Texture2D image in images)
+            {
+                int width = image.width * scale;
+                int height = image.height * scale;
+
+                if (penX + width + gap > maxWidth && penX > gap)
+                {
+                    penX = gap;
+                    penY += lineHeight + gap;
+                    lineHeight = 0;
+                }
+
+                places.Add(new Vector2Int(penX, penY));
+                penX += width + gap;
+                lineHeight = Mathf.Max(lineHeight, height);
+                sheetWidth = Mathf.Max(sheetWidth, penX);
+            }
+
+            Texture2D sheet = NewSheet(sheetWidth + gap, penY + lineHeight + gap);
+
+            for (int i = 0; i < images.Count; i++)
+            {
+                Texture2D image = images[i];
+                Color32[] pixels = image.GetPixels32();
+
+                for (int y = 0; y < image.height; y++)
+                {
+                    for (int x = 0; x < image.width; x++)
+                    {
+                        Color32 pixel = pixels[y * image.width + x];
+                        if (pixel.a == 0)
+                        {
+                            continue;
+                        }
+
+                        for (int sy = 0; sy < scale; sy++)
+                        {
+                            for (int sx = 0; sx < scale; sx++)
+                            {
+                                // L'origine d'une texture est en bas ; la feuille se remplit du
+                                // haut vers le bas, d'ou le retournement.
+                                int px = places[i].x + x * scale + sx;
+                                int py = sheet.height - 1 - places[i].y
+                                         - (image.height - 1 - y) * scale - sy;
+                                sheet.SetPixel(px, py, pixel);
+                            }
+                        }
+                    }
+                }
+
+                Object.DestroyImmediate(image);
+            }
+
+            sheet.Apply();
+            return sheet;
+        }
+
+        private static Texture2D NewSheet(int width, int height)
+        {
+            Texture2D sheet = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            Color32 ground = Palette.Charcoal;
+
+            Color32[] pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = ground;
+            }
+
+            sheet.SetPixels32(pixels);
+            return sheet;
+        }
+
+        private static void WriteSheet(string path, Texture2D sheet)
+        {
+            System.IO.File.WriteAllBytes(path, sheet.EncodeToPNG());
+            Object.DestroyImmediate(sheet);
         }
 
         /// <summary>Combien de fichiers d'une extension donnee vivent dans un dossier d'assets.</summary>
@@ -1043,7 +1512,7 @@ namespace SousLaVille.EditorTools
         /// <summary>Carre plein borde d'un lisere 1 px assombri.</summary>
         private static Color32[] BuildTile(Color32 fill)
         {
-            Color32 border = Darken(fill, 0.72f);
+            Color32 border = Palette.Shade(fill);
             Color32[] pixels = new Color32[TileSize * TileSize];
 
             for (int y = 0; y < TileSize; y++)
@@ -1082,9 +1551,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildPipe(int pattern, int mask)
         {
-            Color32 body = new Color32(0x9F, 0xB3, 0xC2, 0xFF);
-            Color32 outline = new Color32(0x46, 0x58, 0x6A, 0xFF);
-            Color32 motif = Darken(body, 0.68f);
+            Color32 body = Palette.SteelLight;
+            Color32 outline = Palette.SteelDark;
+            Color32 motif = Palette.Shade(body);
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1170,9 +1639,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildManhole()
         {
-            Color32 cover = new Color32(0x3C, 0x3C, 0x3C, 0xFF);
-            Color32 rim = new Color32(0x8A, 0x8A, 0x8A, 0xFF);
-            Color32 slot = new Color32(0x1E, 0x1E, 0x1E, 0xFF);
+            Color32 cover = Palette.Charcoal;
+            Color32 rim = Palette.Steel;
+            Color32 slot = Palette.Charcoal;
             Color32 clear = new Color32(0, 0, 0, 0);
 
             Color32[] pixels = new Color32[TileSize * TileSize];
@@ -1220,11 +1689,11 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 body = new Color32(0xE0, 0x5A, 0x2B, 0xFF);
-            Color32 head = new Color32(0xF2, 0xA0, 0x7B, 0xFF);
-            Color32 legs = Darken(body, 0.65f);
-            Color32 hair = new Color32(0x4A, 0x2E, 0x1E, 0xFF);
-            Color32 eye = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 body = CharacterColors[0];
+            Color32 head = Palette.Skin;
+            Color32 legs = Palette.Shade(body);
+            Color32 hair = Palette.WoodDark;
+            Color32 eye = Palette.Ink;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -1269,10 +1738,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 wall = new Color32(0xD9, 0xC7, 0xA0, 0xFF);
-            Color32 roof = new Color32(0xA0, 0x44, 0x2B, 0xFF);
-            Color32 door = new Color32(0x5A, 0x3A, 0x22, 0xFF);
-            Color32 window = new Color32(0x6E, 0x9E, 0xC4, 0xFF);
+            Color32 wall = Palette.StoneLight;
+            Color32 roof = Palette.Brick;
+            Color32 door = Palette.WoodDark;
+            Color32 window = Palette.Ice;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -1297,8 +1766,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildHouseInlet()
         {
-            Color32 flange = new Color32(0xD9, 0xC7, 0xA0, 0xFF);
-            Color32 mouth = new Color32(0x5A, 0x3A, 0x22, 0xFF);
+            Color32 flange = Palette.StoneLight;
+            Color32 mouth = Palette.WoodDark;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1316,12 +1785,12 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildReserve(int level)
         {
-            Color32 outline = new Color32(0x2E, 0x36, 0x3E, 0xFF);
-            Color32 rim = new Color32(0x7A, 0x88, 0x96, 0xFF);
-            Color32 inside = new Color32(0x1C, 0x21, 0x28, 0xFF);
-            Color32 water = new Color32(0x4F, 0xA9, 0xEF, 0xFF);
-            Color32 waterTop = new Color32(0xA8, 0xDA, 0xFB, 0xFF);
-            Color32 tick = new Color32(0xB0, 0xB8, 0xC0, 0xFF);
+            Color32 outline = Palette.Charcoal;
+            Color32 rim = Palette.SteelDark;
+            Color32 inside = Palette.Charcoal;
+            Color32 water = Palette.Water;
+            Color32 waterTop = Palette.Ice;
+            Color32 tick = Palette.SteelLight;
 
             const int innerBottom = 2;
             const int innerTop = 13;
@@ -1358,9 +1827,9 @@ namespace SousLaVille.EditorTools
         private static Color32[] BuildDrop(bool full)
         {
             Color32 fill = full
-                ? new Color32(0x4F, 0xA9, 0xEF, 0xFF)
-                : new Color32(0x9A, 0xA0, 0xA6, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+                ? Palette.Water
+                : Palette.Steel;
+            Color32 outline = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1390,8 +1859,8 @@ namespace SousLaVille.EditorTools
         /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>
         private static Color32[] BuildLadder()
         {
-            Color32 rail = new Color32(0xC9, 0xA2, 0x27, 0xFF);
-            Color32 rung = Darken(rail, 0.6f);
+            Color32 rail = Palette.Gold;
+            Color32 rung = Palette.Shade(rail);
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1409,8 +1878,8 @@ namespace SousLaVille.EditorTools
         /// <summary>Repere « je suis en haut » : un soleil et ses quatre rayons sur fond de ciel.</summary>
         private static Color32[] BuildSunPicto()
         {
-            Color32 sky = new Color32(0x2A, 0x4C, 0x7D, 0xFF);
-            Color32 sun = new Color32(0xF2, 0xC1, 0x4E, 0xFF);
+            Color32 sky = Palette.BlueDeep;
+            Color32 sun = Palette.Sun;
 
             Color32[] pixels = new Color32[PictoSize * PictoSize];
             const float center = (PictoSize - 1) * 0.5f;
@@ -1437,9 +1906,9 @@ namespace SousLaVille.EditorTools
         /// <summary>Repere « je suis en bas » : une echelle sur fond de terre.</summary>
         private static Color32[] BuildLadderPicto()
         {
-            Color32 earth = new Color32(0x3A, 0x2C, 0x20, 0xFF);
-            Color32 rail = new Color32(0xC9, 0xA2, 0x27, 0xFF);
-            Color32 rung = Darken(rail, 0.6f);
+            Color32 earth = Palette.WoodDark;
+            Color32 rail = Palette.Gold;
+            Color32 rung = Palette.Shade(rail);
 
             Color32[] pixels = new Color32[PictoSize * PictoSize];
             for (int i = 0; i < pixels.Length; i++)
@@ -1465,8 +1934,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildArrow(bool pointingDown)
         {
-            Color32 fill = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 fill = Palette.Paper;
+            Color32 outline = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1505,9 +1974,9 @@ namespace SousLaVille.EditorTools
         /// <summary>« Ici on creuse » : une pelle, manche et fer.</summary>
         private static Color32[] BuildDigPicto()
         {
-            Color32 handle = new Color32(0x9A, 0x6E, 0x3A, 0xFF);
-            Color32 blade = new Color32(0xC8, 0xCE, 0xD4, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 handle = Palette.Bark;
+            Color32 blade = Palette.SteelLight;
+            Color32 outline = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1525,8 +1994,8 @@ namespace SousLaVille.EditorTools
         /// <summary>« Ici on enleve » : un disque barre, comme un panneau.</summary>
         private static Color32[] BuildRemovePicto()
         {
-            Color32 disc = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
-            Color32 bar = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 disc = Palette.Paper;
+            Color32 bar = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
             const float center = (TileSize - 1) * 0.5f;
@@ -1557,8 +2026,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildRepairPicto()
         {
-            Color32 metal = new Color32(0xC8, 0xCE, 0xD4, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 metal = Palette.SteelLight;
+            Color32 outline = Palette.Ink;
             Color32 clear = new Color32(0, 0, 0, 0);
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
@@ -1581,9 +2050,9 @@ namespace SousLaVille.EditorTools
         /// <summary>Printemps : une pousse qui sort de terre, sur un vert tendre.</summary>
         private static Color32[] BuildSpringPicto()
         {
-            Color32 sky = new Color32(0xC8, 0xE6, 0xA0, 0xFF);
-            Color32 soil = new Color32(0x7A, 0x55, 0x33, 0xFF);
-            Color32 plant = new Color32(0x2E, 0x7D, 0x32, 0xFF);
+            Color32 sky = Palette.Grass;
+            Color32 soil = Palette.Wood;
+            Color32 plant = Palette.GrassDark;
 
             Color32[] pixels = FilledPicto(sky);
 
@@ -1600,8 +2069,8 @@ namespace SousLaVille.EditorTools
         /// <summary>Ete : un soleil haut et plein, huit rayons, sur un or pale.</summary>
         private static Color32[] BuildSummerPicto()
         {
-            Color32 sky = new Color32(0xF7, 0xDE, 0x8B, 0xFF);
-            Color32 sun = new Color32(0xE8, 0x87, 0x1E, 0xFF);
+            Color32 sky = Palette.Bone;
+            Color32 sun = Palette.Orange;
 
             Color32[] pixels = FilledPicto(sky);
 
@@ -1624,9 +2093,9 @@ namespace SousLaVille.EditorTools
         /// <summary>Automne : une feuille et sa nervure, sur un orange de feuillage.</summary>
         private static Color32[] BuildAutumnPicto()
         {
-            Color32 sky = new Color32(0xE8, 0xA4, 0x5C, 0xFF);
-            Color32 leaf = new Color32(0x8C, 0x3A, 0x17, 0xFF);
-            Color32 vein = new Color32(0xC9, 0x6B, 0x2E, 0xFF);
+            Color32 sky = Palette.Skin;
+            Color32 leaf = Palette.Brick;
+            Color32 vein = Palette.Orange;
 
             Color32[] pixels = FilledPicto(sky);
 
@@ -1650,8 +2119,8 @@ namespace SousLaVille.EditorTools
         /// <summary>Hiver : un flocon a six branches, sur un bleu de givre.</summary>
         private static Color32[] BuildWinterPicto()
         {
-            Color32 sky = new Color32(0x8F, 0xB4, 0xD9, 0xFF);
-            Color32 flake = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+            Color32 sky = Palette.Ice;
+            Color32 flake = Palette.Paper;
 
             Color32[] pixels = FilledPicto(sky);
 
@@ -1735,9 +2204,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildCover(int index)
         {
-            Color32 rim = new Color32(0x3A, 0x3F, 0x44, 0xFF);
-            Color32 body = new Color32(0x8A, 0x91, 0x98, 0xFF);
-            Color32 groove = new Color32(0x51, 0x58, 0x5E, 0xFF);
+            Color32 rim = Palette.SteelDark;
+            Color32 body = Palette.Steel;
+            Color32 groove = Palette.SteelDark;
             Color32 clear = new Color32(0, 0, 0, 0);
 
             Color32[] pixels = new Color32[TileSize * TileSize];
@@ -1851,8 +2320,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildWater()
         {
-            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xB4);
-            Color32 ripple = new Color32(0x9C, 0xD4, 0xF0, 0xC8);
+            Color32 water = Palette.WithAlpha(Palette.Water, 0xB4);
+            Color32 ripple = Palette.WithAlpha(Palette.Ice, 0xC8);
 
             Color32[] pixels = new Color32[TileSize * TileSize];
             for (int i = 0; i < pixels.Length; i++)
@@ -1900,8 +2369,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildAttentionPicto()
         {
-            Color32 red = new Color32(0xC8, 0x2F, 0x2F, 0xFF);
-            Color32 white = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+            Color32 red = Palette.SignRed;
+            Color32 white = Palette.Paper;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1934,9 +2403,9 @@ namespace SousLaVille.EditorTools
 
         private static Color32[] BuildGrowPicto()
         {
-            Color32 tank = new Color32(0x6E, 0x7B, 0x8B, 0xFF);
-            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
-            Color32 plus = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+            Color32 tank = Palette.SteelDark;
+            Color32 water = Palette.Water;
+            Color32 plus = Palette.Paper;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1957,9 +2426,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildPlantBasin()
         {
-            Color32 wall = new Color32(0x8C, 0x99, 0xA8, 0xFF);
-            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
-            Color32 glint = new Color32(0x7C, 0xB8, 0xE8, 0xFF);
+            Color32 wall = Palette.Steel;
+            Color32 water = Palette.Water;
+            Color32 glint = Palette.Ice;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -1972,9 +2441,9 @@ namespace SousLaVille.EditorTools
 
         private static Color32[] BuildHedge(int mask)
         {
-            Color32 leaf = new Color32(0x1F, 0x5C, 0x2E, 0xFF);
-            Color32 crown = new Color32(0x2F, 0x7A, 0x3E, 0xFF);
-            Color32 shade = Darken(leaf, 0.62f);
+            Color32 leaf = Palette.GrassDeep;
+            Color32 crown = Palette.GrassDark;
+            Color32 shade = Palette.Shade(leaf);
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -2015,9 +2484,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildRoad(int mask)
         {
-            Color32 verge = new Color32(0xC8, 0xA9, 0x6E, 0xFF);
-            Color32 asphalt = new Color32(0xA6, 0x8B, 0x59, 0xFF);
-            Color32 paint = new Color32(0xE2, 0xD4, 0xB0, 0xFF);
+            Color32 verge = Palette.Stone;
+            Color32 asphalt = Palette.StoneDark;
+            Color32 paint = Palette.Bone;
 
             Color32[] pixels = new Color32[TileSize * TileSize];
             for (int i = 0; i < pixels.Length; i++)
@@ -2065,10 +2534,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 trunk = new Color32(0x6B, 0x4A, 0x2E, 0xFF);
-            Color32 bark = Darken(trunk, 0.72f);
-            Color32 leaf = new Color32(0x2C, 0x6E, 0x35, 0xFF);
-            Color32 light = new Color32(0x46, 0x92, 0x48, 0xFF);
+            Color32 trunk = Palette.Wood;
+            Color32 bark = Palette.Shade(trunk);
+            Color32 leaf = Palette.GrassDark;
+            Color32 light = Palette.Grass;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -2102,10 +2571,10 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildTreeBase()
         {
-            Color32 trunk = new Color32(0x6B, 0x4A, 0x2E, 0xFF);
-            Color32 root = Darken(trunk, 0.7f);
+            Color32 trunk = Palette.Wood;
+            Color32 root = Palette.Shade(trunk);
 
-            Color32[] pixels = BuildTile(new Color32(0x3A, 0x5E, 0x2C, 0xFF));
+            Color32[] pixels = BuildTile(Palette.GrassDeep);
 
             Fill(pixels, TileSize, 5, 10, 3, 12, root);
             Fill(pixels, TileSize, 6, 9, 4, 11, trunk);
@@ -2160,12 +2629,12 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
-            Color32 red = new Color32(0xC8, 0x2F, 0x2F, 0xFF);
-            Color32 blue = new Color32(0x2E, 0x5F, 0xA8, 0xFF);
-            Color32 white = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
-            Color32 yellow = new Color32(0xF2, 0xC8, 0x2A, 0xFF);
-            Color32 black = new Color32(0x1A, 0x1A, 0x1A, 0xFF);
+            Color32 post = Palette.Steel;
+            Color32 red = Palette.SignRed;
+            Color32 blue = Palette.SignBlue;
+            Color32 white = Palette.Paper;
+            Color32 yellow = Palette.Sun;
+            Color32 black = Palette.Charcoal;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -2681,10 +3150,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 stone = new Color32(0x8C, 0x86, 0x7A, 0xFF);
-            Color32 rim = new Color32(0xB8, 0xB2, 0xA4, 0xFF);
-            Color32 water = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
-            Color32 jet = new Color32(0x9C, 0xD4, 0xF0, 0xFF);
+            Color32 stone = Palette.Steel;
+            Color32 rim = Palette.SteelLight;
+            Color32 water = Palette.Water;
+            Color32 jet = Palette.Ice;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -2722,10 +3191,10 @@ namespace SousLaVille.EditorTools
 
         private static Color32[] BuildFountain()
         {
-            Color32 rim = new Color32(0xB8, 0xB2, 0xA4, 0xFF);
-            Color32 stone = new Color32(0x8C, 0x86, 0x7A, 0xFF);
-            Color32 basin = new Color32(0x3A, 0x7C, 0xC8, 0xFF);
-            Color32 jet = new Color32(0x9C, 0xD4, 0xF0, 0xFF);
+            Color32 rim = Palette.SteelLight;
+            Color32 stone = Palette.Steel;
+            Color32 basin = Palette.Water;
+            Color32 jet = Palette.Ice;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
             const float center = (TileSize - 1) * 0.5f;
@@ -2775,9 +3244,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildDoor()
         {
-            Color32 frame = new Color32(0x6A, 0x4A, 0x2A, 0xFF);
-            Color32 opening = new Color32(0x24, 0x1C, 0x18, 0xFF);
-            Color32 handle = new Color32(0xE8, 0xC8, 0x60, 0xFF);
+            Color32 frame = Palette.Wood;
+            Color32 opening = Palette.Ink;
+            Color32 handle = Palette.Sun;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -2803,10 +3272,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 head = new Color32(0xE8, 0xC0, 0x96, 0xFF);
-            Color32 legs = Darken(body, 0.65f);
-            Color32 hair = new Color32(0x33, 0x33, 0x38, 0xFF);
-            Color32 eye = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 head = Palette.Skin;
+            Color32 legs = Palette.Shade(body);
+            Color32 hair = Palette.Charcoal;
+            Color32 eye = Palette.Ink;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -2829,9 +3298,9 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildDoorPicto(bool entering)
         {
-            Color32 frame = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
-            Color32 opening = new Color32(0x2B, 0x1B, 0x14, 0xFF);
-            Color32 arrow = new Color32(0xF2, 0xC0, 0x40, 0xFF);
+            Color32 frame = Palette.Paper;
+            Color32 opening = Palette.Ink;
+            Color32 arrow = Palette.Sun;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -2860,8 +3329,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildTalkPicto()
         {
-            Color32 bubble = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
-            Color32 outline = new Color32(0x2B, 0x1B, 0x14, 0xFF);
+            Color32 bubble = Palette.Paper;
+            Color32 outline = Palette.Ink;
 
             Color32[] pixels = NewTransparent(TileSize * TileSize);
 
@@ -2891,8 +3360,8 @@ namespace SousLaVille.EditorTools
         private static Color32[] BuildSentence(string sentence)
         {
             return PixelFont.Render(sentence,
-                new Color32(0xFF, 0xFF, 0xFF, 0xFF),
-                new Color32(0x2B, 0x1B, 0x14, 0xFF));
+                Palette.Paper,
+                Palette.Ink);
         }
 
         /// <summary>
@@ -2902,15 +3371,15 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildVillageMap()
         {
-            Color32 grass = new Color32(0x4E, 0x9A, 0x3E, 0xFF);
-            Color32 road = new Color32(0xC8, 0xA9, 0x6E, 0xFF);
-            Color32 park = new Color32(0xB8, 0xB8, 0xB0, 0xFF);
-            Color32 plantFloor = new Color32(0x6E, 0x7B, 0x8B, 0xFF);
-            Color32 hedge = new Color32(0x1F, 0x5C, 0x2E, 0xFF);
-            Color32 plantWall = new Color32(0x3A, 0x6E, 0xA5, 0xFF);
-            Color32 house = new Color32(0xA0, 0x44, 0x2B, 0xFF);
-            Color32 facade = new Color32(0xB0, 0x7A, 0x3C, 0xFF);
-            Color32 tree = new Color32(0x2C, 0x6E, 0x35, 0xFF);
+            Color32 grass = Palette.Grass;
+            Color32 road = Palette.Stone;
+            Color32 park = Palette.SteelLight;
+            Color32 plantFloor = Palette.SteelDark;
+            Color32 hedge = Palette.GrassDeep;
+            Color32 plantWall = Palette.SignBlue;
+            Color32 house = Palette.Brick;
+            Color32 facade = Palette.Bark;
+            Color32 tree = Palette.GrassDark;
 
             Color32[] pixels = new Color32[VillageLayout.Width * VillageLayout.Height];
 
@@ -2963,7 +3432,7 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildCursor(int size)
         {
-            Color32 mark = new Color32(0xFF, 0xF4, 0xC2, 0xFF);
+            Color32 mark = Palette.Paper;
             int arm = size / 4;
 
             Color32[] pixels = NewTransparent(size * size);
@@ -3003,8 +3472,8 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
-            Color32 dots = new Color32(0xD8, 0xD6, 0xD0, 0xFF);
+            Color32 post = Palette.Steel;
+            Color32 dots = Palette.SteelLight;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -3032,10 +3501,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
-            Color32 plate = new Color32(0xB4, 0xB2, 0xAC, 0xFF);
-            Color32 edge = new Color32(0x6E, 0x6C, 0x68, 0xFF);
-            Color32 clamp = new Color32(0x88, 0x86, 0x82, 0xFF);
+            Color32 post = Palette.Steel;
+            Color32 plate = Palette.SteelLight;
+            Color32 edge = Palette.SteelDark;
+            Color32 clamp = Palette.Steel;
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -3079,15 +3548,6 @@ namespace SousLaVille.EditorTools
                     pixels[y * width + x] = color;
                 }
             }
-        }
-
-        private static Color32 Darken(Color32 color, float factor)
-        {
-            return new Color32(
-                (byte)(color.r * factor),
-                (byte)(color.g * factor),
-                (byte)(color.b * factor),
-                color.a);
         }
 
         // ---------------------------------------------------------------- disque

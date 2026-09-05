@@ -24,6 +24,23 @@ namespace SousLaVille.EditorTools
                 return;
             }
 
+            // ET L'ART DOIT TENIR SA PALETTE, phase 17a. Une image hors palette barre TOUTE
+            // construction, comme une image absente : une couleur qui s'echappe ne se verrait
+            // nulle part ailleurs, et c'est ainsi que quatre-vingt-huit s'etaient accumulees.
+            bool palette = PlaceholderArtGenerator.ValidatePalette();
+            bool distinct = PlaceholderArtGenerator.ValidateDistinct();
+
+            if (!palette || !distinct)
+            {
+                Debug.LogError($"[Sous la Ville] L'art ne tient pas : " +
+                               (palette ? "" : "des couleurs sortent de la palette") +
+                               (!palette && !distinct ? ", et " : "") +
+                               (distinct ? "" : "deux choses que le jeu distingue sont identiques") +
+                               ". Le message ci-dessus dit laquelle et pourquoi ; corrige le " +
+                               "dessin, puis relance « Sous La Ville/Générer l'art placeholder ».");
+                return;
+            }
+
             // Les ScriptableObjects doivent exister avant les scenes : le reseau du sous-sol
             // reference le type de canalisation pose par le joueur.
             if (!ScriptableObjectSetup.ArePresent())

@@ -176,6 +176,20 @@ C'est la méthode du projet.
 **Un validateur qui dit toujours oui ne vaut rien.** Le vérifier **par sabotage** : casser le
 monde exprès, reconstruire, et exiger qu'il refuse en nommant la case et la raison.
 
+**Une palette fond ce que le jeu distinguait, et RIEN ne le dit.** Le joueur portait `#E05A2B`,
+Le Stock `#D07A2E` : deux oranges distincts, choisis à deux phases d'écart, que la palette de
+trente-quatre a réunis sur la même couleur. Ni la compilation, ni le contrôle de palette — ce sont
+de bonnes couleurs —, ni la comparaison des images entre elles ne pouvaient l'attraper : les deux
+sprites diffèrent par le repère de direction. Seule une capture l'a montré. **Une contrainte qui
+porte sur un ENSEMBLE — six personnages doivent porter six couleurs — ne se vérifie pas en
+regardant ses membres un par un** : elle demande sa propre table et son propre filet. Tombé en
+phase 17a.
+
+**Une couleur calculée échappe par construction à tout contrôle de palette.** `Darken(couleur,
+facteur)` multipliait les canaux : le résultat n'était dans aucune table et personne ne l'avait
+choisi. Une nuance se DÉCLARE — `Palette.Shade` rend une autre couleur de la palette, et refuse en
+nommant celle dont la nuance manque.
+
 **Un appariement par l'ORDRE d'un balayage ment en silence.** Huit guides appariés à leur leçon
 par l'ordre de `FindAll` : un poste déplacé d'une case change de leçon sans un mot. Écrire
 l'appariement case par case, et refuser ce que la table ne connaît pas.
