@@ -297,10 +297,66 @@ namespace SousLaVille.EditorTools
             return ok;
         }
 
+        // ------------------------------------------------------ Le Plan, phase 16
+
+        /// <summary>Une case du plan. Le plancher de zone cliquable de CLAUDE.md.</summary>
+        private static readonly float PlanCellSize = 32f;
+
+        /// <summary>
+        /// Ce qu'un panneau deborde AU-DESSUS de sa case : un sprite de 16 sur 24 au pivot du
+        /// joueur, agrandi deux fois, depasse de (24 - 16) x 2 = 16 px. La rangee haute du plan
+        /// doit laisser cette place sous le bord de l'ecran, sinon le panneau sort coupe. Vu sur
+        /// le plan 12 avant d'etre calcule ; c'est le meme piege que la rangee de gouttes en 13.
+        /// </summary>
+        private static readonly float PlanSignOverflow = (24f - 16f) * 2f;
+
+        /// <summary>Le plateau descend de la moitie du debordement : autant de marge en haut qu'en bas.</summary>
+        private static float PlanBoardOffsetY => -PlanSignOverflow * 0.5f;
+
+        /// <summary>Marge sous le bord pour le plan : 2 px, la place que 5 x 32 + 16 laisse dans 180.</summary>
+        private const float PlanEdgeMargin = 2f;
+
+        /// <summary>
+        /// LE PLAN TIENT-IL A L'ECRAN ? La plus grande grille, debordement des panneaux compris,
+        /// dans les 320 x 180 ; et une case au plancher de 32.
+        /// </summary>
+        private static bool ValidatePlanBoard()
+        {
+            bool ok = true;
+
+            if (PlanCellSize < MinimumTouchSize)
+            {
+                Debug.LogError($"[Sous la Ville] Une case du plan fait {PlanCellSize} px : CLAUDE.md " +
+                               $"impose au moins {MinimumTouchSize} px.");
+                ok = false;
+            }
+
+            float width = PlanLayout.MaxWidth * PlanCellSize;
+            if (width > ReferenceWidth - 2 * PlanEdgeMargin)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan fait {width} px de large pour " +
+                               $"{ReferenceWidth - 2 * PlanEdgeMargin} disponibles.");
+                ok = false;
+            }
+
+            float height = PlanLayout.MaxHeight * PlanCellSize + PlanSignOverflow;
+            if (height > ReferenceHeight - 2 * PlanEdgeMargin)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan fait {height} px de haut, débordement des " +
+                               $"panneaux compris, pour {ReferenceHeight - 2 * PlanEdgeMargin} " +
+                               "disponibles : la rangée haute sortirait coupée.");
+                ok = false;
+            }
+
+            return ok;
+        }
+
         [MenuItem("Sous La Ville/Construire la scène Persistent")]
         public static bool Build()
         {
-            if (!ValidateMemoryBoard() || !ValidateQuizBoard())
+            // Les quinze plans du mini-jeu Le Plan sont cuits dans cette scene : ils se
+            // verifient ici, avant qu'une seule case ne soit creee.
+            if (!ValidateMemoryBoard() || !ValidateQuizBoard() || !ValidatePlanBoard() || !PlanLayout.Validate())
             {
                 return false;
             }
@@ -549,6 +605,7 @@ namespace SousLaVille.EditorTools
             CreateVillageMap(canvasObject);
             CreateSignMemory(canvasObject);
             CreateSignQuiz(canvasObject);
+            CreateSignPlan(canvasObject);
             CreateSpeechBox(canvasObject);
             CreateItemLabel(canvasObject);
 
@@ -1065,6 +1122,159 @@ namespace SousLaVille.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             // Eteint au depart : c'est La Fabrique qui le rallume, apres ses deux phrases.
+            panel.SetActive(false);
+        }
+
+        /// <summary>
+        /// LE PLAN, le mini-jeu de la phase 16. Meme HUD, meme fond opaque. Une grille de neuf
+        /// cases sur cinq au plus, une case de 32 px, le plancher de CLAUDE.md ; les sols et ce
+        /// qui s'y dresse sont crees D'AVANCE pour la plus grande grille, et chaque plan en
+        /// allume ce qu'il lui faut.
+        ///
+        /// LES QUINZE PLANS SONT CUITS ICI, postes et panneaux attendus DERIVES par
+        /// RoadSignRules : le runtime ne connait ni le Code ni la derivation, il ne fait que
+        /// comparer ce qui est pose a ce qui a ete deduit. Les tuiles sont celles du village,
+        /// agrandies deux fois par le Canvas ; le poteau vide est la seule image neuve.
+        /// </summary>
+        private static void CreateSignPlan(GameObject canvasObject)
+        {
+            float cellSize = PlanCellSize;
+            int maxWidth = PlanLayout.MaxWidth;
+            int maxHeight = PlanLayout.MaxHeight;
+
+            GameObject panel = new GameObject("SignPlan");
+            panel.transform.SetParent(canvasObject.transform, false);
+
+            RectTransform panelRect = panel.AddComponent<RectTransform>();
+            panelRect.anchorMin = Vector2.zero;
+            panelRect.anchorMax = Vector2.one;
+            panelRect.offsetMin = Vector2.zero;
+            panelRect.offsetMax = Vector2.zero;
+
+            Image background = panel.AddComponent<Image>();
+            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.raycastTarget = false;
+
+            GameObject boardObject = new GameObject("Board");
+            boardObject.transform.SetParent(panel.transform, false);
+            RectTransform boardRect = boardObject.AddComponent<RectTransform>();
+            boardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boardRect.pivot = new Vector2(0.5f, 0.5f);
+            boardRect.anchoredPosition = Vector2.zero;
+            boardRect.sizeDelta = Vector2.zero;
+
+            // Les sols d'abord, tous ; puis ce qui se dresse, DE HAUT EN BAS pour que le bas
+            // recouvre le haut, comme dans le village ou une maison passe devant ce qui est
+            // derriere elle. L'indice d'une case est (maxHeight - 1 - y) * maxWidth + x.
+            List<Image> grounds = new List<Image>(maxWidth * maxHeight);
+            List<Image> entities = new List<Image>(maxWidth * maxHeight);
+
+            for (int index = 0; index < maxWidth * maxHeight; index++)
+            {
+                grounds.Add(CreateCenteredImage(boardObject.transform, $"Ground_{index:00}",
+                    Vector2.zero, new Vector2(cellSize, cellSize)));
+            }
+
+            for (int index = 0; index < maxWidth * maxHeight; index++)
+            {
+                Image entity = CreateCenteredImage(boardObject.transform, $"Entity_{index:00}",
+                    Vector2.zero, new Vector2(cellSize, cellSize * 1.5f));
+                entity.enabled = false;
+                entities.Add(entity);
+            }
+
+            Image cursor = CreateCenteredImage(boardObject.transform, "Cursor", Vector2.zero,
+                new Vector2(cellSize, cellSize));
+            cursor.sprite = LoadSprite(PlaceholderArtGenerator.PictoCardCursor);
+
+            GameObject exitObject = new GameObject("ExitPrompt");
+            exitObject.transform.SetParent(panel.transform, false);
+
+            Image exitPrompt = exitObject.AddComponent<Image>();
+            exitPrompt.raycastTarget = false;
+            exitPrompt.enabled = false;
+            exitPrompt.sprite = LoadSprite(PlaceholderArtGenerator.PictoExit);
+            exitPrompt.rectTransform.anchorMin = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchorMax = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.pivot = new Vector2(1f, 0f);
+            exitPrompt.rectTransform.anchoredPosition = new Vector2(-ScreenMargin, ScreenMargin);
+            exitPrompt.rectTransform.sizeDelta =
+                new Vector2(exitPrompt.sprite.rect.width, exitPrompt.sprite.rect.height);
+
+            SignPlan game = canvasObject.AddComponent<SignPlan>();
+
+            SerializedObject serialized = new SerializedObject(game);
+            serialized.FindProperty("panel").objectReferenceValue = panel;
+            serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Plan;
+            serialized.FindProperty("cursor").objectReferenceValue = cursor;
+            serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
+            serialized.FindProperty("grass").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.GrassTexture);
+            serialized.FindProperty("house").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.HouseTexture);
+            serialized.FindProperty("emptyPost").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.SignPostTexture);
+            serialized.FindProperty("maxWidth").intValue = maxWidth;
+            serialized.FindProperty("maxHeight").intValue = maxHeight;
+            serialized.FindProperty("cellSize").floatValue = cellSize;
+            serialized.FindProperty("boardOffsetY").floatValue = PlanBoardOffsetY;
+
+            FillArray(serialized.FindProperty("grounds"), grounds);
+            FillArray(serialized.FindProperty("entities"), entities);
+
+            SerializedProperty roads = serialized.FindProperty("roads");
+            roads.arraySize = PlaceholderArtGenerator.DecorMaskCount;
+            for (int mask = 0; mask < PlaceholderArtGenerator.DecorMaskCount; mask++)
+            {
+                roads.GetArrayElementAtIndex(mask).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.RoadTexture(mask));
+            }
+
+            // Les cinq panneaux de rue, dans l'ordre de RoadSignKind : ce sont les rangs 0 a 4
+            // du catalogue.
+            SerializedProperty signs = serialized.FindProperty("signs");
+            int kindCount = System.Enum.GetValues(typeof(RoadSignKind)).Length;
+            signs.arraySize = kindCount;
+            for (int kind = 0; kind < kindCount; kind++)
+            {
+                signs.GetArrayElementAtIndex(kind).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.SignTexture(kind));
+            }
+
+            // Les quinze plans, postes et panneaux DERIVES. PlanLayout.Validate a deja refuse
+            // tout plan qui ne pourrait pas porter ce que le Code exige.
+            SerializedProperty plans = serialized.FindProperty("plans");
+            plans.arraySize = PlanLayout.Plans.Length;
+
+            for (int i = 0; i < PlanLayout.Plans.Length; i++)
+            {
+                PlanLayout.Plan plan = PlanLayout.Plans[i];
+                List<RoadSign> derived = PlanLayout.Derive(plan, null);
+                SerializedProperty data = plans.GetArrayElementAtIndex(i);
+
+                data.FindPropertyRelative("name").stringValue = plan.Name;
+                data.FindPropertyRelative("width").intValue = plan.Width;
+                data.FindPropertyRelative("height").intValue = plan.Height;
+
+                SerializedProperty rows = data.FindPropertyRelative("rows");
+                rows.arraySize = plan.Rows.Length;
+                for (int r = 0; r < plan.Rows.Length; r++)
+                {
+                    rows.GetArrayElementAtIndex(r).stringValue = plan.Rows[r];
+                }
+
+                SerializedProperty cells = data.FindPropertyRelative("postCells");
+                SerializedProperty kinds = data.FindPropertyRelative("postKinds");
+                cells.arraySize = derived.Count;
+                kinds.arraySize = derived.Count;
+                for (int post = 0; post < derived.Count; post++)
+                {
+                    cells.GetArrayElementAtIndex(post).vector2IntValue = derived[post].Cell;
+                    kinds.GetArrayElementAtIndex(post).intValue = (int)derived[post].Kind;
+                }
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Eteint au depart : c'est Le Plan qui le rallume, apres ses deux phrases.
             panel.SetActive(false);
         }
 

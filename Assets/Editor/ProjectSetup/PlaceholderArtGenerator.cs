@@ -292,6 +292,16 @@ namespace SousLaVille.EditorTools
         /// </summary>
         public const string PictoCardCursor = PictosFolder + "/picto_card_cursor.png";
 
+        /// <summary>
+        /// LE POTEAU VIDE, phase 16 : un poste du mini-jeu Le Plan ou le panneau manque. Le
+        /// poteau des vingt-neuf autres, et a la place de la plaque un pointille : quelque chose
+        /// devrait etre la.
+        /// </summary>
+        public const string SignPostTexture = SpritesFolder + "/sign_post.png";
+
+        /// <summary>L'image de la tuile d'herbe, pour qui la dessine hors tilemap : le plan du mini-jeu.</summary>
+        public const string GrassTexture = TilesFolder + "/tile_grass.png";
+
         public static string HedgeTexture(int mask)
         {
             return $"{TilesFolder}/tile_hedge_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
@@ -611,6 +621,9 @@ namespace SousLaVille.EditorTools
                 WriteTexture(SignBackTexture, BuildSignBack(), PlayerWidth);
                 WriteTexture(PictoCardCursor, BuildCursor(PictoSize), PictoSize);
 
+                // Phase 16 : le poteau vide d'un poste du plan.
+                WriteTexture(SignPostTexture, BuildSignPost(), PlayerWidth);
+
                 // Le nom de chaque panneau de la planche, phase 13. Nomme par le RANG : la
                 // place sur la planche peut changer, le rang non.
                 for (int slot = 0; slot < SignBoard.Length; slot++)
@@ -725,6 +738,7 @@ namespace SousLaVille.EditorTools
 
             ConfigureImporter(SignBackTexture, PlayerPivot);
             ConfigureImporter(PictoCardCursor, null);
+            ConfigureImporter(SignPostTexture, PlayerPivot);
 
             foreach (int kind in SignBoard)
             {
@@ -969,7 +983,7 @@ namespace SousLaVille.EditorTools
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, PictoEnter, PictoExit, PictoTalk,
                 FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention,
-                SignBackTexture, PictoCardCursor
+                SignBackTexture, PictoCardCursor, SignPostTexture
             };
 
             foreach (string path in sprites)
@@ -2980,6 +2994,39 @@ namespace SousLaVille.EditorTools
         /// de y 0 a 13, plaque centree sur (8, 18) — pour qu'une carte retournee ne saute pas
         /// d'un pixel a l'endroit.
         /// </summary>
+        /// <summary>
+        /// Le poteau vide : le poteau seul, et un pointille la ou la plaque devrait etre. Meme
+        /// emprise que les plaques, pour que le panneau pose tombe exactement dessus.
+        /// </summary>
+        private static Color32[] BuildSignPost()
+        {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
+            Color32 post = new Color32(0x9A, 0x9A, 0x9A, 0xFF);
+            Color32 dots = new Color32(0xD8, 0xD6, 0xD0, 0xFF);
+
+            Color32[] pixels = NewTransparent(width * height);
+
+            // Le pointille : un pixel sur deux, sur le bord de l'emprise de la plaque.
+            for (int i = 2; i <= 13; i += 2)
+            {
+                Fill(pixels, width, i, i, 12, 12, dots);
+                Fill(pixels, width, i, i, 23, 23, dots);
+            }
+
+            for (int j = 14; j <= 21; j += 2)
+            {
+                Fill(pixels, width, 2, 2, j, j, dots);
+                Fill(pixels, width, 13, 13, j, j, dots);
+            }
+
+            // Le poteau EN DERNIER : un point du pointille lui mordait un pixel en (8, 12).
+            Fill(pixels, width, 7, 8, 0, 13, post);
+
+            return pixels;
+        }
+
         private static Color32[] BuildSignBack()
         {
             const int width = PlayerWidth;

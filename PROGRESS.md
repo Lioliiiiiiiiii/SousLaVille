@@ -2281,6 +2281,112 @@ trouve dès que l'écran existe.
 - Horloge arrêtée pendant le quiz, repartie après. Captures : début, en cours, fin.
 - Pilote supprimé, `git diff ProjectSettings/` vide.
 
+## Phase 16, ce qui est fait
+
+**Le Plan**, le troisième et dernier mini-jeu de l'usine à panneaux. Une petite carte de rues,
+des poteaux vides, et les cinq panneaux de rue du village à poser au bon endroit.
+
+### La règle est le Code, tel que `RoadSigns` l'applique
+
+Les postes — où un panneau manque — et le panneau attendu à chacun **ne sont écrits nulle part**.
+Ils sont **dérivés** à la construction par les mêmes règles que les 32 panneaux des rues du
+village. Une solution écrite à la main pourrait être fausse ; une solution déduite du Code ne
+peut pas l'être — et c'est ce qui rend « vérifié solvable par le calcul » vrai pour les quinze
+plans.
+
+Pour cela les règles sont **sorties de `VillageLayout`** dans `RoadSignRules`, derrière une
+interface `IRoadGrid` que le village et les plans implémentent chacun. **Les 32 panneaux du
+village sont ressortis identiques** — case, type, sens et ordre — comparés à une photographie
+prise avant le refactor. Une seule règle s'ajoute, `IsExit` : une rue qui touche le bord d'un
+plan **continue** hors du cadre, sinon chaque rue qui sort serait une impasse. Le village n'en a
+aucune.
+
+### Quinze plans écrits à la main, du plus simple au plus lourd
+
+| | plan | postes | ce qu'il apprend |
+|---|---|---|---|
+| 1 | Le premier cédez | 1 | la rue qui débouche cède |
+| 2 | Le cédez d'en haut | 1 | le panneau change de côté avec le conducteur |
+| 3 | La croix | 2 | l'est-ouest passe, le nord-sud cède |
+| 4 | L'impasse | 2 | une rue qui finit devant une maison cède ET est une impasse |
+| 5 | Deux rues | 2 | deux cédez, pas du même bord |
+| 6 | L'entrée de garage | 1 | un accès de deux cases n'a droit à rien |
+| 7 | La route prioritaire | 4 | annoncée à l'entrée, close à la sortie, deux fois |
+| 8 | Le premier stop | 5 | sur la prioritaire, ce n'est plus un cédez |
+| 9 | L'impasse qui recule | 3 | deux panneaux veulent la même case : la priorité d'abord |
+| 10 | La croix prioritaire | 6 | deux stops |
+| 11 | Le virage prioritaire | 5 | la prioritaire tourne |
+| 12 | L'impasse de la rue | 7 | une impasse débouche sur la rue qui débouche |
+| 13 | Trois stops | 7 | croix et rue sur la prioritaire |
+| 14 | Le virage à deux rues | 6 | une fin de route qui recule d'une case |
+| 15 | Le grand carrefour | 7 | tout ensemble, des deux côtés |
+
+La route prioritaire se dessine avec `=` ; ses coins sont déduits et elle doit être d'un seul
+trait. **À l'écran elle est teintée** : c'est la seule chose que le joueur doit voir pour choisir
+un stop plutôt qu'un cédez. Chaque plan dérivé a été **regardé**, postes superposés à l'ASCII,
+avant d'être cru — et le côté du conducteur revérifié à la main sur les plans 1, 7, 11, 12 et 14.
+
+### Une seule touche, et le geste qui juge
+
+Les flèches vont de poteau en poteau ; Espace **fait défiler** le panneau du poteau visé — vide,
+cédez, stop, impasse, prioritaire, fin, vide. Aucun second niveau de choix, aucune palette à
+ouvrir : c'est la contrainte de CLAUDE.md, et chaque panneau passe sous les yeux à son tour.
+
+**Le plan vérifie quand tous les poteaux sont garnis, au geste suivant** — la flèche qui dit
+« j'ai fini de poser ». Les justes se fixent, sol vert ; les faux se vident ; on repose. Aucun
+échec. Un plan par lancement, le suivant à chaque fois, retour au premier après le quinzième et à
+la fermeture du jeu : un champ, rien sur le disque.
+
+### Une seule image neuve
+
+Le **poteau vide** : le poteau des vingt-neuf autres, et à la place de la plaque un pointillé.
+Les tuiles du plan sont celles du village — herbe, les seize routes, la maison, les cinq
+panneaux — **agrandies deux fois par le Canvas**, à filtre point.
+
+## Phase 16, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs aux chiffres de la phase 13.
+- **Les 32 panneaux du village identiques au refactor**, comparés case, type, sens et ordre à la
+  photographie prise avant.
+- **`PlanLayout.Validate` passe sur les quinze**, et **refuse quatre sabotages d'un coup**, chacun
+  par son nom : dix-huit plans au lieu de quinze ; la route prioritaire sur la ligne du bord →
+  « Pas d'herbe libre pour un panneau PriorityEnd … un plan à redessiner » ; dix colonnes → « fait
+  10 x 3 : au plus 9 x 5 » ; le coude prioritaire dans l'axe d'une rue → « au carrefour (4, 2) de
+  la route prioritaire, le bras (4, 1) n'est ni prioritaire ni signalé. La route prioritaire y
+  céderait le passage à une rue ordinaire. » — le filet le plus subtil, celui qui attrape une
+  faute de tracé que le dessin ne montre pas.
+- **Test en play, touches injectées**, trajet complet sur le plan 1 : porte (31, 34) → (15, 5),
+  demi-tour vers Le Plan → deux phrases → **tous les poteaux garnis dont un faux exprès, la flèche
+  qui juge, le faux se vide**, on repose le bon, le plan est juste → Espace referme, l'écran ne se
+  rouvre pas → sortie par (9, 0) → surface. **Zéro attente de focus.**
+- **Les quinze plans joués par l'API**, sans clavier : navigation de poteau en poteau par
+  `Move`, pose par `Validate`, un faux exprès, jugement — le faux vidé, les n − 1 autres fixés,
+  puis juste. Quinze sur quinze.
+- **Le plan 12 REGARDÉ à l'écran, et c'est lui qui a montré le défaut** : le cédez de la rangée
+  haute sortait **coupé par le bord**. Un panneau de 16 sur 24 agrandi deux fois déborde de 16 px
+  au-dessus de sa case, et 5 × 32 + 16 = 176 ne laisse que 4 px dans 180. Le plateau descend de
+  8 px, `ValidatePlanBoard` compte désormais le débordement, et la capture refaite montre le
+  cédez entier. **Ni le validateur, ni la dérivation, ni les quinze plans joués par l'API ne
+  pouvaient le voir.**
+- Horloge arrêtée pendant le jeu, repartie après. Captures : début, après le jugement, fin, le
+  plan 12 en cours, et la planche des images du plan.
+- Pilote supprimé, `git diff ProjectSettings/` vide.
+
+### Note d'atelier : ce qui déborde d'une case déborde de l'écran à la rangée du haut
+
+Un sprite au pivot du joueur dépasse de sa case vers le haut — c'est voulu depuis la phase 1, la
+tête passe devant ce qui est derrière. Dans le monde la caméra suit et rien ne coupe. Dans un
+écran modal, la rangée haute d'une grille qui remplit l'écran n'a **rien au-dessus d'elle**, et
+le dépassement sort du cadre. Même famille que la rangée de gouttes de la phase 13 : la géométrie
+des cases était juste, celle de ce qui se dresse dessus ne l'était pas, et seule une capture l'a
+dit.
+
+### Note d'atelier : deux commandes de menu en parallèle décrochent le pont
+
+Lancer la génération d'art et une construction de scène dans le même tour a rendu « plugin
+session disconnected » trois fois — la commande s'exécutait quand même jusqu'au bout, mais sa
+réponse était perdue et il fallait relire la console pour le savoir. Un menu long à la fois.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2292,17 +2398,30 @@ trouve dès que l'écran existe.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 16 : Le Plan
+## Prochaine étape, phase 17 : l'habillage
 
-Le troisième et dernier mini-jeu, décidé le 5 septembre 2026 : **le Code de la route tel que
-`RoadSigns` l'applique**. Chaque plan est une petite carte de rues en ASCII ; les postes vides et
-le panneau attendu à chacun sont **dérivés** par les mêmes règles que les 32 panneaux du village,
-une fois ces règles sorties de `VillageLayout` dans une classe partagée — les 32 doivent ressortir
-identiques. Le joueur choisit parmi les **cinq panneaux de rue**. Le plan vérifie **quand tous les
-postes sont remplis** : les justes se fixent, les faux se retirent. Le rang du plan atteint vit
-dans le composant, **rien sur le disque**.
+L'usine à panneaux est complète : le bâtiment, le catalogue et ses trois mini-jeux. L'arc du
+réseau (phases 1 à 12) et l'usine (13 à 16) sont en place. Reste l'habillage, décidé le
+3 septembre 2026 comme la dernière phase : le pixel art vient à la toute fin, une fois le gameplay
+validé (règle 4). La liste des placeholders à remplacer est tenue plus bas ; les panneaux du Code,
+eux, sont déjà presque leur forme finale et ne se redessinent qu'une fois.
 
 ## Décisions prises
+
+### Phase 16, tranchées le 5 septembre 2026
+
+- **La règle du jeu est le Code, tel que `RoadSigns` l'applique.** Postes et panneaux attendus
+  dérivés, jamais écrits ; palette des cinq panneaux de rue. La variante « solutions à la main,
+  palette des 24 » ne pouvait pas être vérifiée.
+- **Le plan vérifie quand tous les poteaux sont garnis**, au geste suivant, et non poste par
+  poste : cinq panneaux possibles, un retour immédiat permettrait de les essayer sans raisonner.
+- **Le rang du plan vit dans le composant**, rien sur le disque : la décision du 3 septembre
+  tient sans exception. Retour au premier après le quinzième.
+- **Espace fait défiler le panneau du poteau**, aucune palette : une seule touche, aucun second
+  niveau de choix.
+- **La route prioritaire se dessine avec `=` et se teinte à l'écran.**
+- **Une rue qui touche le bord continue** (`IsExit`), règle propre aux plans.
+- **`RoadSignRules` derrière `IRoadGrid`**, le village ne fait que se décrire.
 
 ### Phase 15, tranchées le 5 septembre 2026
 
@@ -2817,6 +2936,12 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
   sur `FacingCell` ; rien à changer côté logique, `Facing` est déjà correct.
 
 ## Placeholders à remplacer
+
+- **Le STOP à seize pixels ressemble à un sens interdit** : un octogone rouge avec une barre
+  blanche pour le mot, contre un disque rouge à barre blanche. Vu en phase 16 sur la planche du
+  plan, où les deux se posent côte à côte. La forme est juste — l'octogone — c'est la barre qui
+  les rapproche. À reprendre à l'habillage avec les lettres du mot STOP.
+- **Le poteau vide de la phase 16** : un poteau et un pointillé. Il se lit, c'est un aplat.
 
 - **AB1 se lit comme un panneau de danger à seize pixels.** Le triangle bordé de rouge portant
   une croix noire — priorité à droite, famille INTERSECTION — est passé pour un triangle de

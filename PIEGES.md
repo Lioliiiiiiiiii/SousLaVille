@@ -133,6 +133,18 @@ même pas**. Chaque famille d'écrans porte donc son compteur statique, remis à
 `[RuntimeInitializeOnLoadMethod]` — sans quoi un écran laissé ouvert à l'arrêt fige l'horloge de
 la session suivante.
 
+**Ce qui déborde d'une case déborde de l'écran à la rangée du haut.** Un sprite au pivot du
+joueur dépasse de sa case vers le haut, et dans le monde la caméra suit. Dans un écran modal, la
+rangée haute d'une grille qui remplit l'écran n'a rien au-dessus d'elle : le cédez du plan 12
+sortait coupé en deux. La géométrie des CASES était juste et validée ; celle de ce qui se DRESSE
+dessus ne l'était pas, et seule une capture l'a dit. Compter le débordement dans le validateur,
+et regarder le plan le plus grand, pas le premier. Tombé en phase 16.
+
+**Deux commandes de menu longues dans le même tour décrochent le pont MCP.** « plugin session
+disconnected while awaiting command_result » : la commande s'exécute quand même jusqu'au bout,
+mais sa réponse est perdue, et on ne le sait qu'en relisant la console. Un menu long à la fois.
+Tombé trois fois en phase 16.
+
 **Le picto d'action se pose au-dessus de la tête du JOUEUR** — sauf la bulle « on peut lui
 parler », qui est au-dessus de celle du **personnage**. La place habituelle tombait exactement
 sur son visage et l'effaçait. Un picto qui cache ce qu'il désigne ne désigne rien.

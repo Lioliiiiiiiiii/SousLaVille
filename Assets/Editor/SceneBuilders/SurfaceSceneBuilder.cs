@@ -325,7 +325,7 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static void CreateSigns(GameObject root)
         {
-            List<VillageLayout.RoadSign> signs = VillageLayout.RoadSigns();
+            List<RoadSign> signs = VillageLayout.RoadSigns();
             if (signs.Count == 0)
             {
                 return;
@@ -334,7 +334,7 @@ namespace SousLaVille.EditorTools
             GameObject parent = new GameObject("Signs");
             parent.transform.SetParent(root.transform, false);
 
-            foreach (VillageLayout.RoadSign sign in signs)
+            foreach (RoadSign sign in signs)
             {
                 GameObject signObject = new GameObject(
                     $"Sign_{sign.Kind}_{sign.Cell.x:00}_{sign.Cell.y:00}");
