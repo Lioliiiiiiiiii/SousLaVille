@@ -110,7 +110,7 @@ namespace SousLaVille.EditorTools
         /// CATALOGUE au lieu d'en creer un second : c'est le premier dessin, pas le troisieme,
         /// et la regle 4 de CLAUDE.md tient.
         /// </summary>
-        public const int SignCount = 8;
+        public const int SignCount = 9;
 
         /// <summary>
         /// LES HUIT LECONS, phase 12e. Un guide par lecon, et rien de plus : le jeu entier
@@ -168,8 +168,8 @@ namespace SousLaVille.EditorTools
         public const string PictoGrow = PictosFolder + "/picto_grow.png";
         public const string PlantBasinTexture = SpritesFolder + "/plant_basin.png";
 
-        /// <summary>Rang du premier panneau de direction. Les quatre suivants : nord, est, sud, ouest.</summary>
-        public const int SignFirstArrow = 4;
+        /// <summary>Rang du premier panonceau de direction. Les quatre suivants : nord, est, sud, ouest.</summary>
+        public const int SignFirstArrow = 5;
 
         public static string SignTexture(int kind)
         {
@@ -1902,14 +1902,19 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Un panneau de signalisation, phase 12c. Seize sur vingt-quatre : un poteau dans la
-        /// case, la plaque au-dessus. Le catalogue est celui du Code de la route francais, dont
-        /// la geometrie est deja presque sa forme finale — c'est ce que la decision du
-        /// 3 septembre appelait « un placeholder ideal ».
+        /// Un panneau de signalisation. Seize sur vingt-quatre : un poteau dans la case, la
+        /// plaque au-dessus. Le catalogue est celui du CODE DE LA ROUTE FRANCAIS, et rien
+        /// d'autre : chaque rang correspond a un panneau qui existe, place par RoadSigns la ou
+        /// le Code le place. Le premier catalogue portait un sens interdit sans rue a sens
+        /// unique et un triangle de danger sans panonceau : des panneaux imaginaires ici.
         ///
-        ///   0 danger (triangle rouge)        1 stop (octogone rouge)
-        ///   2 sens interdit (disque barre)   3 cedez le passage (triangle pointe en bas)
-        ///   4 a 7 direction (disque bleu, fleche nord / est / sud / ouest)
+        ///   0 AB3a cedez le passage (triangle POINTE EN BAS, borde de rouge)
+        ///   1 AB4  stop (octogone rouge)
+        ///   2 C13a impasse (carre bleu, voie en T barree de rouge)
+        ///   3 AB2  route prioritaire (losange jaune sur losange blanc)
+        ///   4 AB6  fin de route prioritaire (le meme, barre de noir)
+        ///   5 a 8  panonceau de direction (rectangle bleu, fleche blanche nord / est / sud / ouest),
+        ///          reserve aux carrefours de galeries.
         ///
         /// L'USINE A PANNEAUX DE LA PHASE 13 REPREND CE CATALOGUE.
         /// </summary>
@@ -1922,6 +1927,8 @@ namespace SousLaVille.EditorTools
             Color32 red = new Color32(0xC8, 0x2F, 0x2F, 0xFF);
             Color32 blue = new Color32(0x2E, 0x5F, 0xA8, 0xFF);
             Color32 white = new Color32(0xF2, 0xF0, 0xEA, 0xFF);
+            Color32 yellow = new Color32(0xF2, 0xC8, 0x2A, 0xFF);
+            Color32 black = new Color32(0x1A, 0x1A, 0x1A, 0xFF);
 
             Color32[] pixels = NewTransparent(width * height);
 
@@ -1930,66 +1937,95 @@ namespace SousLaVille.EditorTools
             const int cx = 8;
             const int cy = 18;
 
-            if (kind == 0 || kind == 3)
+            switch (kind)
             {
-                // Triangle. Pointe en haut pour le danger, en bas pour cedez le passage.
-                bool pointingUp = kind == 0;
-
-                for (int row = 0; row < 9; row++)
-                {
-                    int half = pointingUp ? row : 8 - row;
-                    int y = cy - 4 + row;
-                    Fill(pixels, width, cx - half, cx + half - 1, y, y, red);
-                }
-
-                for (int row = 2; row < 7; row++)
-                {
-                    int half = (pointingUp ? row : 8 - row) - 2;
-                    if (half <= 0)
+                case 0:
+                    // AB3a : la pointe EN BAS, c'est ce qui le distingue d'un danger.
+                    for (int row = 0; row < 9; row++)
                     {
-                        continue;
+                        int half = 8 - row;
+                        int y = cy - 4 + row;
+                        Fill(pixels, width, cx - half, cx + half - 1, y, y, red);
                     }
 
-                    int y = cy - 4 + row;
-                    Fill(pixels, width, cx - half, cx + half - 1, y, y, white);
-                }
-            }
-            else if (kind == 1)
-            {
-                // Octogone : un carre dont on retire les quatre coins.
-                Fill(pixels, width, cx - 5, cx + 4, cy - 5, cy + 4, red);
-
-                // Les quatre coins rabotes : c'est ce qui fait l'octogone.
-                for (int dy = 0; dy < 2; dy++)
-                {
-                    for (int dx = 0; dx < 2 - dy; dx++)
+                    for (int row = 0; row < 6; row++)
                     {
-                        pixels[(cy - 5 + dy) * width + cx - 5 + dx] = new Color32(0, 0, 0, 0);
-                        pixels[(cy - 5 + dy) * width + cx + 4 - dx] = new Color32(0, 0, 0, 0);
-                        pixels[(cy + 4 - dy) * width + cx - 5 + dx] = new Color32(0, 0, 0, 0);
-                        pixels[(cy + 4 - dy) * width + cx + 4 - dx] = new Color32(0, 0, 0, 0);
+                        int half = 6 - row - 2;
+                        if (half > 0)
+                        {
+                            int y = cy - 3 + row + 1;
+                            Fill(pixels, width, cx - half, cx + half - 1, y, y, white);
+                        }
                     }
-                }
+                    break;
 
-                Fill(pixels, width, cx - 3, cx + 2, cy - 1, cy, white);
-            }
-            else
-            {
-                // Les disques : sens interdit en rouge, direction en bleu.
-                Color32 face = kind == 2 ? red : blue;
-                DrawDisc(pixels, width, cx, cy, 5.4f, face);
+                case 1:
+                    // AB4 : un carre dont on rabote les quatre coins, et la barre du mot STOP.
+                    Fill(pixels, width, cx - 5, cx + 4, cy - 5, cy + 4, red);
+                    for (int dy = 0; dy < 2; dy++)
+                    {
+                        for (int dx = 0; dx < 2 - dy; dx++)
+                        {
+                            Color32 clear = new Color32(0, 0, 0, 0);
+                            pixels[(cy - 5 + dy) * width + cx - 5 + dx] = clear;
+                            pixels[(cy - 5 + dy) * width + cx + 4 - dx] = clear;
+                            pixels[(cy + 4 - dy) * width + cx - 5 + dx] = clear;
+                            pixels[(cy + 4 - dy) * width + cx + 4 - dx] = clear;
+                        }
+                    }
 
-                if (kind == 2)
-                {
-                    Fill(pixels, width, cx - 4, cx + 3, cy - 1, cy, white);
-                }
-                else
-                {
+                    Fill(pixels, width, cx - 3, cx + 2, cy - 1, cy, white);
+                    break;
+
+                case 2:
+                    // C13a : un carre bleu, une voie blanche en T dont la barre du haut est
+                    // rouge — la rue s'arrete la.
+                    Fill(pixels, width, cx - 5, cx + 4, cy - 5, cy + 4, blue);
+                    Fill(pixels, width, cx - 1, cx, cy - 4, cy + 1, white);
+                    Fill(pixels, width, cx - 3, cx + 2, cy + 1, cy + 2, red);
+                    break;
+
+                case 3:
+                case 4:
+                    // AB2 : un losange jaune dans un losange blanc. AB6 : le meme, barre.
+                    DrawDiamond(pixels, width, cx, cy, 6, white);
+                    DrawDiamond(pixels, width, cx, cy, 3, yellow);
+                    if (kind == 4)
+                    {
+                        for (int i = -5; i <= 4; i++)
+                        {
+                            int x = cx + i;
+                            int y = cy - i - 1;
+                            if (x >= 0 && x < width && y >= 0 && y < height)
+                            {
+                                pixels[y * width + x] = black;
+                            }
+                        }
+                    }
+                    break;
+
+                default:
+                    // Panonceau de direction : un rectangle bleu, une fleche blanche. Ce n'est
+                    // pas un B21 « direction obligatoire » — un disque —, qui dirait au
+                    // conducteur ce qu'il DOIT faire ; c'est un panneau de jalonnement qui dit
+                    // ou est la station.
+                    Fill(pixels, width, cx - 6, cx + 5, cy - 4, cy + 3, blue);
                     DrawArrow(pixels, width, cx, cy, kind - SignFirstArrow, white);
-                }
+                    break;
             }
 
             return pixels;
+        }
+
+        /// <summary>Un losange plein, centre sur (cx, cy), de demi-diagonale donnee.</summary>
+        private static void DrawDiamond(Color32[] pixels, int width, int cx, int cy, int half,
+            Color32 color)
+        {
+            for (int dy = -half; dy <= half; dy++)
+            {
+                int span = half - Mathf.Abs(dy);
+                Fill(pixels, width, cx - span, cx + span - 1, cy + dy, cy + dy, color);
+            }
         }
 
         /// <summary>Un disque plein, centre sur (cx, cy).</summary>

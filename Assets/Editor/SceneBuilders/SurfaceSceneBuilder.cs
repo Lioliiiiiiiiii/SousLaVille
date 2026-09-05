@@ -313,21 +313,19 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Les panneaux de signalisation, phase 12c. Ils NE BLOQUENT PAS : ce sont des reperes,
-        /// et un repere en travers d'un chemin serait un echec puni au sens de CLAUDE.md.
-        /// ValidateVillage le verifie a chaque construction.
+        /// Les panneaux de rue. Ils ne sont PLUS ecrits dans le plan : VillageLayout.RoadSigns
+        /// les DERIVE du graphe des routes selon le Code de la route francais — type, cote de
+        /// la chaussee et distance au carrefour compris. Un panneau ne peut donc etre ni mal
+        /// place, ni a l'envers, ni imaginaire : il est la parce que la route l'exige.
         ///
-        /// Le catalogue vient de PlaceholderArtGenerator et sera REPRIS par l'usine a panneaux
-        /// de la phase 13 : les panneaux ne sont dessines qu'une fois.
-        ///
-        /// Le type est choisi par la case, sans hasard : deux constructions du meme plan
-        /// donnent le meme village. Les rues portent les quatre panneaux de rue, jamais les
-        /// panneaux de direction, qui sont reserves aux carrefours de galeries.
+        /// Ils ne bloquent pas, et ils se tiennent sur l'herbe au bord de la chaussee, jamais
+        /// dessus. Le catalogue vient de PlaceholderArtGenerator et sera REPRIS par l'usine a
+        /// panneaux de la phase 13.
         /// </summary>
         private static void CreateSigns(GameObject root)
         {
-            List<Vector2Int> cells = VillageLayout.FindAll(VillageLayout.Sign);
-            if (cells.Count == 0)
+            List<VillageLayout.RoadSign> signs = VillageLayout.RoadSigns();
+            if (signs.Count == 0)
             {
                 return;
             }
@@ -335,18 +333,17 @@ namespace SousLaVille.EditorTools
             GameObject parent = new GameObject("Signs");
             parent.transform.SetParent(root.transform, false);
 
-            foreach (Vector2Int cell in cells)
+            foreach (VillageLayout.RoadSign sign in signs)
             {
-                int kind = (cell.x + cell.y) % PlaceholderArtGenerator.SignFirstArrow;
+                GameObject signObject = new GameObject(
+                    $"Sign_{sign.Kind}_{sign.Cell.x:00}_{sign.Cell.y:00}");
+                signObject.transform.SetParent(parent.transform, false);
+                signObject.transform.position = CellCenter(sign.Cell);
 
-                GameObject sign = new GameObject($"Sign_{cell.x:00}_{cell.y:00}");
-                sign.transform.SetParent(parent.transform, false);
-                sign.transform.position = CellCenter(cell);
-
-                SpriteRenderer renderer = sign.AddComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(kind));
+                SpriteRenderer renderer = signObject.AddComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture((int)sign.Kind));
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer,
-                    VillageLayout.Height - cell.y);
+                    VillageLayout.Height - sign.Cell.y);
             }
         }
 
@@ -366,7 +363,7 @@ namespace SousLaVille.EditorTools
             new GuideAssignment(new Vector2Int(12, 16), GuidePost.Lesson.Goal),
             new GuideAssignment(new Vector2Int(10, 11), GuidePost.Lesson.Manhole),
             new GuideAssignment(new Vector2Int(26, 26), GuidePost.Lesson.Seasons),
-            new GuideAssignment(new Vector2Int(28, 32), GuidePost.Lesson.Repair)
+            new GuideAssignment(new Vector2Int(29, 32), GuidePost.Lesson.Repair)
         };
 
         /// <summary>Un poste et la lecon qu'il tient.</summary>

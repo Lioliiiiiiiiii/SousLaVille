@@ -126,6 +126,17 @@ passe avant `Dig` et `PlacePipe` dans `Evaluate`. Un personnage posé dans une g
 sa case. Les guides du sous-sol se tiennent donc dans des culs-de-sac d'une case : une case de
 degré un ne peut être l'intermédiaire d'aucun chemin.
 
+**Un plan qui peint dans l'ordre recouvre en silence.** Routes, puis labyrinthe, puis station,
+puis arbres : chaque couche efface ce qu'elle recouvre sans un mot. Une rue a traversé l'enceinte
+de la station, deux rues ont fini dans une façade, quatre arbres ont poussé sur des murs. Chaque
+couche doit **vérifier qu'elle ne recouvre que de l'herbe**, et le graphe des routes doit être
+d'un seul tenant — `ValidateRoads` depuis le 5 septembre.
+
+**Un placement à la main de ce qui se dérive d'un graphe finit faux.** Les panneaux posés à la
+main étaient sur la chaussée, typés par parité, et imaginaires pour deux d'entre eux. Dérivés
+des routes par `RoadSigns`, ils ne peuvent plus l'être ; et c'est cette dérivation qui a trouvé
+les défauts du tracé.
+
 **Une donnée dérivée sauvegardée est une donnée qui peut mentir.** Les maisons desservies, l'eau
 du village, l'état de la fontaine : tout se recalcule. On sauvegarde des **gestes**, pas un état.
 

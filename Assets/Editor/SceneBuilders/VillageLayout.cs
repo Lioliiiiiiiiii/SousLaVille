@@ -98,35 +98,35 @@ namespace SousLaVille.EditorTools
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
         {
-            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHYYH",
+            "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
             "H...........YYY....YYY...........YYYY.......Y.....Y.....YYY....H",
             "H.....Y............YYY...........YYY....................YYY....H",
             "H.........................................................A....H",
-            "H.................##########I#######################I######....H",
-            "H.YYY.............#....#...........YYY.......##................H",
+            "H.................#########################################....H",
+            "H.YYY.............#....#...........YYY........#................H",
             "H.YYY...........Y.#....#......Y....YYY.......A#.....Y..........H",
             "H.................#....#......................#................H",
             "H.................#....#................Y.....#...............YH",
-            "H.........####I####....#...A..................##I#M............H",
+            "H.........#########....#...A..................####M............H",
             "H..Y......A.......#....#...#..................#................H",
-            "H.......#M######I##########M####...........Y..#................H",
-            "H.......#.........#....#...#V..#......Y.......#................H",
-            "H.......#.........#....I...#...#..............#.............YY.H",
-            "H.......#.........#....#...#...#.Y............##I#######A...YY.H",
-            "H.YY....#.........A....#...#...#..............#................H",
-            "H.YY....#..............#...#...#..............#................H",
-            "H.BBBBBBBBB...........FFFF.#..GGGG..YYY.......#.....YYY........H",
-            "H.BSSSSSSSB......YY...FFYFV#..GGGG..YYY.......#.....YYY.Y......H",
-            "H.BSSSTSSSB......YY....D.......E...........AI##.........I......H",
-            "H.BSSSSSSSB...................................#................H",
-            "H.YSSSSSSSB....HHHHHHHHHHHHHPHHHHHHHHHHHHH....#................H",
-            "H.BBBBSBBBB....HPPPPPPPPPPPPPPPPPPPPPPPPPH....##I#########M....H",
-            "H....##.#......HPHHHHHHHPHHHHHHHHHPHHHHHPH....#................H",
-            "H....A#.#......HPYPPPPPPPPPPPPPPPPPPPHPHPH....#................H",
-            "H.....#.#......HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
-            "H.YY..#.##I###.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.............YYYH",
-            "H.YY..###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY#I####AY......YYYH",
-            "H.....I.I...V.XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
+            "H........M#################M########.......Y..#................H",
+            "H..........#......#..#.....#.V.....#..Y.......#................H",
+            "H..........#......#..#.....#.......#..........#.............YY.H",
+            "H..........#......#..#.....#.....Y.#..........##########A...YY.H",
+            "H.YY.......#......A..#.....#.......#..........#................H",
+            "H.YY.......#.........#.....#.......#..........#................H",
+            "H.BBBBBBBBB#.........#FFFF.#..GGGG.#YYY.......#.....YYY........H",
+            "H.BSSSSSSSB#.....YY..#FFFFV#..GGGG.#YYY.......#.....YYY.Y......H",
+            "H.BSSSTSSSB#.....YY..#.D...#...E...#.......A###................H",
+            "H.BSSSSSSSB#.........###############..........#................H",
+            "H.BSSSSSSSB#...HHHHHHHHHHHHHPHHHHHHHHHHHHH....#................H",
+            "H.BBBBSBBBB#...HPPPPPPPPPPPPPPPPPPPPPPPPPH....############M....H",
+            "H....##....#...HPHHHHHHHPHHHHHHHHHPHHHHHPH....#................H",
+            "H....A#....#...HPHPPPPPPPPPPPPPPPPPPPHPHPH....#................H",
+            "H.....#....#...HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
+            "H.YY..#.######.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.............YYYH",
+            "H.YY..###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY######AY......YYYH",
+            "H.....#.#...V.XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
             "H.....#.#...Y..HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
             "H.....#.#......HPHPHPHPHPHPHOPPPPHPHPHPHPP....#................H",
             "H.....#.#......HPHPHPHPHHHPHHHHHHHHHPHPHPH....#............Y...H",
@@ -137,7 +137,7 @@ namespace SousLaVille.EditorTools
             "H.....#........HPPPPPPPPPPPPPPPPPPPPPPPPPH...........YYY.....AYH",
             "H.YYY.#.....YY.HHHHHHHHHHHHHPHHHHHHHHHHHHH..Y........YYY.......H",
             "H.YYY.#.....YY.................................................H",
-            "H.....##############I#####I########............................H",
+            "H.....#############################............................H",
             "H..........................#......A..........................Y.H",
             "H..........Y..YYY..........M...............YYY..Y..............H",
             "H.............YYY...Y.................Y....YYY..........Y......H",
@@ -191,10 +191,10 @@ namespace SousLaVille.EditorTools
                     // lui-meme qui bloque en occupant sa case.
                     return Grass;
                 case Sign:
-                    // Un socle de chemin sous le panneau. Les panneaux de rue sont poses sur
-                    // des cases de route, donc le masque de raccord de la route reste continu :
-                    // c'est GroundAt que le peintre interroge, jamais le marqueur.
-                    return Road;
+                    // De l'herbe sous un panneau : il se tient AU BORD de la chaussee, jamais
+                    // dessus. En surface, plus aucun panneau n'est ecrit dans le plan : ils
+                    // sont DERIVES du graphe des routes par RoadSigns, selon le Code de la route.
+                    return Grass;
                 case PlantInlet:
                     return PlantFloor;
                 default:
@@ -325,22 +325,101 @@ namespace SousLaVille.EditorTools
             }
 
             ok &= ValidateDecor(reachable);
+            ok &= ValidateRoads();
 
             Debug.Log($"[Sous la Ville] Village : {reachable.Count} case(s) praticable(s), " +
                       $"toutes reliées ; {FindAll(Tree).Count} arbre(s), " +
-                      $"{FindAll(Sign).Count} panneau(x).");
+                      $"{RoadSigns().Count} panneau(x) dérivé(s) des routes.");
 
             return ok;
         }
 
         /// <summary>
+        /// Le reseau routier est-il D'UN SEUL TENANT ? Une rue coupee par un batiment finit en
+        /// deux troncons morts, et rien ne le disait : la phase 12b avait fait passer la rue
+        /// x = 8 EN PLEIN TRAVERS de l'enceinte de la station, et c'est la logique des panneaux
+        /// qui l'a trouve en signalant une impasse la ou il n'aurait pas du y en avoir.
+        ///
+        /// La dalle du depart du joueur pose du chemin sous elle mais n'est pas une rue : elle
+        /// est ignoree.
+        /// </summary>
+        private static bool ValidateRoads()
+        {
+            Vector2Int start = FindSingle(PlayerStart);
+            HashSet<Vector2Int> roads = new HashSet<Vector2Int>();
+
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    Vector2Int cell = new Vector2Int(x, y);
+                    if (IsRoad(cell) && cell != start)
+                    {
+                        roads.Add(cell);
+                    }
+                }
+            }
+
+            if (roads.Count == 0)
+            {
+                return true;
+            }
+
+            Vector2Int seed = default;
+            foreach (Vector2Int cell in roads)
+            {
+                seed = cell;
+                break;
+            }
+
+            HashSet<Vector2Int> seen = new HashSet<Vector2Int> { seed };
+            Queue<Vector2Int> queue = new Queue<Vector2Int>();
+            queue.Enqueue(seed);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int cell = queue.Dequeue();
+                foreach (Vector2Int step in Steps)
+                {
+                    Vector2Int next = cell + step;
+                    if (roads.Contains(next) && seen.Add(next))
+                    {
+                        queue.Enqueue(next);
+                    }
+                }
+            }
+
+            if (seen.Count == roads.Count)
+            {
+                return true;
+            }
+
+            int shown = 0;
+            foreach (Vector2Int cell in roads)
+            {
+                if (seen.Contains(cell) || shown++ >= 4)
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] La case de route {cell} est coupée du reste " +
+                               "du réseau routier : une rue en morceaux.");
+            }
+
+            // Ce qu'on a MESURE, c'est le nombre de cases hors du reseau, pas le nombre de
+            // morceaux : un mot juste plutot qu'un nombre qui a l'air precis et qui ment.
+            Debug.LogError($"[Sous la Ville] {roads.Count - seen.Count} case(s) de route coupée(s) " +
+                           "du réseau : il doit être d'un seul tenant.");
+            return false;
+        }
+
+        /// <summary>
         /// Le decor de la phase 12c. Deux regles, et elles sont du gameplay, pas de l'ornement.
         ///
-        /// UN PANNEAU SE VOIT. Verifier qu'il ne bloque pas ne servirait a rien : « I » n'est
-        /// pas dans la liste de blocage, donc la reponse serait oui quoi qu'il arrive, et un
-        /// controle qui ne peut pas dire non ne vaut rien. Ce qu'on verifie est qu'il est
-        /// ATTEIGNABLE : un panneau muré dans un bosquet ou au coeur d'une haie est un repere
-        /// que personne ne lira jamais.
+        /// UN PANNEAU SE VOIT. Les panneaux de rue sont DERIVES des routes par RoadSigns ; ce
+        /// qu'on verifie est que chacun tombe sur de l'herbe ATTEIGNABLE — un panneau mure dans
+        /// un bosquet est un repere que personne ne lira — et qu'aucun n'est ecrit a la main
+        /// dans le plan, ou il pourrait etre mal place, a l'envers ou imaginaire.
         ///
         /// UN ARBRE SE TIENT A PLUS DE QUATRE PAS D'UNE BOUCHE. Le rayon de la flaque vaut
         /// `Lost - 1` et `Lost` plafonne a 5, donc quatre : une case bloquante ne prend pas
@@ -352,15 +431,23 @@ namespace SousLaVille.EditorTools
         {
             bool ok = true;
 
-            foreach (Vector2Int sign in FindAll(Sign))
+            foreach (RoadSign sign in RoadSigns())
             {
-                if (reachable.Contains(sign))
+                if (reachable.Contains(sign.Cell) && At(sign.Cell.x, sign.Cell.y) == Grass)
                 {
                     continue;
                 }
 
-                Debug.LogError($"[Sous la Ville] Le panneau {sign} n'est atteignable depuis " +
-                               "aucune case accessible : personne ne le lira jamais.");
+                Debug.LogError($"[Sous la Ville] Le panneau {sign.Kind} en {sign.Cell} n'est pas " +
+                               "sur de l'herbe atteignable : personne ne le lira jamais.");
+                ok = false;
+            }
+
+            if (FindAll(Sign).Count > 0)
+            {
+                Debug.LogError($"[Sous la Ville] Le plan du village porte {FindAll(Sign).Count} " +
+                               "marqueur(s) « I » : en surface les panneaux se DERIVENT des routes, " +
+                               "ils ne s'ecrivent plus a la main.");
                 ok = false;
             }
 
@@ -392,6 +479,340 @@ namespace SousLaVille.EditorTools
         /// phase touchant a la carte.
         /// </summary>
         public const int MaxFloodRadius = 4;
+
+        /// <summary>
+        /// Les panneaux du Code de la route francais que le village peut porter, et rien
+        /// d'autre. Pas de sens interdit : il n'y a aucune rue a sens unique, et un B1 sans
+        /// sens unique serait un panneau imaginaire. Pas de triangle de danger generique : le
+        /// A14 s'accompagne toujours d'un panonceau qui dit LEQUEL, et il n'y en a pas ici.
+        /// </summary>
+        public enum RoadSignKind
+        {
+            /// <summary>AB3a. Triangle pointe en bas, borde de rouge. Bras secondaire d'un carrefour.</summary>
+            Yield,
+
+            /// <summary>AB4. Octogone rouge. Bras secondaire debouchant sur la route prioritaire.</summary>
+            Stop,
+
+            /// <summary>C13a. Carre bleu, voie en T barree de rouge. A l'entree d'une impasse.</summary>
+            DeadEnd,
+
+            /// <summary>AB2. Losange jaune. A l'entree de la route prioritaire.</summary>
+            Priority,
+
+            /// <summary>AB6. Losange jaune barre. A la sortie de la route prioritaire.</summary>
+            PriorityEnd
+        }
+
+        /// <summary>Un panneau derive : sa case au bord de la chaussee, son type, et le sens du conducteur qu'il vise.</summary>
+        public struct RoadSign
+        {
+            public Vector2Int Cell;
+            public RoadSignKind Kind;
+            public Vector2Int Facing;
+
+            public RoadSign(Vector2Int cell, RoadSignKind kind, Vector2Int facing)
+            {
+                Cell = cell;
+                Kind = kind;
+                Facing = facing;
+            }
+        }
+
+        private static readonly Vector2Int[] Steps =
+        {
+            Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left
+        };
+
+        /// <summary>
+        /// LA ROUTE PRIORITAIRE : la rocade, du carrefour (23, 40) vers l'est puis vers le sud
+        /// jusqu'a (46, 10). Une seule, ecrite a la main, parce que c'est une decision
+        /// d'urbanisme et non une propriete du graphe. Tout ce qui y debouche marque un STOP.
+        /// </summary>
+        private static readonly Vector2Int[] MainRoadCorners =
+        {
+            new Vector2Int(23, 40), new Vector2Int(46, 40), new Vector2Int(46, 10)
+        };
+
+        /// <summary>Vrai si la case porte de la chaussee, marqueurs compris (bouche, porte, depart).</summary>
+        public static bool IsRoad(int x, int y)
+        {
+            return x >= 0 && x < Width && y >= 0 && y < Height && GroundAt(x, y) == Road;
+        }
+
+        private static bool IsRoad(Vector2Int cell)
+        {
+            return IsRoad(cell.x, cell.y);
+        }
+
+        private static int RoadDegree(Vector2Int cell)
+        {
+            int degree = 0;
+            foreach (Vector2Int step in Steps)
+            {
+                if (IsRoad(cell + step))
+                {
+                    degree++;
+                }
+            }
+
+            return degree;
+        }
+
+        /// <summary>
+        /// La DROITE du conducteur qui avance dans la direction donnee. En France on roule a
+        /// droite et les panneaux se posent a droite de la chaussee, dans le sens de la marche.
+        /// (0,1) nord donne (1,0) est ; (1,0) est donne (0,-1) sud ; et ainsi de suite.
+        /// </summary>
+        private static Vector2Int RightOf(Vector2Int direction)
+        {
+            return new Vector2Int(direction.y, -direction.x);
+        }
+
+        private static bool OnMainRoad(Vector2Int cell)
+        {
+            for (int i = 0; i + 1 < MainRoadCorners.Length; i++)
+            {
+                Vector2Int a = MainRoadCorners[i];
+                Vector2Int b = MainRoadCorners[i + 1];
+
+                bool vertical = a.x == b.x;
+                if (vertical && cell.x == a.x
+                    && cell.y >= Mathf.Min(a.y, b.y) && cell.y <= Mathf.Max(a.y, b.y))
+                {
+                    return true;
+                }
+
+                if (!vertical && cell.y == a.y
+                    && cell.x >= Mathf.Min(a.x, b.x) && cell.x <= Mathf.Max(a.x, b.x))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// La longueur du bras qui part du carrefour dans cette direction S'IL EST UNE IMPASSE :
+        /// on le suit, virages compris, et il finit sur une case de degre un sans croiser un
+        /// autre carrefour. Une rue qui finit sur une maison ou sur une bouche est une impasse.
+        /// Rend -1 si le bras rejoint un autre carrefour.
+        ///
+        /// La longueur compte : un bras d'UNE case qui finit sur une maison est un passage
+        /// d'acces, pas une rue, et le Code n'y met aucun panneau.
+        /// </summary>
+        private static int DeadEndArmLength(Vector2Int junction, Vector2Int direction)
+        {
+            Vector2Int previous = junction;
+            Vector2Int current = junction + direction;
+            int length = 1;
+
+            for (int guard = 0; guard < Width * Height; guard++)
+            {
+                Vector2Int next = Vector2Int.zero;
+                int exits = 0;
+
+                foreach (Vector2Int step in Steps)
+                {
+                    Vector2Int candidate = current + step;
+                    if (candidate == previous || !IsRoad(candidate))
+                    {
+                        continue;
+                    }
+
+                    exits++;
+                    next = candidate;
+                }
+
+                if (exits == 0)
+                {
+                    return length;
+                }
+
+                if (exits > 1)
+                {
+                    return -1;
+                }
+
+                previous = current;
+                current = next;
+                length++;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Un bras d'au plus deux cases qui finit sur une maison : un acces, pas une rue. Le
+        /// Code ne signale ni les entrees de garage, ni un cul-de-sac qui ne dessert qu'une
+        /// maison a deux pas du carrefour.
+        /// </summary>
+        private const int DrivewayLength = 2;
+
+        /// <summary>
+        /// LES PANNEAUX DE RUE, DERIVES DU GRAPHE DES ROUTES selon le Code de la route
+        /// francais. Rien n'est ecrit a la main : un panneau ne peut donc etre ni mal place, ni
+        /// a l'envers, ni imaginaire — il est la parce que la route l'exige.
+        ///
+        /// Les regles, et elles sont celles du Code :
+        ///
+        /// 1. A chaque carrefour, l'axe qui TRAVERSE est prioritaire ; un bras en T qui y
+        ///    debouche est secondaire. A une croix, l'axe de la rocade est prioritaire, sinon
+        ///    l'axe est-ouest. Un bras secondaire recoit un CEDEZ LE PASSAGE, ou un STOP s'il
+        ///    debouche sur la route prioritaire.
+        /// 2. Le panneau se pose A DROITE de la chaussee dans le sens de la marche, UNE CASE
+        ///    AVANT la ligne du carrefour. Si l'herbe manque a droite, une case plus loin ;
+        ///    sinon rien, et le builder le dit.
+        /// 3. Un bras qui est une impasse recoit un panneau IMPASSE a son entree, a droite du
+        ///    conducteur qui s'y engage.
+        /// 4. La route prioritaire s'annonce a chacune de ses deux entrees, ROUTE PRIORITAIRE,
+        ///    et se clot a chacune de ses deux sorties, FIN DE ROUTE PRIORITAIRE.
+        ///
+        /// 5. Un bras d'au plus DEUX cases qui finit sur une maison est un PASSAGE D'ACCES :
+        ///    ni cedez, ni impasse. Le Code ne signale pas les entrees de garage.
+        ///
+        /// Deux panneaux peuvent revendiquer la meme case — l'impasse d'un bras et le cedez du
+        /// bras voisin partagent la diagonale. Les panneaux de PRIORITE se posent en premier :
+        /// c'est l'impasse qui recule d'une case, jamais le cedez.
+        /// </summary>
+        public static List<RoadSign> RoadSigns()
+        {
+            List<RoadSign> signs = new List<RoadSign>();
+            HashSet<Vector2Int> taken = new HashSet<Vector2Int>();
+            List<Vector2Int> junctions = new List<Vector2Int>();
+
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    Vector2Int cell = new Vector2Int(x, y);
+                    if (IsRoad(cell) && RoadDegree(cell) >= 3)
+                    {
+                        junctions.Add(cell);
+                    }
+                }
+            }
+
+            // PREMIERE PASSE, les panneaux de priorite : ce sont eux qui comptent pour la
+            // securite, ils prennent leur place en premier. Deux carrefours a deux cases l'un
+            // de l'autre se disputent la meme herbe, et c'est l'impasse qui recule.
+            foreach (Vector2Int junction in junctions)
+            {
+                bool verticalPriority = PriorityIsVertical(junction);
+
+                foreach (Vector2Int arm in Steps)
+                {
+                    if (!IsRoad(junction + arm) || (arm.x == 0) == verticalPriority)
+                    {
+                        continue;
+                    }
+
+                    int deadEnd = DeadEndArmLength(junction, arm);
+                    if (deadEnd > 0 && deadEnd <= DrivewayLength)
+                    {
+                        continue;                       // un acces, pas une rue
+                    }
+
+                    Vector2Int travel = -arm;           // le conducteur arrive PAR ce bras
+                    RoadSignKind kind = OnMainRoad(junction) ? RoadSignKind.Stop : RoadSignKind.Yield;
+                    Place(signs, taken, junction, arm, RightOf(travel), kind, travel);
+                }
+            }
+
+            // SECONDE PASSE, les impasses : a l'entree du bras, a droite de qui s'y engage.
+            foreach (Vector2Int junction in junctions)
+            {
+                foreach (Vector2Int arm in Steps)
+                {
+                    int length = IsRoad(junction + arm) ? DeadEndArmLength(junction, arm) : -1;
+                    if (length <= DrivewayLength)
+                    {
+                        continue;
+                    }
+
+                    Place(signs, taken, junction, arm, RightOf(arm), RoadSignKind.DeadEnd, arm);
+                }
+            }
+
+            // TROISIEME PASSE, la route prioritaire : annoncee a l'entree, close a la sortie.
+            Vector2Int west = MainRoadCorners[0];
+            Vector2Int east = MainRoadCorners[MainRoadCorners.Length - 1];
+            Vector2Int intoWest = Direction(MainRoadCorners[0], MainRoadCorners[1]);
+            Vector2Int intoEast = Direction(east, MainRoadCorners[MainRoadCorners.Length - 2]);
+
+            Place(signs, taken, west, intoWest, RightOf(intoWest), RoadSignKind.Priority, intoWest);
+            Place(signs, taken, west, intoWest, RightOf(-intoWest), RoadSignKind.PriorityEnd, -intoWest);
+            Place(signs, taken, east, intoEast, RightOf(intoEast), RoadSignKind.Priority, intoEast);
+            Place(signs, taken, east, intoEast, RightOf(-intoEast), RoadSignKind.PriorityEnd, -intoEast);
+
+            return signs;
+        }
+
+        private static Vector2Int Direction(Vector2Int from, Vector2Int to)
+        {
+            Vector2Int delta = to - from;
+            return new Vector2Int(System.Math.Sign(delta.x), System.Math.Sign(delta.y));
+        }
+
+        /// <summary>
+        /// A un carrefour, l'axe prioritaire est-il nord-sud ? En T, c'est l'axe qui a ses
+        /// deux bras. En croix, celui de la rocade s'il y passe, sinon l'est-ouest.
+        /// </summary>
+        private static bool PriorityIsVertical(Vector2Int junction)
+        {
+            bool north = IsRoad(junction + Vector2Int.up);
+            bool south = IsRoad(junction + Vector2Int.down);
+            bool east = IsRoad(junction + Vector2Int.right);
+            bool west = IsRoad(junction + Vector2Int.left);
+
+            bool verticalThrough = north && south;
+            bool horizontalThrough = east && west;
+
+            if (verticalThrough != horizontalThrough)
+            {
+                return verticalThrough;
+            }
+
+            if (OnMainRoad(junction))
+            {
+                return OnMainRoad(junction + Vector2Int.up) || OnMainRoad(junction + Vector2Int.down);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Pose un panneau au bord du bras : une case dans le bras depuis le carrefour, puis
+        /// un pas de cote. Si la case n'est pas de l'herbe libre, une case plus loin dans le
+        /// bras ; sinon on renonce en le disant, jamais en silence.
+        /// </summary>
+        private static void Place(List<RoadSign> signs, HashSet<Vector2Int> taken,
+            Vector2Int junction, Vector2Int arm, Vector2Int side, RoadSignKind kind,
+            Vector2Int facing)
+        {
+            for (int distance = 1; distance <= 2; distance++)
+            {
+                Vector2Int onRoad = junction + arm * distance;
+                if (!IsRoad(onRoad))
+                {
+                    break;
+                }
+
+                Vector2Int cell = onRoad + side;
+                if (At(cell.x, cell.y) != Grass || taken.Contains(cell))
+                {
+                    continue;
+                }
+
+                taken.Add(cell);
+                signs.Add(new RoadSign(cell, kind, facing));
+                return;
+            }
+
+            Debug.LogWarning($"[Sous la Ville] Pas d'herbe libre pour un panneau {kind} au bord " +
+                             $"du bras {arm} du carrefour {junction} : il n'est pas posé.");
+        }
 
         /// <summary>Toutes les cases praticables que l'on peut rejoindre a pied depuis une case.</summary>
         private static HashSet<Vector2Int> FloodFrom(Vector2Int start)

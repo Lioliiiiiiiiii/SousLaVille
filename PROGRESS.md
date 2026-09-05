@@ -1766,6 +1766,70 @@ haut. Un poste déplacé d'une case aurait changé de leçon sans que rien ne le
 est désormais écrit **case par case**, et le builder **refuse** un poste que la table ne connaît
 pas.
 
+## Après la phase 12 : les routes et les panneaux selon le Code de la route
+
+Demandé le 5 septembre 2026, avant la phase 13 : « aucun panneau mal positionné, à l'envers ou
+imaginaire ». Trois fautes dans la phase 12c, et une méthode qui ne pouvait que les produire :
+
+- les panneaux étaient posés **sur** la chaussée, en remplaçant une case de route ;
+- leur type sortait de la parité `(x + y) % 4`, pas de la route ;
+- le catalogue portait un **sens interdit** sans aucune rue à sens unique, et un triangle de
+  danger **sans panonceau** — deux panneaux imaginaires ici.
+
+### Les panneaux sont désormais dérivés du graphe des routes
+
+`VillageLayout.RoadSigns()` les calcule ; plus aucun marqueur « I » n'est écrit dans le plan du
+village, et `ValidateDecor` **refuse** qu'il y en ait un. Un panneau ne peut donc être ni mal
+placé, ni à l'envers, ni imaginaire : il est là parce que la route l'exige. Les règles sont
+celles du Code :
+
+1. **À chaque carrefour, l'axe qui traverse est prioritaire.** Un bras en T qui y débouche est
+   secondaire et reçoit un **cédez le passage** (AB3a, pointe en bas), ou un **stop** (AB4) s'il
+   débouche sur la route prioritaire. À une croix, l'axe de la rocade est prioritaire.
+2. **À droite du conducteur, une case avant la ligne du carrefour.** On roule à droite ; le
+   panneau se pose sur l'herbe, à droite de qui arrive. Si l'herbe manque, une case plus loin ;
+   sinon rien, et le builder **le dit**.
+3. **Une impasse s'annonce à son entrée** (C13a), à droite de qui s'y engage.
+4. **La route prioritaire** — la rocade — s'annonce à chacune de ses entrées (AB2, losange
+   jaune) et se clôt à chacune de ses sorties (AB6, le même barré).
+5. **Un bras d'au plus deux cases vers une maison est un accès**, pas une rue : aucun panneau.
+   Le Code ne signale pas les entrées de garage.
+
+Les panneaux de **priorité** se posent en premier, les impasses ensuite : à deux carrefours
+distants de deux cases, c'est l'impasse qui recule, jamais le cédez.
+
+Résultat : **32 panneaux**, 11 cédez, 6 stops, 11 impasses, 2 AB2, 2 AB6. Vérifié par calcul,
+panneau par panneau : chacun est sur de l'herbe et a la chaussée **à sa gauche** — c'est-à-dire
+à la droite du conducteur qu'il vise. Zéro faute, zéro avertissement de placement.
+
+Les panonceaux de galerie ne sont plus des disques bleus — un B21 « direction obligatoire »
+dirait au conducteur ce qu'il **doit** faire — mais des **rectangles de jalonnement** : ils
+disent où est la station, rien de plus.
+
+### Ce que la logique des panneaux a trouvé dans le tracé des routes
+
+C'est en signalant une impasse là où il n'aurait pas dû y en avoir qu'elle a révélé un défaut
+de la phase 12b que rien n'avait vu : **la rue x = 8 traversait l'enceinte de la station de part
+en part**, et les murs la coupaient en deux tronçons morts. Puis, en cherchant l'herbe au bord
+des routes, elle a trouvé que les rues de l'atelier et de l'usine **finissaient dans leur
+façade** — les portes sont au sud des bâtiments, la route arrivait par le nord — et que trois
+rues finissaient **sur** la maison qu'elles desservaient.
+
+Retracé : la rue x = 11 contourne la station ; une **rue des portes** en y = 24 passe sous les
+deux bâtiments et rejoint la rue du nord par leurs deux côtés ; les rues s'arrêtent une case
+avant les maisons ; le bout de chaussée (45, 39), qui touchait la rocade par deux côtés, a
+disparu — c'était un coin coupé, pas une rue.
+
+Et deux gardes de plus, parce que tout cela était passé en silence :
+
+- **`ValidateRoads`** : le réseau routier doit être **d'un seul tenant**. Sabotage : un arbre sur
+  la rocade en (30, 40) → « 106 cases de route coupées du réseau », la chaîne s'arrête.
+- **Un arbre ne pousse que dans l'herbe**, dans l'atelier de conception : le garde a trouvé
+  quatre arbres posés par-dessus autre chose — la façade de l'atelier, le mur de la station, la
+  haie de bordure, une haie du labyrinthe. 126 arbres au lieu de 131.
+
+`git diff ProjectSettings/` : **vide**.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
