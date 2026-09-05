@@ -80,6 +80,24 @@ aucune et apparaît **noir sans le moindre message**.
 l'image où il s'est ouvert, l'autre celle où il s'est fermé. Sans les deux, le même Espace est lu
 deux fois et l'écran se rouvre à peine refermé. L'ordre des `Update` n'est garanti par rien.
 
+**Une touche TENUE et une touche TAPÉE ne se valent pas, et seule la seconde fait un front.**
+Un pilote qui appelle `InputSystem.Update()` à la main consomme le front dans une passe qui
+n'est pas celle du jeu : les flèches marchent quand même — elles se lisent en continu — mais
+`WasPressedThisFrame` ne voit jamais rien, donc **Espace ne fait rien** pendant que le
+personnage marche parfaitement. Mettre l'évènement **en file** et laisser la boucle normale le
+traiter. Tombé en phase 13.
+
+**Tenir une flèche dépasse d'une case environ un pas sur dix**, même relâchée à une demi-case du
+but. Assez rare pour qu'un trajet court réussisse, assez fréquent pour qu'un trajet long échoue.
+Un pas de pilote se fait par un **appui bref** : le contrôleur engage le pas et le mène au bout
+tout seul, la touche relâchée n'en engage pas de second. Et la marche se fait **en boucle
+fermée**, en relisant la case où l'on est, jamais en comptant les pas.
+
+**Une pièce d'intérieur fait dix lignes quand la caméra en montre 11,25.** La pièce est donc
+centrée, et sa rangée du haut tombe **derrière la rangée de gouttes du HUD**. La première famille
+de la planche de l'usine y était à moitié cachée ; tout le tableau est descendu d'une rangée.
+Vu à l'écran, pas déduit.
+
 **`Image.SetNativeSize` n'a rien à faire dans ce HUD.** Il divise la largeur du sprite par ses
 pixels par unité (16 ici) puis la multiplie par les 100 du Canvas : une phrase de 109 pixels
 sortait à 681, deux fois l'écran. Poser `sizeDelta` depuis `sprite.rect`.
@@ -104,7 +122,9 @@ poche morte n'est plus dessinable par inadvertance.
 Elle a été fausse deux fois, chaque fois pour avoir été reportée d'une phase à l'autre sans être
 revérifiée. Toute phase qui touche à la carte la recalcule, sur le plan **réellement écrit** et
 non sur celui qu'on croit avoir écrit — six cases bloquantes d'écart se sont glissées ainsi entre
-deux mesures de la phase 12b.
+deux mesures de la phase 12b. Elle a été fausse une **troisième** fois : la phase 12c a écrit
+« la table est inchangée jusqu'à Lost = 5 » après avoir planté 126 arbres, sans la reprendre.
+Déclarer une table inchangée est encore la reporter sans la vérifier.
 
 **Vérifier la solvabilité PAR CALCUL avant d'écrire un plan.** Les crêtes de la phase 4, le
 labyrinthe de la phase 11, l'alcôve de la fontaine : chacun a été calculé avant d'être posé.
@@ -136,6 +156,24 @@ d'un seul tenant — `ValidateRoads` depuis le 5 septembre.
 main étaient sur la chaussée, typés par parité, et imaginaires pour deux d'entre eux. Dérivés
 des routes par `RoadSigns`, ils ne peuvent plus l'être ; et c'est cette dérivation qui a trouvé
 les défauts du tracé.
+
+**En espace de texture, y MONTE.** Le poteau d'un panneau occupe le bas, la plaque le haut : une
+base large en bas fait donc une **pointe en haut**. `BuildSign` dessinait le cédez le passage
+AB3a pointe en haut sous un commentaire qui promettait « la pointe EN BAS » — les onze cédez du
+village étaient des triangles de danger, et c'est le commentaire qu'on relisait. Un dessin de
+panneau se **regarde** avant d'être cru : une planche agrandie huit fois a montré six autres
+dessins ratés que le code ne pouvait pas signaler.
+
+**Un `default:` qui dessine quelque chose de valide est pire qu'une erreur.** Celui de
+`BuildSign` dessinait un panonceau de jalonnement : porter `SignCount` sans écrire les cas aurait
+sorti vingt flèches bleues identiques à la place de vingt panneaux, sans un mot. Même famille que
+le `default: return cell` de `GroundAt`. Un `default:` de table de dessin doit **refuser en
+nommant le rang**.
+
+**`FindAll` balaye du BAS vers le haut, et une planche se lit de haut en bas.** S'y fier pour
+apparier vingt-quatre panneaux à leurs noms aurait donné la rangée OBLIGATION à la famille
+INTERSECTION. Écrire les cases à la main, dans l'ordre de lecture, et vérifier l'appariement
+**dans les deux sens** — une case sans table, une table sans case.
 
 **Une donnée dérivée sauvegardée est une donnée qui peut mentir.** Les maisons desservies, l'eau
 du village, l'état de la fontaine : tout se recalcule. On sauvegarde des **gestes**, pas un état.

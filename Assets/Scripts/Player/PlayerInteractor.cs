@@ -70,6 +70,7 @@ namespace SousLaVille.Player
         private VillageMapScreen map;
         private SpeechBox speech;
         private ItemLabel itemLabel;
+        private SignCatalogue signCatalogue;
         private bool isTravelling;
         private bool isChoosing;
         private bool isTalking;
@@ -582,7 +583,37 @@ namespace SousLaVille.Player
                 return;
             }
 
+            // UN PANNEAU DE L'USINE SOUS LES PIEDS, phase 13. Aucun InteractionKind ici, et
+            // c'est voulu : un panneau NE SE PREND PAS, il se lit. Un kind non nul ferait
+            // agir Espace, et Espace ne doit rien faire sur un panneau expose.
+            SignCatalogue planche = ResolveSignCatalogue();
+            if (planche != null && planche.isActiveAndEnabled)
+            {
+                Sprite signName = planche.NameOn(controller.Cell);
+                if (signName != null)
+                {
+                    box.Show(signName, null);
+                    return;
+                }
+            }
+
             box.Hide();
+        }
+
+        /// <summary>
+        /// La planche de l'usine a panneaux. Elle vit dans Interiors, que le SceneRouter
+        /// eteint : on l'inclut donc dans la recherche, et on RETENTE tant qu'on ne l'a pas.
+        /// La garde isActiveAndEnabled fait le reste — hors de l'usine, elle est eteinte et
+        /// ne repond pas, exactement comme l'usine a tuyaux.
+        /// </summary>
+        private SignCatalogue ResolveSignCatalogue()
+        {
+            if (signCatalogue == null)
+            {
+                signCatalogue = FindAnyObjectByType<SignCatalogue>(FindObjectsInactive.Include);
+            }
+
+            return signCatalogue;
         }
 
         /// <summary>Le cartel vit dans Persistent, mais eteint : il faut l'inclure.</summary>

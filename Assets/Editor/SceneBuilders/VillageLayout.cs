@@ -20,11 +20,23 @@ namespace SousLaVille.EditorTools
     ///   O  fontaine du parc (bloquant)   Y  arbre (bloquant)
     ///   I  panneau de signalisation (NE bloque PAS : c'est un repere)
     ///   V  poste de guide (bloquant : on ne traverse pas quelqu'un)
+    ///   N  facade de l'usine a panneaux (bloquant)                  J  sa porte
     ///
-    /// M, X, T, A, F, D, G et E sont des marqueurs : le builder peint le sol correspondant dessous
+    /// M, X, T, A, F, D, G, E, N et J sont des marqueurs : le builder peint le sol correspondant dessous
     /// et pose un GameObject par-dessus. Une maison et une facade sont en plus bloquantes :
     /// on passe devant, pas dedans. Une porte ne bloque pas : on marche dessus et Espace
     /// fait entrer, exactement comme sur une bouche d'egout.
+    ///
+    /// PHASE 13. L'USINE A PANNEAUX prend place au NORD DU PARC, facade en (30..33, 35..36)
+    /// et porte en (31, 34), sur la rue y = 33 qui court de la bouche (9, 33) a x = 35. Le
+    /// modele est celui des deux autres batiments : la porte ouvre AU SUD sur une rue.
+    ///
+    /// L'emplacement a ete choisi PAR CALCUL parmi les 128 qui respectent ce modele sans
+    /// toucher d'une case au trace des routes. Il ne change RIEN aux 32 panneaux derives,
+    /// n'ajoute qu'une seule case de chaussee — la porte — et laisse la table d'etalement
+    /// des flaques intacte : sa case de facade la plus proche d'une bouche est a CINQ pas,
+    /// un de plus que MaxFloodRadius. Le bras nord du carrefour (31, 33) ne fait qu'une
+    /// case : le Code n'y met aucun panneau, c'est un acces et non une rue.
     ///
     /// PHASE 9A. La cour pavee de l'atelier, seize cases sur six a ciel ouvert, a disparu :
     /// l'atelier est devenu un batiment dans lequel on entre, et ses huit plaques sont
@@ -82,6 +94,18 @@ namespace SousLaVille.EditorTools
         public const char Sign = 'I';
 
         /// <summary>
+        /// L'usine a panneaux, phase 13. Troisieme batiment dans lequel on entre, sur le
+        /// patron exact de l'atelier des plaques et de l'usine a tuyaux : une facade
+        /// bloquante de quatre cases sur deux, et une porte qui ouvre AU SUD sur une rue.
+        ///
+        /// N comme panneaux, J pour sa porte. Ni V ni W : V est deja le poste de guide, et
+        /// W s'en distingue mal a l'oeil dans un plan monospace de soixante-quatre colonnes.
+        /// </summary>
+        public const char SignFacade = 'N';
+
+        public const char SignDoor = 'J';
+
+        /// <summary>
         /// Le poste d'un personnage-guide, phase 12e. BLOQUANT, et c'est voulu : on ne traverse
         /// pas quelqu'un, et surtout, debout SUR lui on ne pourrait plus lui parler, puisque
         /// l'interacteur cherche un personnage sur la case REGARDEE. Un guide qu'on efface en
@@ -90,10 +114,10 @@ namespace SousLaVille.EditorTools
         public const char GuidePost = 'V';
 
         /// <summary>Les facades des batiments, dans l'ordre des pieces d'InteriorsLayout.</summary>
-        public static readonly char[] Facades = { Facade, PipeFacade };
+        public static readonly char[] Facades = { Facade, PipeFacade, SignFacade };
 
         /// <summary>Les portes des batiments, dans le meme ordre.</summary>
-        public static readonly char[] Doors = { Door, PipeDoor };
+        public static readonly char[] Doors = { Door, PipeDoor, SignDoor };
 
         /// <summary>Ligne 0 en haut, comme on lit la carte. La conversion en case se fait dans At.</summary>
         private static readonly string[] Rows =
@@ -106,9 +130,9 @@ namespace SousLaVille.EditorTools
             "H.YYY.............#....#...........YYY........#................H",
             "H.YYY...........Y.#....#......Y....YYY.......A#.....Y..........H",
             "H.................#....#......................#................H",
-            "H.................#....#................Y.....#...............YH",
-            "H.........#########....#...A..................####M............H",
-            "H..Y......A.......#....#...#..................#................H",
+            "H.................#....#......NNNN......Y.....#...............YH",
+            "H.........#########....#...A..NNNN............####M............H",
+            "H..Y......A.......#....#...#...J..............#................H",
             "H........M#################M########.......Y..#................H",
             "H..........#......#..#.....#.V.....#..Y.......#................H",
             "H..........#......#..#.....#.......#..........#.............YY.H",
@@ -171,10 +195,12 @@ namespace SousLaVille.EditorTools
                     return Road;
                 case Door:
                 case PipeDoor:
+                case SignDoor:
                     // Un seuil de chemin sous la porte : on voit ou l'on entre.
                     return Road;
                 case Facade:
                 case PipeFacade:
+                case SignFacade:
                     // De l'herbe sous la facade : la tuile bloquante se pose par-dessus.
                     return Grass;
                 case Fountain:
@@ -861,8 +887,8 @@ namespace SousLaVille.EditorTools
 
             char marker = At(cell.x, cell.y);
             return marker != Hedge && marker != House && marker != PlantWall
-                && marker != Facade && marker != PipeFacade && marker != Fountain
-                && marker != Tree && marker != GuidePost;
+                && marker != Facade && marker != PipeFacade && marker != SignFacade
+                && marker != Fountain && marker != Tree && marker != GuidePost;
         }
 
         /// <summary>Vrai si la carte fait bien 45 lignes de 64 caracteres.</summary>

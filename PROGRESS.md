@@ -25,7 +25,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 12c | Le décor | Terminée |
 | 12d | La station qui s'agrandit | Terminée |
 | 12e | Les huit guides | Terminée |
-| 13 | L'usine à panneaux | À faire |
+| 13 | L'usine à panneaux | Terminée |
 | 14 | Le Stock, le memory | À faire |
 | 15 | La Fabrique | À faire |
 | 16 | Le Plan | À faire |
@@ -1377,18 +1377,25 @@ Elle dépend du **nombre de bouches** et du **nombre de cases bloquantes**, et e
 été fausse deux fois pour avoir été reportée sans être revérifiée. Recalculée sur les plans
 réellement écrits — 7 bouches, **539 cases bloquantes** sur 2880 :
 
-| `Lost` | Rayon | Cases mouillées |
-|---|---|---|
-| 0 | — | 0 |
-| 1 | 0 | 7 |
-| 2 | 1 | 35 |
-| 3 | 2 | 89 |
-| 4 | 3 | 172 |
-| 5 | 4 | **280** |
-| 6 | 5 | 412 |
+| `Lost` | Rayon | Cases mouillées, 12b | **Corrigé en phase 13** |
+|---|---|---|---|
+| 0 | — | 0 | 0 |
+| 1 | 0 | 7 | 7 |
+| 2 | 1 | 35 | **34** |
+| 3 | 2 | 89 | **88** |
+| 4 | 3 | 172 | **170** |
+| 5 | 4 | 280 | **278** |
+| 6 | 5 | 412 | **407** |
+
+**La colonne de gauche est périmée depuis la phase 12c** et personne ne l'avait vu : ses
+126 arbres ont porté les cases bloquantes de 539 à **647**, et 12c a écrit « la table est
+inchangée jusqu'à Lost = 5 » sans la recalculer. Elle a donc été fausse une **troisième** fois,
+pour la troisième fois faute d'être revérifiée après un changement de plan. Les chiffres de
+droite sont mesurés en phase 13 **par le prédicat du jeu lui-même**, `VillageLayout.IsWalkable`,
+celui-là même dont `FloodView.Paint` se sert.
 
 `Lost` plafonne toujours à **5** : l'arrivant plafonne à 21, treize destinations plus huit de
-pluie d'automne, la station en traite seize. À `Lost` = 5 la flaque couvre 280 cases, **9,7 %**
+pluie d'automne, la station en traite seize. À `Lost` = 5 la flaque couvre 278 cases, **9,7 %**
 du village — la phase 11 en couvrait 113 sur 1200, soit 9,4 %. La proportion est tenue.
 
 ### Note d'atelier : un plan dessiné à la main se fragmente sans le dire
@@ -1830,6 +1837,220 @@ Et deux gardes de plus, parce que tout cela était passé en silence :
 
 `git diff ProjectSettings/` : **vide**.
 
+## Phase 13, ce qui est fait
+
+L'usine à panneaux : le bâtiment et le catalogue. Troisième bâtiment dans lequel on entre, sur
+le patron exact de l'atelier des plaques et de l'usine à tuyaux. **Aucun mini-jeu** — Le Stock
+vient en 14, La Fabrique en 15, Le Plan en 16.
+
+Elle est une **pure récréation, sans lien avec le réseau** : rien de ce qui s'y passe n'en sort,
+donc aucun mini-jeu ne pourra jamais bloquer la progression, et le « aucun échec puni » de
+CLAUDE.md reste entier.
+
+### Vingt-quatre panneaux, quatre familles de six
+
+Le catalogue de la phase 12c n'est pas doublé, il est **repris et étendu** : les quatre panneaux
+déjà dessinés gardent leur rang, vingt s'ajoutent aux rangs 9 à 28. `SignCount` passe de 9 à 29.
+
+| Rangée | Panneaux |
+|---|---|
+| Intersection et priorité | AB1, AB25, AB3a, AB4, AB2, AB6 |
+| Danger | A1b, A1c, A4, A13b, A14, A21 |
+| Interdiction | B0, B1, B2b, B9a, B6a1, B6d |
+| Obligation | B21b, B21c1, B21e, B21a1, B22a, B22b |
+
+**Chaque rang existe dans le Code de la route français et porte son numéro.** Les intitulés ont
+été recopiés d'une source, pas récités : trois numéros pris de mémoire étaient faux et sont
+corrigés — « endroit fréquenté par les enfants » est **A13a** et non A13b, « interdit aux
+piétons » est **B9a** (B9b, ce sont les cycles), et « obligation d'aller tout droit » est
+**B21b** et non B21-1.
+
+Écartés à dessein, parce qu'illisibles dans une plaque de douze pixels : A3 chaussée rétrécie,
+A2a cassis, B3 dépassement interdit (deux voitures), B26 chaînes à neige, B27a autobus. Écartés
+aussi comme trop abstraits : AB5 priorité ponctuelle, B15 sens inverse, B2c demi-tour.
+
+**L'impasse C13a et les quatre panonceaux de jalonnement des galeries restent au catalogue** —
+le village et le sous-sol les posent — mais ne sont pas sur la planche : ils n'appartiennent à
+aucune des quatre familles, et une cinquième rangée dépareillée de cinq casserait la leçon.
+
+### Le cédez le passage était à l'envers depuis la phase 12c
+
+`BuildSign` dessinait AB3a **pointe en haut**, c'est-à-dire un triangle de danger, sous le
+commentaire « la pointe EN BAS ». En espace de texture y monte — le poteau occupe le bas, la
+plaque le haut — donc une base large en bas fait une pointe en haut. Le commentaire de
+`BuildAttentionPicto`, écrit en 12e, disait déjà exactement cela ; celui de `BuildSign` disait
+le contraire, et c'est lui qu'on relisait.
+
+Les **onze cédez le passage** du village étaient donc des triangles de danger. Corrigé, et vu à
+l'écran avant de l'affirmer.
+
+### Un `default:` qui dessinait autre chose sans le dire
+
+`BuildSign` finissait par un `default:` qui dessinait un panonceau de jalonnement. Porter
+`SignCount` de 9 à 29 sans écrire les cas aurait sorti **vingt flèches bleues identiques à la
+place des vingt panneaux**, sans un mot — le même défaut que le `default: return cell` de
+`GroundAt` relevé par l'audit. Les rangs 5 à 8 sont désormais des `case` explicites, et le
+`default:` refuse en nommant le rang.
+
+### Le bâtiment, choisi par calcul parmi 128
+
+Façade en (30..33, 35..36), porte en (31, 34), au **nord du parc**, sur la rue y = 33 qui court
+de la bouche (9, 33) à x = 35. Deux marqueurs neufs, `N` façade et `J` porte, avec leurs cinq
+éditions cohérentes — constante, `GroundAt`, `IsWalkable`, `PaintVillage`, `BuildVillageMap` —
+plus les deux tables `Facades` et `Doors`, dans l'ordre des pièces.
+
+`RoadSigns`, `ValidateRoads`, `ValidateVillage` et `ValidateDecor` ont été **portés en script et
+rejoués sur le plan réellement écrit** avant d'écrire une ligne. Le port reproduit au chiffre
+près les 32 panneaux consignés le 5 septembre — 11 cédez, 6 stops, 11 impasses, 2 AB2, 2 AB6 —
+et c'est seulement après cette preuve que les 128 emplacements possibles ont été mesurés.
+
+| | avant | après |
+|---|---|---|
+| Panneaux dérivés | 32 | **32**, aucun ajouté ni retiré |
+| Carrefours | 20 | 21 — (31, 33) devient un T |
+| Cases praticables | 2241 | **2233**, les huit cases de façade |
+| Cases de chaussée | 289 | 290 — la seule ajoutée est la porte |
+| Étalement à `Lost = 5` | 278 | **278**, inchangé |
+
+**La flaque ne perd rien** : la case de façade la plus proche d'une bouche est à **cinq pas**,
+un de plus que `MaxFloodRadius`. Le débordement est le seul retour permanent du jeu ; on ne le
+rogne pas pour un bâtiment.
+
+**Le Code décide, pas moi** : le bras nord du nouveau carrefour ne fait qu'une case, c'est donc
+un accès et non une rue, et aucun panneau ne s'y pose. L'usine à panneaux est le seul bâtiment
+du village sans panneau devant sa porte.
+
+### La pièce : une galerie, une famille par rangée
+
+Créneau (0, 0) — le voisin du dessus est vide et le dessous est hors carte. En (0, 10) on aurait
+vu la rangée de mur de l'atelier flotter en l'air, un créneau faisant dix lignes quand la caméra
+en montre 11,25.
+
+```
+####################   y=9
+#..................#   y=8   laissée vide : la rangée de gouttes du HUD passe ici
+#...S.S.S.S.S.S....#   y=7   INTERSECTION ET PRIORITÉ
+#..................#   y=6
+#...S.S.S.S.S.S....#   y=5   DANGER
+#..V.....V.....V...#   y=4   Le Stock · La Fabrique · Le Plan
+#...S.S.S.S.S.S....#   y=3   INTERDICTION
+#..................#   y=2
+#...S.S.S.S.S.S....#   y=1   OBLIGATION
+#########D##########   y=0
+```
+
+**La forme dit la famille avant que le dessin dise le détail** : un triangle bordé de rouge
+prévient, un disque bordé de rouge interdit, un disque bleu plein oblige. C'est cette grammaire
+qui s'apprend d'abord, et c'est pour elle qu'une rangée vaut une famille.
+
+La géométrie n'est pas libre. Un panneau fait 16x24 au pivot du joueur : il occupe de `y - 0,5`
+à `y + 1,0`. Deux rangées écartées de **deux** laissent une demi-case entre la plaque du bas et
+le poteau du haut ; à une case elles se chevaucheraient. Et les personnages se tiennent en
+**colonnes impaires**, où aucun panneau ne se dresse — sinon un panneau leur passerait devant le
+visage.
+
+**La rangée du haut est laissée vide, et ce n'est pas de l'esthétique.** Premier jet, les quatre
+rangées étaient en y = 8, 6, 4, 2 : vu à l'écran, la première famille passait **derrière la
+rangée de gouttes du HUD**. Tout le tableau est descendu d'une rangée.
+
+### Les trois personnages, et le nom au HUD
+
+| Case | Qui | Ce qu'il dit |
+|---|---|---|
+| (3, 4) | Le Stock, phase 14 | « MES PANNEAUX SONT EN DÉSORDRE » · « RETROUVE-LES DEUX PAR DEUX » |
+| (9, 4) | La Fabrique, phase 15 | « JE DESSINE LES PANNEAUX » · « SAURAS-TU LES NOMMER ? » |
+| (15, 4) | Le Plan, phase 16 | « IL MANQUE DES PANNEAUX ICI » · « POSE-LES SUR MON PLAN » |
+
+Ce sont des `Villager`, pas des `GuidePost` : ils ne portent aucune condition, ils parlent
+toujours. L'arrêt de l'horloge pendant qu'on parle, l'afficheur d'attention et `SetLines` sont
+ceux de la phase 12e, ni redoublés ni modifiés.
+
+**On marche sur un panneau, son nom s'affiche au HUD.** `ItemLabel` est celui des plaques et des
+tuyaux depuis la phase 9 ; un composant `SignCatalogue` sur le patron de `PipeFactory` lui dit
+quel nom montrer. Aucun `InteractionKind` neuf, et c'est voulu : un panneau **ne se prend pas**,
+il se lit — un kind non nul ferait agir Espace devant un panneau exposé.
+
+C'est ce qui sépare une salle décorée d'un catalogue, et c'est là-dessus que La Fabrique
+s'appuiera en phase 15 pour demander le nom parmi trois noms.
+
+### `ValidateRooms` : compter ne suffit pas
+
+`InteriorsLayout.IsWellFormed` exigeait **exactement un** personnage par pièce, et le commentaire
+d'`InteriorsSceneBuilder` qui promettait le contraire était faux : l'usine en veut trois.
+
+Chaque pièce **déclare son nombre de personnages**, à côté du plan qu'il décrit, et le validateur
+s'y compare. On reste sur un « exactement N » : une faute de frappe est toujours refusée.
+
+Mais compter ne prouve rien sur **qui** ils sont. `CreateVillagers` n'apparie plus par le rang de
+la pièce — ce qui ne pouvait marcher qu'à un personnage par pièce — mais **case par case**, et
+`ValidateRooms` vérifie l'appariement **dans les deux sens** : une case du plan qui n'est dans
+aucune table, une table qui ne tombe sur aucune case. Même chose pour les vingt-quatre panneaux.
+C'est la leçon des huit guides de la phase 12e : un appariement par l'ordre d'un balayage ment
+en silence.
+
+Et l'ordre compte ici pour une raison précise : `FindAll` balaye **du bas vers le haut**, alors
+que la planche se lit de haut en bas. S'y fier aurait apparié la rangée OBLIGATION avec la
+famille INTERSECTION, et vingt-quatre panneaux seraient sortis sous le mauvais nom.
+
+## Phase 13, vérifications faites
+
+- Compilation relue par le pont MCP : **zéro erreur, zéro warning**.
+- **Les six validateurs passent** sur le monde neuf, et journalisent ce qu'ils ont prouvé :
+  « 2233 cases praticables, toutes reliées ; 126 arbres, 32 panneaux dérivés des routes »,
+  « 2844 cases vivantes sur 2880, 14 destinations atteignables sur 14 », « 4 alcôves de guide »,
+  « bilan de l'eau tenable ». Les 2233 et les 32 avaient été **calculés d'avance** : ils tombent
+  au chiffre près.
+- **Quatre sabotages, quatre refus nommés**, chacun par le fichier et une vraie recompilation —
+  jamais par réflexion, un champ `static readonly` ne se sabote pas ainsi :
+  - un `V` effacé → « La pièce « Usine a panneaux » porte 2 personnage(s), il en faut exactement
+    3 », et `BuildAllScenes` **s'arrête** : « Construction interrompue : une scène a refusé » ;
+  - un `V` **déplacé d'une case** → le compte reste juste, `IsWellFormed` passe, et c'est le
+    second filet qui attrape : « Le personnage (10, 5) n'est dans aucune table », puis « La table
+    annonce un personnage en (9, 5), mais le plan n'y met aucun « V » ». **Les deux filets sont
+    indépendants, et le second attrape ce que le premier laisse passer** ;
+  - un rang exposé deux fois → « Le rang de panneau 9 est exposé deux fois sur la planche » ;
+  - `SignCount` porté à 30 sans dessin → « Le rang de panneau 29 n'est dessiné nulle part.
+    SignCount vaut 30 : ajoute son cas dans BuildSign, ou baisse SignCount. »
+- **Les vingt-quatre panneaux ont été REGARDÉS, pas seulement écrits.** Une planche agrandie huit
+  fois a montré six dessins ratés que le code ne pouvait pas signaler : AB1 et AB25 étaient
+  indiscernables, A1b et A1c aussi, et A4, A21 et B2b sortaient en pâtés noirs. Redessinés, et
+  revus. Le blanc d'un triangle est étroit et penche : les pictogrammes s'y posent désormais
+  sous une garde qui refuse d'écrire ailleurs que sur le fond blanc, au lieu de trouer la
+  bordure rouge.
+- **Test en play, entrées clavier vraiment injectées**, `Application.isFocused` vérifié à chaque
+  appui : **zéro image injectée sans focus**. Entrée par la porte (31, 34) → couche Interior,
+  case (9, 0) ; les **trois personnages** parlent, deux phrases chacun, boîte refermée ; deux
+  panneaux foulés donnent le bon cartel — (4, 3) → rang 17, B0 « CIRCULATION INTERDITE », et
+  (14, 3) → rang 22, B6d, le premier et le sixième de la rangée INTERDICTION ; puis sortie par
+  la porte intérieure (9, 0) → retour en surface en (31, 34).
+- `Application.runInBackground = true` posé **à chaud à chaque session de play**, jamais dans les
+  ProjectSettings. Le pilote de test passe par `DontDestroyOnLoad`, et il a été **supprimé** une
+  fois la vérification faite.
+- **Captures** dans `Captures/`, dossier ignoré par git : la façade dans le village, la planche
+  entière avec ses trois personnages, le nom d'un panneau au HUD, et la planche agrandie.
+- **La table d'étalement des flaques, recalculée** — et fausse depuis la phase 12c, qui l'avait
+  déclarée inchangée sans la reprendre. Mesurée en phase 13 par `VillageLayout.IsWalkable`, le
+  prédicat dont `FloodView.Paint` se sert : 647 cases bloquantes, et 278 cases mouillées à
+  `Lost = 5`. Le bâtiment neuf, lui, n'y change rien.
+- `git diff ProjectSettings/` : **vide**.
+
+### Note d'atelier : une touche TENUE et une touche TAPÉE ne se valent pas
+
+Le pilote injectait les touches en appelant `InputSystem.Update()` à la main. Les flèches
+marchaient — elles se lisent en continu — mais **Espace ne faisait rien** : `WasPressedThisFrame`
+se lit sur un front, et le front avait déjà été consommé par une passe qui n'était pas celle du
+jeu. Le personnage marchait donc parfaitement et n'entrait jamais dans le bâtiment. On se
+contente désormais de **mettre l'évènement en file**, et la boucle normale le traite.
+
+Puis, une fois Espace réparé, la marche : **tenir la flèche et la relâcher à une demi-case du
+but** — la technique de la phase 12b — dépassait d'une case environ un pas sur dix. Assez rare
+pour qu'un trajet court réussisse, assez fréquent pour qu'un trajet long échoue, et le pilote
+finissait contre un personnage bloquant ou sur le mauvais panneau. Un résultat juste aurait eu
+l'air faux. Un pas se fait donc par un **appui bref** : le `PlayerController` engage un pas quand
+il voit la touche, et ce pas va au bout tout seul ; la touche relâchée, aucun second pas ne
+s'engage. Et la marche est **en boucle fermée** — on relit la case où l'on est à chaque tour au
+lieu de compter les pas.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -1841,18 +2062,22 @@ Et deux gardes de plus, parce que tout cela était passé en silence :
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 12b
+## Prochaine étape, phase 14 : Le Stock
 
-La carte 64x45 et le grand labyrinthe, désormais couverts par les filets de 12a. Ce que les
-phases précédentes laissent en place :
+Le premier des trois mini-jeux de l'usine à panneaux, un memory. Ce que la phase 13 laisse en
+place :
 
-- **Tout le modèle de CLAUDE.md est désormais utilisé** : `FountainInlet` était le dernier type
-  sans usage, et `Buildings/Fountain` le dernier fichier de l'arborescence jamais écrit.
-- **Le patron du nœud permanent** sert cinq fois : station, maisons, bassin, fontaine.
-- **Le patron du bâtiment** : façade et porte au plan du village, pièce dans un créneau libre,
-  personnage et phrases. **Quatre créneaux de pièce restent libres** dans la scène Interiors,
-  et `Villager` accepte déjà plusieurs personnages dans une pièce, ce dont l'usine à panneaux
-  aura besoin en phase 12.
+- **Le catalogue est prêt** : 24 panneaux du Code, quatre familles de six, chacun avec son
+  numéro et son nom dessiné. `PlaceholderArtGenerator.SignBoard` et `SignBoardNames` sont les
+  deux seules listes à consulter.
+- **Le personnage est posé** : Le Stock se tient en (3, 4) de la pièce de l'usine, il explique
+  son problème et invite. Il ne reste qu'à brancher le mini-jeu sur son Espace.
+- **Le patron du bâtiment sert trois fois** : façade et porte au plan du village, pièce dans un
+  créneau, personnages appariés case par case. **Trois créneaux de pièce restent libres.**
+- **`ValidateRooms` accepte plusieurs personnages par pièce** depuis la phase 13, et refuse
+  toute case que sa table ne connaît pas.
+- **Rien ne se sauvegarde dans l'usine**, et rien ne doit s'y sauvegarder : elle est une pure
+  récréation, sans lien avec le réseau.
 
 ## Décisions prises
 

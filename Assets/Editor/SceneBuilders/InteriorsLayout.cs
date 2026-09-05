@@ -21,8 +21,9 @@ namespace SousLaVille.EditorTools
     /// Legende
     ///   #  mur (bloquant)     .  sol      D  porte, vers le village
     ///   C  plaque exposee     P  echantillon de tuyau      V  personnage
+    ///   S  panneau expose du catalogue (NE bloque PAS : on marche dessus pour le lire)
     ///
-    /// C, P et V sont des marqueurs : le builder peint du sol dessous et pose un GameObject
+    /// C, P, S et V sont des marqueurs : le builder peint du sol dessous et pose un GameObject
     /// par-dessus. Les echantillons ne bloquent pas, on marche dessus pour les choisir ; le
     /// personnage, lui, bloque : on ne traverse pas quelqu'un, et debout sur lui on ne
     /// pourrait plus lui parler.
@@ -46,13 +47,21 @@ namespace SousLaVille.EditorTools
         public const char PipeSample = 'P';
         public const char Villager = 'V';
 
+        /// <summary>
+        /// Un panneau du catalogue expose, phase 13. Il ne bloque pas : on marche dessus et
+        /// son nom s'affiche au HUD, exactement comme une plaque ou un echantillon de tuyau
+        /// depuis la phase 9. Un panneau ne se prend pas, il se lit.
+        /// </summary>
+        public const char SignSample = 'S';
+
         /// <summary>Une piece : son bloc dessine et le coin bas gauche de son creneau.</summary>
         public readonly struct Room
         {
-            public Room(string name, Vector2Int origin, string[] rows)
+            public Room(string name, Vector2Int origin, int villagers, string[] rows)
             {
                 Name = name;
                 Origin = origin;
+                Villagers = villagers;
                 Rows = rows;
             }
 
@@ -61,6 +70,17 @@ namespace SousLaVille.EditorTools
 
             /// <summary>Coin bas gauche du creneau, en cases de la carte.</summary>
             public Vector2Int Origin { get; }
+
+            /// <summary>
+            /// Combien de personnages cette piece doit porter, ni plus ni moins. Le nombre
+            /// est ECRIT A COTE DU PLAN QU'IL DECRIT : IsWellFormed s'y compare, si bien
+            /// qu'un V efface ou un V de trop est refuse a la construction.
+            ///
+            /// Jusqu'a la phase 13 le validateur exigeait EXACTEMENT UN personnage par
+            /// piece, et le commentaire de InteriorsSceneBuilder qui promettait le contraire
+            /// etait faux : l'usine a panneaux en veut trois, un par mini-jeu.
+            /// </summary>
+            public int Villagers { get; }
 
             /// <summary>Ligne 0 en haut, comme on lit une carte.</summary>
             public string[] Rows { get; }
@@ -86,6 +106,7 @@ namespace SousLaVille.EditorTools
         private static readonly Room CoverWorkshop = new Room(
             "Atelier des plaques",
             new Vector2Int(0, 20),
+            1,
             new[]
             {
                 "####################",
@@ -113,6 +134,7 @@ namespace SousLaVille.EditorTools
         private static readonly Room PipeWorks = new Room(
             "Usine a tuyaux",
             new Vector2Int(20, 20),
+            1,
             new[]
             {
                 "####################",
@@ -128,10 +150,58 @@ namespace SousLaVille.EditorTools
             });
 
         /// <summary>
-        /// Les pieces du jeu. La phase 12 y ajoutera l'usine a panneaux, dans un des quatre
-        /// creneaux encore libres.
+        /// L'USINE A PANNEAUX, phase 13. Une galerie : vingt-quatre panneaux du Code de la
+        /// route francais en QUATRE RANGEES DE SIX, UNE FAMILLE PAR RANGEE, dans l'ordre de
+        /// la planche — intersection et priorite, danger, interdiction, obligation.
+        ///
+        /// C'est la grammaire qui s'apprend d'abord : la forme et la bordure disent la
+        /// FAMILLE avant que le dessin dise le detail. Un triangle borde de rouge previent,
+        /// un disque borde de rouge interdit, un disque bleu plein oblige.
+        ///
+        /// La geometrie n'est pas libre. Un panneau fait 16x24 au pivot du joueur : il
+        /// occupe donc de y - 0,5 a y + 1,0. Deux rangees ecartees de DEUX laissent une
+        /// demi-case de blanc entre la plaque du bas et le poteau du haut ; a une case elles
+        /// se chevaucheraient. Et les personnages se tiennent en COLONNES IMPAIRES, ou
+        /// aucun panneau ne se dresse : sinon un panneau leur passerait devant le visage.
+        ///
+        /// On entre en (9, 0) et le personnage du milieu est droit devant. (9, 1) reste libre :
+        /// aucun personnage ne bouche l'entree.
+        ///
+        /// LA RANGEE DU HAUT EST LAISSEE VIDE, et ce n'est pas de l'esthetique. Un creneau
+        /// fait dix lignes quand la camera en montre 11,25 : la piece est donc centree, et la
+        /// rangee y = 8 tombe DERRIERE la rangee de gouttes du HUD. Vu a l'ecran : la premiere
+        /// famille etait a moitie cachee. Tout le tableau est descendu d'une rangee.
+        ///
+        /// CRENEAU (0, 0), et ce choix n'est pas indifferent. Un creneau fait dix lignes
+        /// quand la camera en montre 11,25 : on voit donc 0,625 ligne du voisin du dessus et
+        /// du dessous. En (0, 10) ce serait la rangee de mur de l'atelier, suspendue en
+        /// l'air. Ici le voisin du dessus est vide et le dessous est hors carte, exactement
+        /// ce que montrent deja les deux pieces existantes.
         /// </summary>
-        public static readonly Room[] Rooms = { CoverWorkshop, PipeWorks };
+        private static readonly Room SignFactory = new Room(
+            "Usine a panneaux",
+            new Vector2Int(0, 0),
+            3,
+            new[]
+            {
+                "####################",
+                "#..................#",   // y = 8  LAISSEE VIDE : la rangee de gouttes du HUD
+                "#...S.S.S.S.S.S....#",   // y = 7  INTERSECTION ET PRIORITE
+                "#..................#",
+                "#...S.S.S.S.S.S....#",   // y = 5  DANGER
+                "#..V.....V.....V...#",   // y = 4  Le Stock, La Fabrique, Le Plan
+                "#...S.S.S.S.S.S....#",   // y = 3  INTERDICTION
+                "#..................#",
+                "#...S.S.S.S.S.S....#",   // y = 1  OBLIGATION
+                "#########D##########",
+            });
+
+        /// <summary>
+        /// Les pieces du jeu. L'ORDRE EST CELUI DE VillageLayout.Facades ET .Doors : la
+        /// troisieme piece a la troisieme facade et la troisieme porte, des deux cotes du
+        /// passage. Trois creneaux restent libres.
+        /// </summary>
+        public static readonly Room[] Rooms = { CoverWorkshop, PipeWorks, SignFactory };
 
         /// <summary>
         /// Caractere de la case (x, y), ou le mur si la case n'appartient a aucune piece.
@@ -205,7 +275,16 @@ namespace SousLaVille.EditorTools
 
         /// <summary>
         /// Vrai si chaque piece fait bien dix lignes de vingt caracteres, tient dans la
-        /// carte, ne chevauche aucune autre, et porte exactement une porte et un personnage.
+        /// carte, ne chevauche aucune autre, porte exactement UNE porte et exactement le
+        /// nombre de personnages qu'elle declare.
+        ///
+        /// PHASE 13 : le nombre de personnages n'est plus fige a un, il est celui que la
+        /// piece annonce. On reste sur un EXACTEMENT N — une faute de frappe est toujours
+        /// refusee — mais l'usine a panneaux peut en porter trois, un par mini-jeu.
+        ///
+        /// Ce filet compte les personnages ; il ne dit rien de QUI ils sont. C'est
+        /// InteriorsSceneBuilder qui les apparie CASE PAR CASE, et qui refuse une case que
+        /// sa table ne connait pas.
         /// </summary>
         public static bool IsWellFormed()
         {
@@ -254,10 +333,12 @@ namespace SousLaVille.EditorTools
                     return false;
                 }
 
-                if (FindAll(room, Villager).Count != 1)
+                int villagers = FindAll(room, Villager).Count;
+                if (villagers != room.Villagers)
                 {
-                    Debug.LogError($"[Sous la Ville] La pièce « {room.Name} » doit avoir " +
-                                   "exactement un personnage.");
+                    Debug.LogError($"[Sous la Ville] La pièce « {room.Name} » porte " +
+                                   $"{villagers} personnage(s), il en faut exactement " +
+                                   $"{room.Villagers}.");
                     return false;
                 }
             }

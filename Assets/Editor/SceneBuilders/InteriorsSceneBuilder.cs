@@ -38,7 +38,7 @@ namespace SousLaVille.EditorTools
         [MenuItem("Sous La Ville/Construire la scène Interiors")]
         public static bool Build()
         {
-            if (!InteriorsLayout.IsWellFormed())
+            if (!ValidateRooms())
             {
                 return false;
             }
@@ -71,6 +71,7 @@ namespace SousLaVille.EditorTools
             CreateVillagers(root);
             CreateCoverWorkshop(root);
             CreatePipeWorks(root);
+            CreateSignFactory(root);
 
             SceneBuilderUtility.EndScene(scene, SceneName);
             return true;
@@ -228,28 +229,289 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Le personnage de chaque piece. Il dit ce qu'on peut faire ici, en phrases de moins
-        /// de six mots dessinees par PixelFont a la generation de l'art.
+        /// Un personnage d'une piece : SA CASE, son sprite et ce qu'il dit.
         ///
-        /// Un seul personnage par piece en phase 9a ; le patron en accepte plusieurs, ce dont
-        /// l'usine a panneaux aura besoin en phase 12 avec ses trois mini-jeux.
+        /// APPARIE CASE PAR CASE, jamais par l'ordre d'un balayage ni par le rang de la
+        /// piece. Jusqu'a la phase 13, le sprite et les phrases se choisissaient sur
+        /// l'indice de la piece : cela ne pouvait marcher que tant qu'il n'y avait qu'un
+        /// personnage par piece. Et un appariement par l'ordre ment en silence — c'est la
+        /// lecon des huit guides de la phase 12e, ou un poste deplace d'une case aurait
+        /// change de lecon sans un mot.
+        /// </summary>
+        private readonly struct VillagerSpec
+        {
+            public VillagerSpec(int room, Vector2Int cell, string sprite, string[] lines)
+            {
+                Room = room;
+                Cell = cell;
+                Sprite = sprite;
+                Lines = lines;
+            }
+
+            public int Room { get; }
+            public Vector2Int Cell { get; }
+            public string Sprite { get; }
+            public string[] Lines { get; }
+        }
+
+        /// <summary>Rang de l'usine a panneaux dans InteriorsLayout.Rooms.</summary>
+        private const int SignFactoryRoom = 2;
+
+        /// <summary>Tous les personnages du jeu, case par case.</summary>
+        private static readonly VillagerSpec[] VillagerSpecs = BuildVillagerSpecs();
+
+        private static VillagerSpec[] BuildVillagerSpecs()
+        {
+            List<VillagerSpec> specs = new List<VillagerSpec>
+            {
+                new VillagerSpec(0, new Vector2Int(9, 25),
+                    PlaceholderArtGenerator.VillagerCraftsman,
+                    LinePaths(PlaceholderArtGenerator.CraftsmanLines.Length,
+                        PlaceholderArtGenerator.CraftsmanLineTexture)),
+
+                new VillagerSpec(1, new Vector2Int(29, 25),
+                    PlaceholderArtGenerator.VillagerWorker,
+                    LinePaths(PlaceholderArtGenerator.WorkerLines.Length,
+                        PlaceholderArtGenerator.WorkerLineTexture))
+            };
+
+            // Les trois de l'usine a panneaux, de gauche a droite : Le Stock, La Fabrique,
+            // Le Plan — l'ordre des mini-jeux, du plus simple au plus lourd.
+            Vector2Int origin = InteriorsLayout.Rooms[SignFactoryRoom].Origin;
+            Vector2Int[] cells =
+            {
+                origin + new Vector2Int(3, 4),
+                origin + new Vector2Int(9, 4),
+                origin + new Vector2Int(15, 4)
+            };
+
+            for (int who = 0; who < cells.Length; who++)
+            {
+                int index = who;
+                specs.Add(new VillagerSpec(SignFactoryRoom, cells[who],
+                    PlaceholderArtGenerator.SignFactoryVillagers[who],
+                    LinePaths(PlaceholderArtGenerator.SignFactoryLines[who].Length,
+                        line => PlaceholderArtGenerator.SignFactoryLineTexture(index, line))));
+            }
+
+            return specs.ToArray();
+        }
+
+        private static string[] LinePaths(int count, System.Func<int, string> texture)
+        {
+            string[] paths = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                paths[i] = texture(i);
+            }
+
+            return paths;
+        }
+
+        /// <summary>
+        /// Les cases de la planche, DE HAUT EN BAS et de gauche a droite : l'ordre de lecture
+        /// de la piece, et celui de PlaceholderArtGenerator.SignBoard.
+        ///
+        /// Ecrites ici et non lues de FindAll, qui balaye du BAS vers le haut : s'y fier
+        /// apparierait la rangee OBLIGATION avec la famille INTERSECTION ET PRIORITE, et
+        /// vingt-quatre panneaux sortiraient sous le mauvais nom SANS UN MOT.
+        /// </summary>
+        private static readonly Vector2Int[] BoardCells = BuildBoardCells();
+
+        private static Vector2Int[] BuildBoardCells()
+        {
+            int[] rows = { 7, 5, 3, 1 };
+            int[] columns = { 4, 6, 8, 10, 12, 14 };
+            Vector2Int origin = InteriorsLayout.Rooms[SignFactoryRoom].Origin;
+
+            List<Vector2Int> cells = new List<Vector2Int>();
+            foreach (int y in rows)
+            {
+                foreach (int x in columns)
+                {
+                    cells.Add(origin + new Vector2Int(x, y));
+                }
+            }
+
+            return cells.ToArray();
+        }
+
+        /// <summary>
+        /// Les pieces tiennent-elles debout ? Le plan d'abord — dix lignes de vingt, une
+        /// porte, et le nombre de personnages que chaque piece declare —, puis les DEUX
+        /// APPARIEMENTS, dans les deux sens.
+        ///
+        /// Compter ne suffit pas. Un personnage deplace d'une case laisse le compte juste et
+        /// changerait de metier ; un panneau deplace d'une case sortirait sous le nom de son
+        /// voisin. Ce qui prouve, c'est que l'ensemble des cases du PLAN et l'ensemble des
+        /// cases de la TABLE soient exactement le meme, et le validateur le dit dans les deux
+        /// sens : une case sans table, une table sans case.
+        /// </summary>
+        private static bool ValidateRooms()
+        {
+            if (!InteriorsLayout.IsWellFormed())
+            {
+                return false;
+            }
+
+            bool ok = true;
+
+            // 1. Chaque personnage du plan est dans la table.
+            for (int i = 0; i < InteriorsLayout.Rooms.Length; i++)
+            {
+                InteriorsLayout.Room room = InteriorsLayout.Rooms[i];
+
+                foreach (Vector2Int cell in InteriorsLayout.FindAll(room, InteriorsLayout.Villager))
+                {
+                    if (SpecIndex(i, cell) >= 0)
+                    {
+                        continue;
+                    }
+
+                    Debug.LogError($"[Sous la Ville] Le personnage {cell} de la pièce " +
+                                   $"« {room.Name} » n'est dans aucune table : je ne sais ni à " +
+                                   "quoi le faire ressembler, ni ce qu'il doit dire. Un " +
+                                   "appariement par l'ordre d'un balayage mentirait en silence.");
+                    ok = false;
+                }
+            }
+
+            // 2. Et chaque entree de la table tombe sur un personnage du plan.
+            foreach (VillagerSpec spec in VillagerSpecs)
+            {
+                if (InteriorsLayout.At(spec.Cell.x, spec.Cell.y) == InteriorsLayout.Villager)
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] La table annonce un personnage en {spec.Cell}, " +
+                               "mais le plan des intérieurs n'y met aucun « V ».");
+                ok = false;
+            }
+
+            return ValidateSignBoard() && ok;
+        }
+
+        /// <summary>
+        /// La planche de l'usine : autant de cases que de rangs, aucun rang deux fois, et les
+        /// memes cases des deux cotes.
+        ///
+        /// « Aucun rang deux fois » n'est pas du zele : au milieu de vingt-quatre panneaux,
+        /// un rang recopie passerait inapercu a l'oeil, et le memory de la phase 14 aurait
+        /// deux paires identiques sans que rien ne l'ait dit.
+        /// </summary>
+        private static bool ValidateSignBoard()
+        {
+            bool ok = true;
+
+            int[] board = PlaceholderArtGenerator.SignBoard;
+            string[] names = PlaceholderArtGenerator.SignBoardNames;
+
+            if (board.Length != names.Length)
+            {
+                Debug.LogError($"[Sous la Ville] La planche porte {board.Length} rang(s) pour " +
+                               $"{names.Length} nom(s) : il en faut autant.");
+                ok = false;
+            }
+
+            HashSet<int> seen = new HashSet<int>();
+            foreach (int kind in board)
+            {
+                if (kind < 0 || kind >= PlaceholderArtGenerator.SignCount)
+                {
+                    Debug.LogError($"[Sous la Ville] La planche expose le rang de panneau " +
+                                   $"{kind}, qui n'existe pas : SignCount vaut " +
+                                   $"{PlaceholderArtGenerator.SignCount}.");
+                    ok = false;
+                }
+                else if (!seen.Add(kind))
+                {
+                    Debug.LogError($"[Sous la Ville] Le rang de panneau {kind} est exposé deux " +
+                                   "fois sur la planche : chaque panneau du Code n'y figure " +
+                                   "qu'une fois.");
+                    ok = false;
+                }
+            }
+
+            InteriorsLayout.Room room = InteriorsLayout.Rooms[SignFactoryRoom];
+            List<Vector2Int> exposed =
+                InteriorsLayout.FindAll(room, InteriorsLayout.SignSample);
+
+            if (exposed.Count != board.Length)
+            {
+                Debug.LogError($"[Sous la Ville] La pièce « {room.Name} » expose " +
+                               $"{exposed.Count} panneau(x), il en faut {board.Length}.");
+                ok = false;
+            }
+
+            HashSet<Vector2Int> planned = new HashSet<Vector2Int>(BoardCells);
+
+            foreach (Vector2Int cell in exposed)
+            {
+                if (planned.Contains(cell))
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] Le panneau {cell} de « {room.Name} » n'est pas " +
+                               "une case de la planche : je ne saurais pas lequel y poser.");
+                ok = false;
+            }
+
+            HashSet<Vector2Int> drawn = new HashSet<Vector2Int>(exposed);
+
+            foreach (Vector2Int cell in BoardCells)
+            {
+                if (drawn.Contains(cell))
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] La planche attend un panneau en {cell}, mais le " +
+                               "plan des intérieurs n'y met aucun « S ».");
+                ok = false;
+            }
+
+            return ok;
+        }
+
+        /// <summary>Le rang du personnage attendu sur cette case de cette piece, ou -1.</summary>
+        private static int SpecIndex(int room, Vector2Int cell)
+        {
+            for (int i = 0; i < VillagerSpecs.Length; i++)
+            {
+                if (VillagerSpecs[i].Room == room && VillagerSpecs[i].Cell == cell)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Les personnages, un par entree de la table. Il dit ce qu'on peut faire ici, en
+        /// phrases de moins de six mots dessinees par PixelFont a la generation de l'art.
+        ///
+        /// ValidateRooms a deja prouve que le plan et la table portent exactement les memes
+        /// cases : on peut donc creer sans re-verifier.
         /// </summary>
         private static void CreateVillagers(GameObject root)
         {
             GameObject parent = new GameObject("Villagers");
             parent.transform.SetParent(root.transform, false);
 
-            for (int i = 0; i < InteriorsLayout.Rooms.Length; i++)
+            for (int i = 0; i < VillagerSpecs.Length; i++)
             {
-                InteriorsLayout.Room room = InteriorsLayout.Rooms[i];
-                Vector2Int cell = InteriorsLayout.FindSingle(room, InteriorsLayout.Villager);
+                VillagerSpec spec = VillagerSpecs[i];
+                InteriorsLayout.Room room = InteriorsLayout.Rooms[spec.Room];
 
                 GameObject villager = new GameObject($"Villager_{i + 1:00}_{room.Name}");
                 villager.transform.SetParent(parent.transform, false);
-                villager.transform.position = CellCenter(cell);
+                villager.transform.position = CellCenter(spec.Cell);
 
                 SpriteRenderer renderer = villager.AddComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite(SpriteFor(i));
+                renderer.sprite = LoadSprite(spec.Sprite);
 
                 // Un cran devant le decor, un cran derriere le joueur, qui est en ordre 10.
                 SceneBuilderUtility.ApplySortingLayer(renderer, EntitiesSortingLayer, 5);
@@ -268,15 +530,15 @@ namespace SousLaVille.EditorTools
                 Villager component = villager.AddComponent<Villager>();
 
                 SerializedObject serialized = new SerializedObject(component);
-                serialized.FindProperty("cell").vector2IntValue = cell;
+                serialized.FindProperty("cell").vector2IntValue = spec.Cell;
                 serialized.FindProperty("prompt").objectReferenceValue = prompt;
 
-                string[] paths = LinesFor(i);
                 SerializedProperty lines = serialized.FindProperty("lines");
-                lines.arraySize = paths.Length;
-                for (int line = 0; line < paths.Length; line++)
+                lines.arraySize = spec.Lines.Length;
+                for (int line = 0; line < spec.Lines.Length; line++)
                 {
-                    lines.GetArrayElementAtIndex(line).objectReferenceValue = LoadSprite(paths[line]);
+                    lines.GetArrayElementAtIndex(line).objectReferenceValue =
+                        LoadSprite(spec.Lines[line]);
                 }
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -284,32 +546,55 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Le sprite du personnage d'une piece. Une table plutot qu'un champ dans le plan :
-        /// InteriorsLayout decrit une geometrie, pas des chemins d'images.
+        /// L'USINE A PANNEAUX, phase 13 : vingt-quatre panneaux du Code de la route exposes
+        /// en quatre rangees de six, une famille par rangee.
+        ///
+        /// Comme les plaques et les echantillons de tuyau, ils ne bloquent pas : on marche
+        /// dessus, et le nom s'affiche au HUD. Mais contrairement a eux, ON N'EN PREND
+        /// AUCUN : rien ne sort de ce batiment. L'usine est une pure recreation, sans lien
+        /// avec le reseau, ce qui garde intact le « aucun echec puni » de CLAUDE.md — aucun
+        /// mini-jeu ne pourra jamais bloquer la progression.
+        ///
+        /// Le nom, lui, n'est pas du decor : c'est ce qui fait la difference entre une salle
+        /// decoree et un catalogue, et c'est sur lui que La Fabrique s'appuiera en phase 15.
         /// </summary>
-        private static string SpriteFor(int roomIndex)
+        private static void CreateSignFactory(GameObject root)
         {
-            return roomIndex == 1
-                ? PlaceholderArtGenerator.VillagerWorker
-                : PlaceholderArtGenerator.VillagerCraftsman;
-        }
+            GameObject parent = new GameObject("SignFactory");
+            parent.transform.SetParent(root.transform, false);
 
-        /// <summary>Ce que dit le personnage d'une piece, une image par phrase.</summary>
-        private static string[] LinesFor(int roomIndex)
-        {
-            int count = roomIndex == 1
-                ? PlaceholderArtGenerator.WorkerLines.Length
-                : PlaceholderArtGenerator.CraftsmanLines.Length;
+            int[] board = PlaceholderArtGenerator.SignBoard;
+            Sprite[] names = new Sprite[board.Length];
 
-            string[] paths = new string[count];
-            for (int i = 0; i < count; i++)
+            for (int slot = 0; slot < board.Length; slot++)
             {
-                paths[i] = roomIndex == 1
-                    ? PlaceholderArtGenerator.WorkerLineTexture(i)
-                    : PlaceholderArtGenerator.CraftsmanLineTexture(i);
+                int kind = board[slot];
+                Vector2Int cell = BoardCells[slot];
+
+                GameObject sign = new GameObject($"Sign_{slot + 1:00}_{kind:00}");
+                sign.transform.SetParent(parent.transform, false);
+                sign.transform.position = CellCenter(cell);
+
+                SpriteRenderer view = sign.AddComponent<SpriteRenderer>();
+                view.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture(kind));
+                SceneBuilderUtility.ApplySortingLayer(view, EntitiesSortingLayer, 0);
+
+                names[slot] = LoadSprite(PlaceholderArtGenerator.SignNameTexture(kind));
             }
 
-            return paths;
+            SignCatalogue catalogue = root.AddComponent<SignCatalogue>();
+
+            SerializedObject serialized = new SerializedObject(catalogue);
+            SetCells(serialized.FindProperty("signCells"), new List<Vector2Int>(BoardCells));
+
+            SerializedProperty nameProperty = serialized.FindProperty("names");
+            nameProperty.arraySize = names.Length;
+            for (int i = 0; i < names.Length; i++)
+            {
+                nameProperty.GetArrayElementAtIndex(i).objectReferenceValue = names[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>

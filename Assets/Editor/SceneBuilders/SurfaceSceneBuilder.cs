@@ -189,7 +189,8 @@ namespace SousLaVille.EditorTools
                             : marker == VillageLayout.Fountain ? fountainTile
                             : marker == VillageLayout.Tree ? tree
                             : marker == VillageLayout.Facade
-                              || marker == VillageLayout.PipeFacade ? facade
+                              || marker == VillageLayout.PipeFacade
+                              || marker == VillageLayout.SignFacade ? facade
                             : marker == VillageLayout.PlantWall ? plantWall
                             : hedges[BlockingMask(x, y, VillageLayout.Hedge)];
                     }

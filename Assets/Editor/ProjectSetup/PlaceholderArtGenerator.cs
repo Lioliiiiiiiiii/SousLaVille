@@ -110,7 +110,107 @@ namespace SousLaVille.EditorTools
         /// CATALOGUE au lieu d'en creer un second : c'est le premier dessin, pas le troisieme,
         /// et la regle 4 de CLAUDE.md tient.
         /// </summary>
-        public const int SignCount = 9;
+        public const int SignCount = 29;
+
+        /// <summary>Nombre de panonceaux de jalonnement : nord, est, sud, ouest.</summary>
+        public const int SignArrowCount = 4;
+
+        /// <summary>
+        /// LA PLANCHE DE L'USINE A PANNEAUX, phase 13. Vingt-quatre rangs, QUATRE FAMILLES DE
+        /// SIX, dans l'ordre de lecture de la piece : une famille par rangee.
+        ///
+        /// Chaque rang existe dans le Code de la route francais et porte son numero. Les
+        /// quatre deja dessines en phase 12c gardent leur rang, les vingt neufs prennent les
+        /// rangs 9 a 28.
+        ///
+        /// L'impasse C13a (rang 2) et les quatre panonceaux de jalonnement (rangs 5 a 8) ne
+        /// sont d'aucune de ces quatre familles : le village et les galeries les posent, mais
+        /// la planche ne les expose pas. Une cinquieme rangee depareillee de cinq casserait
+        /// la lecon, qui est justement que la FORME dit la famille.
+        /// </summary>
+        public static readonly int[] SignBoard =
+        {
+            // INTERSECTION ET PRIORITE
+            9, 10, 0, 1, 3, 4,
+            // DANGER
+            11, 12, 13, 14, 15, 16,
+            // INTERDICTION
+            17, 18, 19, 20, 21, 22,
+            // OBLIGATION
+            23, 24, 25, 26, 27, 28
+        };
+
+        /// <summary>
+        /// Le nom de chaque rang de la planche, dans l'ordre de SignBoard. Majuscules,
+        /// francais, moins de six mots : CLAUDE.md. Victorien sait lire, decision du
+        /// 3 septembre, et le nom s'affiche au HUD quand on foule le panneau — comme le nom
+        /// d'une plaque ou d'un type de tuyau depuis la phase 9.
+        ///
+        /// Le plus long, ARRET ET STATIONNEMENT INTERDITS, fait 32 caracteres, soit 193 px
+        /// sur les 320 de l'ecran de reference. Le plafond dur de PixelFont est 42.
+        /// </summary>
+        public static readonly string[] SignBoardNames =
+        {
+            "PRIORITÉ À DROITE",            // AB1
+            "GIRATOIRE",                    // AB25
+            "CÉDEZ LE PASSAGE",             // AB3a
+            "ARRÊT OBLIGATOIRE",            // AB4
+            "ROUTE PRIORITAIRE",            // AB2
+            "FIN DE ROUTE PRIORITAIRE",     // AB6
+
+            "VIRAGE À GAUCHE",              // A1b
+            "SUCCESSION DE VIRAGES",        // A1c
+            "CHAUSSÉE GLISSANTE",           // A4
+            "PASSAGE POUR PIÉTONS",         // A13b
+            "DANGER",                       // A14
+            "DÉBOUCHÉ DE CYCLISTES",        // A21
+
+            "CIRCULATION INTERDITE",        // B0
+            "SENS INTERDIT",                // B1
+            "INTERDIT DE TOURNER À DROITE", // B2b
+            "INTERDIT AUX PIÉTONS",         // B9a
+            "STATIONNEMENT INTERDIT",       // B6a1
+            "ARRÊT ET STATIONNEMENT INTERDITS", // B6d
+
+            "TOUT DROIT OBLIGATOIRE",       // B21b
+            "À DROITE OBLIGATOIRE",         // B21c1
+            "À DROITE OU À GAUCHE",         // B21e
+            "CONTOURNE PAR LA DROITE",      // B21a1
+            "PISTE CYCLABLE",               // B22a
+            "CHEMIN POUR PIÉTONS"           // B22b
+        };
+
+        /// <summary>Image du nom d'un panneau. Nommee par le RANG, pas par la place sur la planche.</summary>
+        public static string SignNameTexture(int kind)
+        {
+            return $"{SpritesFolder}/sign_name_{Mathf.Clamp(kind, 0, SignCount - 1):00}.png";
+        }
+
+        /// <summary>
+        /// Les trois personnages de l'usine a panneaux, phase 13, un par mini-jeu a venir :
+        /// Le Stock (14), La Fabrique (15), Le Plan (16). Chacun explique son probleme et
+        /// invite ; Espace le fait parler, et son mini-jeu se branchera ici.
+        /// </summary>
+        public static readonly string[] SignFactoryVillagers =
+        {
+            SpritesFolder + "/villager_stock.png",
+            SpritesFolder + "/villager_maker.png",
+            SpritesFolder + "/villager_planner.png"
+        };
+
+        /// <summary>Ce que disent les trois, dans le meme ordre.</summary>
+        public static readonly string[][] SignFactoryLines =
+        {
+            new[] { "MES PANNEAUX SONT EN DÉSORDRE", "RETROUVE-LES DEUX PAR DEUX" },
+            new[] { "JE DESSINE LES PANNEAUX", "SAURAS-TU LES NOMMER ?" },
+            new[] { "IL MANQUE DES PANNEAUX ICI", "POSE-LES SUR MON PLAN" }
+        };
+
+        /// <summary>Image d'une phrase d'un personnage de l'usine a panneaux.</summary>
+        public static string SignFactoryLineTexture(int who, int line)
+        {
+            return $"{SpritesFolder}/line_signworks_{who:00}_{line:00}.png";
+        }
 
         /// <summary>
         /// LES HUIT LECONS, phase 12e. Un guide par lecon, et rien de plus : le jeu entier
@@ -283,6 +383,18 @@ namespace SousLaVille.EditorTools
         };
 
         public const string VillagerWorker = SpritesFolder + "/villager_worker.png";
+
+        /// <summary>
+        /// Les couleurs des trois personnages de l'usine a panneaux. Franches et distinctes
+        /// du vert de l'artisan et du bleu de l'ouvrier : on les reconnait de loin, sans un
+        /// mot, ce qui est la regle du projet depuis la phase 0.
+        /// </summary>
+        private static readonly Color32[] SignFactoryColors =
+        {
+            new Color32(0xD0, 0x7A, 0x2E, 0xFF),   // Le Stock, orange
+            new Color32(0x7A, 0x4E, 0xA8, 0xFF),   // La Fabrique, violet
+            new Color32(0xC0, 0xA8, 0x30, 0xFF)    // Le Plan, ocre
+        };
 
         /// <summary>Image du nom d'un type de tuyau.</summary>
         public static string PipeNameTexture(int index)
@@ -478,6 +590,13 @@ namespace SousLaVille.EditorTools
                 {
                     WriteTexture(SignTexture(kind), BuildSign(kind), PlayerWidth);
                 }
+
+                // Le nom de chaque panneau de la planche, phase 13. Nomme par le RANG : la
+                // place sur la planche peut changer, le rang non.
+                for (int slot = 0; slot < SignBoard.Length; slot++)
+                {
+                    WriteWord(SignNameTexture(SignBoard[slot]), SignBoardNames[slot]);
+                }
                 WriteTileTexture("tile_facade", new Color32(0xB0, 0x7A, 0x3C, 0xFF));
                 WriteTileTexture("tile_wall", new Color32(0x6A, 0x5B, 0x49, 0xFF));
 
@@ -505,6 +624,18 @@ namespace SousLaVille.EditorTools
                     for (int line = 0; line < GuideLines[guide].Length; line++)
                     {
                         WriteWord(GuideLineTexture(guide, line), GuideLines[guide][line]);
+                    }
+                }
+
+                // Les trois personnages de l'usine a panneaux et ce qu'ils disent, phase 13.
+                for (int who = 0; who < SignFactoryVillagers.Length; who++)
+                {
+                    WriteTexture(SignFactoryVillagers[who],
+                        BuildVillager(SignFactoryColors[who]), PlayerWidth);
+
+                    for (int line = 0; line < SignFactoryLines[who].Length; line++)
+                    {
+                        WriteWord(SignFactoryLineTexture(who, line), SignFactoryLines[who][line]);
                     }
                 }
 
@@ -570,6 +701,21 @@ namespace SousLaVille.EditorTools
             for (int kind = 0; kind < SignCount; kind++)
             {
                 ConfigureImporter(SignTexture(kind), PlayerPivot);
+            }
+
+            foreach (int kind in SignBoard)
+            {
+                ConfigureImporter(SignNameTexture(kind), null);
+            }
+
+            for (int who = 0; who < SignFactoryVillagers.Length; who++)
+            {
+                ConfigureImporter(SignFactoryVillagers[who], PlayerPivot);
+
+                for (int line = 0; line < SignFactoryLines[who].Length; line++)
+                {
+                    ConfigureImporter(SignFactoryLineTexture(who, line), null);
+                }
             }
             ConfigureImporter($"{TilesFolder}/tile_facade.png", null);
             ConfigureImporter($"{TilesFolder}/tile_wall.png", null);
@@ -761,6 +907,34 @@ namespace SousLaVille.EditorTools
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(SignTexture(kind)) == null)
                 {
                     return false;
+                }
+            }
+
+            // La planche de l'usine a panneaux et ses trois personnages, phase 13. Comme
+            // tout le reste ici, une image manquante barre TOUTE construction de scene :
+            // elle se voit a la construction, et non a l'ecran par un carre absent.
+            foreach (int kind in SignBoard)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(SignNameTexture(kind)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int who = 0; who < SignFactoryVillagers.Length; who++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(SignFactoryVillagers[who]) == null)
+                {
+                    return false;
+                }
+
+                for (int line = 0; line < SignFactoryLines[who].Length; line++)
+                {
+                    if (AssetDatabase.LoadAssetAtPath<Sprite>(
+                            SignFactoryLineTexture(who, line)) == null)
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -1904,19 +2078,44 @@ namespace SousLaVille.EditorTools
         /// <summary>
         /// Un panneau de signalisation. Seize sur vingt-quatre : un poteau dans la case, la
         /// plaque au-dessus. Le catalogue est celui du CODE DE LA ROUTE FRANCAIS, et rien
-        /// d'autre : chaque rang correspond a un panneau qui existe, place par RoadSigns la ou
-        /// le Code le place. Le premier catalogue portait un sens interdit sans rue a sens
-        /// unique et un triangle de danger sans panonceau : des panneaux imaginaires ici.
+        /// d'autre : chaque rang correspond a un panneau qui existe, avec son numero.
+        ///
+        /// LA PLANCHE DE L'USINE, phase 13 : quatre familles de six. La forme et la bordure
+        /// disent la FAMILLE avant que le dessin dise le detail — un triangle borde de rouge
+        /// previent, un disque borde de rouge interdit, un disque bleu plein oblige. C'est
+        /// cette grammaire-la qui s'apprend d'abord.
         ///
         ///   0 AB3a cedez le passage (triangle POINTE EN BAS, borde de rouge)
-        ///   1 AB4  stop (octogone rouge)
-        ///   2 C13a impasse (carre bleu, voie en T barree de rouge)
+        ///   1 AB4  arret obligatoire, STOP (octogone rouge)
+        ///   2 C13a impasse (carre bleu, voie en T barree de rouge)  — hors planche
         ///   3 AB2  route prioritaire (losange jaune sur losange blanc)
         ///   4 AB6  fin de route prioritaire (le meme, barre de noir)
-        ///   5 a 8  panonceau de direction (rectangle bleu, fleche blanche nord / est / sud / ouest),
-        ///          reserve aux carrefours de galeries.
+        ///   5 a 8  panonceau de jalonnement (rectangle bleu, fleche blanche nord / est /
+        ///          sud / ouest), reserve aux carrefours de galeries — hors planche
+        ///   9 AB1  intersection avec priorite a droite
+        ///  10 AB25 carrefour a sens giratoire
+        ///  11 A1b  virage a gauche
+        ///  12 A1c  succession de virages
+        ///  13 A4   chaussee glissante
+        ///  14 A13b passage pour pietons
+        ///  15 A14  danger
+        ///  16 A21  debouche de cyclistes
+        ///  17 B0   circulation interdite a tout vehicule dans les deux sens
+        ///  18 B1   sens interdit a tout vehicule
+        ///  19 B2b  interdiction de tourner a droite a la prochaine intersection
+        ///  20 B9a  acces interdit aux pietons
+        ///  21 B6a1 stationnement interdit
+        ///  22 B6d  arret et stationnement interdits
+        ///  23 B21b direction obligatoire : tout droit
+        ///  24 B21c1 direction obligatoire : a droite
+        ///  25 B21e directions obligatoires : a droite ou a gauche
+        ///  26 B21a1 contournement obligatoire par la droite
+        ///  27 B22a piste ou bande obligatoire pour les cycles
+        ///  28 B22b chemin obligatoire pour pietons
         ///
-        /// L'USINE A PANNEAUX DE LA PHASE 13 REPREND CE CATALOGUE.
+        /// EN ESPACE DE TEXTURE Y MONTE : le poteau occupe le bas, la plaque le haut, et une
+        /// base large en bas fait une pointe en haut. C'est la seule chose a garder en tete
+        /// ici, et c'est elle qui avait mis le cedez le passage a l'envers.
         /// </summary>
         private static Color32[] BuildSign(int kind)
         {
@@ -1940,11 +2139,14 @@ namespace SousLaVille.EditorTools
             switch (kind)
             {
                 case 0:
-                    // AB3a : la pointe EN BAS, c'est ce qui le distingue d'un danger.
+                    // AB3a : la pointe EN BAS, c'est ce qui le distingue d'un danger. Comme y
+                    // monte en espace de texture, la BASE LARGE EST EN HAUT. Ce panneau etait
+                    // dessine pointe en haut depuis la phase 12c : les onze cedez le passage
+                    // du village etaient des triangles de danger, et rien ne le disait.
                     for (int row = 0; row < 9; row++)
                     {
                         int half = 8 - row;
-                        int y = cy - 4 + row;
+                        int y = cy + 4 - row;
                         Fill(pixels, width, cx - half, cx + half - 1, y, y, red);
                     }
 
@@ -1953,7 +2155,7 @@ namespace SousLaVille.EditorTools
                         int half = 6 - row - 2;
                         if (half > 0)
                         {
-                            int y = cy - 3 + row + 1;
+                            int y = cy + 3 - row - 1;
                             Fill(pixels, width, cx - half, cx + half - 1, y, y, white);
                         }
                     }
@@ -2004,17 +2206,357 @@ namespace SousLaVille.EditorTools
                     }
                     break;
 
-                default:
-                    // Panonceau de direction : un rectangle bleu, une fleche blanche. Ce n'est
-                    // pas un B21 « direction obligatoire » — un disque —, qui dirait au
-                    // conducteur ce qu'il DOIT faire ; c'est un panneau de jalonnement qui dit
-                    // ou est la station.
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                    // Panonceau de jalonnement : un rectangle bleu, une fleche blanche. Ce
+                    // n'est pas un B21 « direction obligatoire » — un disque —, qui dirait au
+                    // conducteur ce qu'il DOIT faire ; il dit ou est la station, rien de plus.
                     Fill(pixels, width, cx - 6, cx + 5, cy - 4, cy + 3, blue);
                     DrawArrow(pixels, width, cx, cy, kind - SignFirstArrow, white);
+                    break;
+
+                case 9:
+                    // AB1 : la croix de Saint-Andre, l'intersection ou l'on cede a droite.
+                    DrawDangerPlate(pixels, width, red, white);
+                    Ink(pixels, width, cx - 2, 14, white, black);
+                    Ink(pixels, width, cx + 2, 14, white, black);
+                    Ink(pixels, width, cx - 1, 15, white, black);
+                    Ink(pixels, width, cx + 1, 15, white, black);
+                    Ink(pixels, width, cx, 16, white, black);
+                    Ink(pixels, width, cx - 1, 17, white, black);
+                    Ink(pixels, width, cx + 1, 17, white, black);
+                    Ink(pixels, width, cx - 2, 18, white, black);
+                    Ink(pixels, width, cx + 2, 18, white, black);
+                    break;
+
+                case 10:
+                    // AB25 : l'anneau du giratoire. Un anneau plein et non un losange : a
+                    // cette taille un losange evide ne se distinguait pas d'une croix.
+                    DrawDangerPlate(pixels, width, red, white);
+                    InkSpan(pixels, width, cx - 2, cx + 2, 14, 14, white, black);
+                    Ink(pixels, width, cx - 2, 15, white, black);
+                    Ink(pixels, width, cx + 2, 15, white, black);
+                    Ink(pixels, width, cx - 2, 16, white, black);
+                    Ink(pixels, width, cx + 2, 16, white, black);
+                    InkSpan(pixels, width, cx - 1, cx + 1, 17, 17, white, black);
+                    break;
+
+                case 11:
+                    // A1b : UN virage. La chaussee monte, puis tourne a gauche.
+                    DrawDangerPlate(pixels, width, red, white);
+                    InkSpan(pixels, width, cx - 1, cx, 14, 16, white, black);
+                    InkSpan(pixels, width, cx - 3, cx, 17, 17, white, black);
+                    InkSpan(pixels, width, cx - 3, cx - 2, 18, 18, white, black);
+                    break;
+
+                case 12:
+                    // A1c : DEUX virages, l'S. Le double changement de sens est tout ce qui
+                    // le separe du precedent a cette taille : une seule courbe et ce serait
+                    // le meme dessin.
+                    DrawDangerPlate(pixels, width, red, white);
+                    InkSpan(pixels, width, cx - 4, cx - 3, 14, 14, white, black);
+                    InkSpan(pixels, width, cx - 2, cx - 1, 15, 15, white, black);
+                    InkSpan(pixels, width, cx, cx + 1, 16, 16, white, black);
+                    InkSpan(pixels, width, cx - 1, cx, 17, 17, white, black);
+                    InkSpan(pixels, width, cx - 2, cx - 1, 18, 18, white, black);
+                    break;
+
+                case 13:
+                    // A4 : deux traces de derapage. La voiture a ete retiree : trois pixels
+                    // de carrosserie au-dessus des traces ne faisaient qu'un pate noir.
+                    DrawDangerPlate(pixels, width, red, white);
+                    Ink(pixels, width, cx - 3, 14, white, black);
+                    Ink(pixels, width, cx - 2, 15, white, black);
+                    Ink(pixels, width, cx - 2, 16, white, black);
+                    Ink(pixels, width, cx - 3, 17, white, black);
+                    Ink(pixels, width, cx - 3, 18, white, black);
+                    Ink(pixels, width, cx + 2, 14, white, black);
+                    Ink(pixels, width, cx + 1, 15, white, black);
+                    Ink(pixels, width, cx + 1, 16, white, black);
+                    Ink(pixels, width, cx + 2, 17, white, black);
+                    Ink(pixels, width, cx + 2, 18, white, black);
+                    break;
+
+                case 14:
+                    // A13b : le pieton et le passage clout sous ses pieds.
+                    DrawDangerPlate(pixels, width, red, white);
+                    DrawPedestrian(pixels, width, cx, 16,
+                        (x0, x1, y0, y1) => InkSpan(pixels, width, x0, x1, y0, y1, white, black));
+                    for (int x = cx - 3; x <= cx + 3; x += 2)
+                    {
+                        Ink(pixels, width, x, 14, white, black);
+                    }
+                    break;
+
+                case 15:
+                    // A14 : le point d'exclamation. La barre en haut, le point en bas.
+                    DrawDangerPlate(pixels, width, red, white);
+                    InkSpan(pixels, width, cx - 1, cx, 16, 19, white, black);
+                    InkSpan(pixels, width, cx - 1, cx, 14, 14, white, black);
+                    break;
+
+                case 16:
+                    // A21 : le velo qui debouche. Deux roues evidees posees dans les deux
+                    // rangees les plus larges du triangle — DrawBicycle, dessine pour le
+                    // creux rond d'un disque, sortait rogne d'un cote dans un triangle.
+                    DrawDangerPlate(pixels, width, red, white);
+                    foreach (int wheel in new[] { cx - 3, cx + 3 })
+                    {
+                        InkSpan(pixels, width, wheel - 1, wheel + 1, 14, 14, white, black);
+                        InkSpan(pixels, width, wheel - 1, wheel + 1, 16, 16, white, black);
+                        Ink(pixels, width, wheel - 1, 15, white, black);
+                        Ink(pixels, width, wheel + 1, 15, white, black);
+                    }
+
+                    InkSpan(pixels, width, cx - 1, cx + 1, 16, 16, white, black);
+                    Ink(pixels, width, cx, 17, white, black);
+                    break;
+
+                case 17:
+                    // B0 : le disque borde de rouge, vide. Rien ne passe, dans aucun sens.
+                    DrawProhibitionPlate(pixels, width, red, white);
+                    break;
+
+                case 18:
+                    // B1 : le disque PLEIN de rouge et sa barre blanche. C'est ce plein qui le
+                    // distingue du B0, qui n'a qu'une bordure.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, red);
+                    Fill(pixels, width, cx - 3, cx + 2, cy - 1, cy, white);
+                    break;
+
+                case 19:
+                    // B2b : la fleche qui part a droite, barree. Une fleche COUDEE ne tenait
+                    // pas dans les sept pixels du creux : elle sortait en gribouillis.
+                    DrawProhibitionPlate(pixels, width, red, white);
+                    Fill(pixels, width, cx - 3, cx, cy - 1, cy, black);
+                    Fill(pixels, width, cx + 1, cx + 1, cy - 2, cy + 1, black);
+                    Fill(pixels, width, cx + 2, cx + 2, cy - 1, cy, black);
+                    DrawSlash(pixels, width, cx, cy, red);
+                    break;
+
+                case 20:
+                    // B9a : le pieton, barre.
+                    DrawProhibitionPlate(pixels, width, red, white);
+                    DrawPedestrian(pixels, width, cx, cy - 1,
+                        (x0, x1, y0, y1) => Fill(pixels, width, x0, x1, y0, y1, black));
+                    DrawSlash(pixels, width, cx, cy, red);
+                    break;
+
+                case 21:
+                    // B6a1 : le disque BLEU borde de rouge, une seule barre.
+                    DrawProhibitionPlate(pixels, width, red, blue);
+                    DrawSlash(pixels, width, cx, cy, red);
+                    break;
+
+                case 22:
+                    // B6d : le meme, DEUX barres croisees. La barre contre la croix, c'est
+                    // exactement la distinction qui s'apprend.
+                    DrawProhibitionPlate(pixels, width, red, blue);
+                    DrawSlash(pixels, width, cx, cy, red);
+                    DrawBackslash(pixels, width, cx, cy, red);
+                    break;
+
+                case 23:
+                    // B21b : tout droit.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    Fill(pixels, width, cx - 1, cx, cy - 4, cy + 1, white);
+                    DrawArrow(pixels, width, cx, cy + 1, 0, white);
+                    break;
+
+                case 24:
+                    // B21c1 : a droite. Le fut monte, puis la fleche part a droite.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    Fill(pixels, width, cx - 2, cx - 1, cy - 4, cy, white);
+                    Fill(pixels, width, cx - 1, cx + 1, cy - 1, cy, white);
+                    DrawArrow(pixels, width, cx + 1, cy, 1, white);
+                    break;
+
+                case 25:
+                    // B21e : a droite ou a gauche, une fleche a deux tetes.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    Fill(pixels, width, cx - 2, cx + 1, cy - 1, cy, white);
+                    DrawArrow(pixels, width, cx + 1, cy, 1, white);
+                    DrawArrow(pixels, width, cx - 2, cy, 3, white);
+                    break;
+
+                case 26:
+                    // B21a1 : contourner par la droite, la fleche en biais.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    for (int step = 0; step < 4; step++)
+                    {
+                        Fill(pixels, width, cx - 2 + step, cx - 1 + step,
+                            cy - 3 + step, cy - 3 + step, white);
+                    }
+
+                    Fill(pixels, width, cx, cx + 2, cy + 1, cy + 1, white);
+                    Fill(pixels, width, cx + 2, cx + 2, cy - 1, cy + 1, white);
+                    break;
+
+                case 27:
+                    // B22a : le velo, en blanc sur le bleu.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    DrawBicycle(pixels, width, cx, cy,
+                        (x0, x1, y0, y1) => Fill(pixels, width, x0, x1, y0, y1, white));
+                    break;
+
+                case 28:
+                    // B22b : le pieton, en blanc sur le bleu.
+                    DrawDisc(pixels, width, cx, cy, 5.6f, blue);
+                    DrawPedestrian(pixels, width, cx, cy - 1,
+                        (x0, x1, y0, y1) => Fill(pixels, width, x0, x1, y0, y1, white));
+                    break;
+
+                default:
+                    // AUCUN DEFAUT MUET. Jusqu'a la phase 13 ce default dessinait une fleche
+                    // de jalonnement : porter SignCount sans ajouter le dessin aurait sorti
+                    // vingt panonceaux bleus identiques a la place de vingt panneaux, SANS UN
+                    // MOT. C'est le meme defaut que le « default: return cell » de GroundAt.
+                    Debug.LogError($"[Sous la Ville] Le rang de panneau {kind} n'est dessiné " +
+                                   $"nulle part. SignCount vaut {SignCount} : ajoute son cas " +
+                                   "dans BuildSign, ou baisse SignCount.");
                     break;
             }
 
             return pixels;
+        }
+
+        /// <summary>Le pinceau d'un pictogramme : plein sur un disque, garde sur un triangle.</summary>
+        private delegate void Brush(int x0, int x1, int y0, int y1);
+
+        /// <summary>
+        /// La plaque d'un panneau de DANGER : triangle POINTE EN HAUT, borde de rouge, fond
+        /// blanc. En espace de texture y monte, donc la base large est en bas.
+        ///
+        /// Un triangle pointe en bas serait un cedez le passage, qui dit tout autre chose :
+        /// c'est la faute qui a ete corrigee sur le rang 0 en phase 13.
+        /// </summary>
+        private static void DrawDangerPlate(Color32[] pixels, int width, Color32 red,
+            Color32 white)
+        {
+            for (int row = 0; row <= 10; row++)
+            {
+                int half = Mathf.RoundToInt((10 - row) * 0.8f);
+                Fill(pixels, width, 8 - half, 7 + half, 13 + row, 13 + row, red);
+            }
+
+            // La bordure fait deux pixels dans le bas du triangle et un seul pres de la
+            // pointe. A deux partout, le blanc tombait a quatre pixels de large des la
+            // cinquieme rangee : le bras d'une croix n'y tenait plus, et les pictogrammes
+            // sortaient tous rognes du meme cote.
+            for (int row = 1; row <= 6; row++)
+            {
+                int half = Mathf.RoundToInt((10 - row) * 0.8f) - (row <= 4 ? 2 : 1);
+                if (half > 0)
+                {
+                    Fill(pixels, width, 8 - half, 7 + half, 13 + row, 13 + row, white);
+                }
+            }
+        }
+
+        /// <summary>
+        /// La plaque d'une INTERDICTION : un disque borde de rouge. Le centre est blanc pour
+        /// les interdictions de circuler, bleu pour celles de stationner — c'est le Code.
+        /// </summary>
+        private static void DrawProhibitionPlate(Color32[] pixels, int width, Color32 red,
+            Color32 inner)
+        {
+            DrawDisc(pixels, width, 8, 18, 5.6f, red);
+            DrawDisc(pixels, width, 8, 18, 3.8f, inner);
+        }
+
+        /// <summary>La barre oblique d'une interdiction, du bas gauche vers le haut droit.</summary>
+        private static void DrawSlash(Color32[] pixels, int width, int cx, int cy, Color32 color)
+        {
+            for (int i = -3; i <= 3; i++)
+            {
+                Ink(pixels, width, cx + i, cy + i, null, color);
+            }
+        }
+
+        /// <summary>L'autre barre, celle qui fait la croix du B6d.</summary>
+        private static void DrawBackslash(Color32[] pixels, int width, int cx, int cy,
+            Color32 color)
+        {
+            for (int i = -3; i <= 3; i++)
+            {
+                Ink(pixels, width, cx + i, cy - i, null, color);
+            }
+        }
+
+        /// <summary>
+        /// Un pieton : tete, tronc, bras, deux jambes. Six pixels de haut, trois de large —
+        /// il tient dans le blanc d'un triangle comme dans le creux d'un disque.
+        /// </summary>
+        private static void DrawPedestrian(Color32[] pixels, int width, int cx, int cy,
+            Brush brush)
+        {
+            brush(cx, cx, cy + 3, cy + 3);           // tete
+            brush(cx, cx, cy, cy + 2);               // tronc
+            brush(cx - 1, cx + 1, cy + 1, cy + 1);   // bras
+            brush(cx - 1, cx - 1, cy - 2, cy - 1);   // jambe gauche
+            brush(cx + 1, cx + 1, cy - 2, cy - 1);   // jambe droite
+        }
+
+        /// <summary>
+        /// Un velo : deux roues evidees de trois pixels et un cadre. Sept pixels de large,
+        /// la largeur exacte du creux d'un disque d'interdiction.
+        /// </summary>
+        private static void DrawBicycle(Color32[] pixels, int width, int cx, int cy, Brush brush)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                int wheel = cx + side * 2;
+                brush(wheel - 1, wheel + 1, cy - 1, cy - 1);
+                brush(wheel - 1, wheel + 1, cy + 1, cy + 1);
+                brush(wheel - 1, wheel - 1, cy, cy);
+                brush(wheel + 1, wheel + 1, cy, cy);
+            }
+
+            brush(cx - 1, cx + 1, cy + 1, cy + 1);   // cadre
+            brush(cx, cx, cy + 2, cy + 2);           // guidon
+        }
+
+        /// <summary>
+        /// Un pixel de pictogramme. Avec un fond donne, il n'est pose QUE sur ce fond : le
+        /// blanc d'un triangle est etroit et penche, et sans cette garde un bras de croix
+        /// trouerait la bordure rouge. Sans fond (null), il est pose partout.
+        /// </summary>
+        private static void Ink(Color32[] pixels, int width, int x, int y, Color32? background,
+            Color32 color)
+        {
+            if (x < 0 || x >= width || y < 0 || y * width + x >= pixels.Length)
+            {
+                return;
+            }
+
+            if (background.HasValue)
+            {
+                Color32 current = pixels[y * width + x];
+                Color32 wanted = background.Value;
+
+                if (current.r != wanted.r || current.g != wanted.g || current.b != wanted.b
+                    || current.a != wanted.a)
+                {
+                    return;
+                }
+            }
+
+            pixels[y * width + x] = color;
+        }
+
+        /// <summary>Un pave de pictogramme, pose sous la meme garde qu'Ink.</summary>
+        private static void InkSpan(Color32[] pixels, int width, int x0, int x1, int y0, int y1,
+            Color32 background, Color32 color)
+        {
+            for (int y = y0; y <= y1; y++)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    Ink(pixels, width, x, y, background, color);
+                }
+            }
         }
 
         /// <summary>Un losange plein, centre sur (cx, cy), de demi-diagonale donnee.</summary>
@@ -2345,7 +2887,8 @@ namespace SousLaVille.EditorTools
                     {
                         case VillageLayout.House: pixel = house; break;
                         case VillageLayout.Facade:
-                        case VillageLayout.PipeFacade: pixel = facade; break;
+                        case VillageLayout.PipeFacade:
+                        case VillageLayout.SignFacade: pixel = facade; break;
                         case VillageLayout.Hedge: pixel = hedge; break;
                         // Un arbre bloque : le plan doit le montrer, sinon il annonce un
                         // passage la ou il n'y en a pas. Un PANNEAU ne bloque pas, il retombe
