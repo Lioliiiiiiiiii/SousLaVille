@@ -120,7 +120,10 @@ fermée**, en relisant la case où l'on est, jamais en comptant les pas.
 première famille de la planche, consigné ici, **relu au début de la phase 17 — et refait en 17g**
 avec les trois meubles, adossés au mur du fond. Sur trois, un seul se devinait. « Adosser un
 meuble au mur du fond » est un réflexe de dessin, pas une décision qu'on prend en consultant une
-liste : c'est pour cela qu'une liste ne suffit pas et qu'il faut **regarder**.
+liste : c'est pour cela qu'une liste ne suffit pas et qu'il faut **regarder**. **Retombé une
+troisième fois en 18a**, dans une planche d'essai composée à la main : le bouquet d'arbres — ce
+que la planche devait montrer d'abord — sous la boîte de gauche du HUD. Une planche qu'on compose
+est un écran comme les autres : ses deux rangées du haut appartiennent au HUD.
 
 **Une pièce d'intérieur fait dix lignes quand la caméra en montre 11,25.** La pièce est donc
 centrée, et sa rangée du haut tombe **derrière la rangée de gouttes du HUD**. La première famille

@@ -121,6 +121,47 @@ namespace SousLaVille.EditorTools
         /// <summary>La Fabrique, phase 13. Sans elle, elle porterait le bleu de l'ouvrier.</summary>
         public static readonly Color32 Violet = Rgb(0x7A, 0x4E, 0xA8);
 
+        // ------------------- phase 18 : les seize couleurs de la reference ------------------
+        //
+        // La reference demande des RAMPES DE QUATRE — contour, ombre, base, eclat — pour chaque
+        // matiere qui se dresse, et une pelouse menthe qui n'est aucun des trois verts de la
+        // phase 17. Chaque famille est nommee par ce qu'elle est ; ce que la transition laisse
+        // sans usage, la sous-phase 18h le retire.
+
+        /// <summary>LA PELOUSE de la reference : un vert menthe pale, jamais le vert franc de la phase 17.</summary>
+        public static readonly Color32 LawnLight = Rgb(0xB8, 0xE8, 0xB8);
+        public static readonly Color32 Lawn = Rgb(0x90, 0xD0, 0x98);
+        public static readonly Color32 LawnDark = Rgb(0x60, 0xA8, 0x6C);
+        public static readonly Color32 LawnDeep = Rgb(0x3C, 0x7C, 0x4C);
+
+        /// <summary>LE FEUILLAGE des arbres et des buissons : plus sature et plus sombre que la pelouse, pour s'en detacher.</summary>
+        public static readonly Color32 LeafLight = Rgb(0xA0, 0xE0, 0x70);
+        public static readonly Color32 Leaf = Rgb(0x58, 0xB8, 0x48);
+        public static readonly Color32 LeafDark = Rgb(0x30, 0x88, 0x3C);
+
+        /// <summary>Le contour de tout ce qui pousse. Un vert profond, pas le brun de Ink.</summary>
+        public static readonly Color32 LeafShadow = Rgb(0x1C, 0x58, 0x30);
+
+        /// <summary>L'eclat qui manquait a la rampe du bois : une arete de planche au soleil.</summary>
+        public static readonly Color32 WoodLight = Rgb(0xC0, 0x8C, 0x50);
+
+        /// <summary>LE SABLE des chemins. Leur bord est Stone, deja la.</summary>
+        public static readonly Color32 SandLight = Rgb(0xF4, 0xEA, 0xBC);
+        public static readonly Color32 Sand = Rgb(0xE8, 0xD8, 0x90);
+
+        /// <summary>LES TOITS des maisons. Leur ombre est Brick, deja la.</summary>
+        public static readonly Color32 RoofLight = Rgb(0xF0, 0xA4, 0x84);
+        public static readonly Color32 Roof = Rgb(0xD8, 0x70, 0x50);
+
+        /// <summary>Le menton et le cou : la chair a l'ombre.</summary>
+        public static readonly Color32 SkinShadow = Rgb(0xD8, 0x8C, 0x64);
+
+        /// <summary>Les feuilles de l'automne, sur la cime et au sol.</summary>
+        public static readonly Color32 Rust = Rgb(0xC0, 0x70, 0x28);
+
+        /// <summary>Les fleurs du printemps, posees sur la pelouse.</summary>
+        public static readonly Color32 FlowerPink = Rgb(0xF0, 0x90, 0xA8);
+
         /// <summary>Toutes, dans l'ordre de la declaration. Sert au validateur et a la planche.</summary>
         public static readonly Color32[] All =
         {
@@ -133,7 +174,11 @@ namespace SousLaVille.EditorTools
             BlueDeep, SignBlue, Water, Ice,
             Brick, SignRed, Orange, Skin,
             Gold, Sun,
-            Teal, Violet
+            Teal, Violet,
+            LawnLight, Lawn, LawnDark, LawnDeep,
+            LeafLight, Leaf, LeafDark, LeafShadow,
+            WoodLight, SandLight, Sand, RoofLight, Roof,
+            SkinShadow, Rust, FlowerPink
         };
 
         /// <summary>Leurs noms, dans le meme ordre. Sert aux messages et a la planche.</summary>
@@ -148,7 +193,11 @@ namespace SousLaVille.EditorTools
             "BlueDeep", "SignBlue", "Water", "Ice",
             "Brick", "SignRed", "Orange", "Skin",
             "Gold", "Sun",
-            "Teal", "Violet"
+            "Teal", "Violet",
+            "LawnLight", "Lawn", "LawnDark", "LawnDeep",
+            "LeafLight", "Leaf", "LeafDark", "LeafShadow",
+            "WoodLight", "SandLight", "Sand", "RoofLight", "Roof",
+            "SkinShadow", "Rust", "FlowerPink"
         };
 
         /// <summary>
@@ -313,7 +362,28 @@ namespace SousLaVille.EditorTools
                 { Key(Gold), Bark },
 
                 { Key(Teal), GrassDeep },
-                { Key(Violet), BlueDeep }
+                { Key(Violet), BlueDeep },
+
+                // Phase 18. La pelouse s'assombrit jusqu'au contour des plantes : l'ombre d'un
+                // arbre sur l'herbe est de la meme famille que son trait.
+                { Key(LawnLight), Lawn },
+                { Key(Lawn), LawnDark },
+                { Key(LawnDark), LawnDeep },
+                { Key(LawnDeep), LeafShadow },
+
+                { Key(LeafLight), Leaf },
+                { Key(Leaf), LeafDark },
+                { Key(LeafDark), LeafShadow },
+                { Key(LeafShadow), Ink },
+
+                { Key(WoodLight), Bark },
+                { Key(SandLight), Sand },
+                { Key(Sand), Stone },
+                { Key(RoofLight), Roof },
+                { Key(Roof), Brick },
+                { Key(SkinShadow), Brick },
+                { Key(Rust), Brick },
+                { Key(FlowerPink), SignRed }
             };
         }
     }

@@ -14,7 +14,7 @@ namespace SousLaVille.EditorTools
     /// Chaque tuile porte un lisere 1 px plus sombre : deux carres de meme couleur poses cote
     /// a cote restent distincts, ce qui aide a lire la grille.
     /// </summary>
-    public static class PlaceholderArtGenerator
+    public static partial class PlaceholderArtGenerator
     {
         public const string TilesFolder = "Assets/Art/Tiles";
         public const string SpritesFolder = "Assets/Art/Sprites";

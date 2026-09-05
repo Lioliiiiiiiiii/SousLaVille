@@ -26,10 +26,11 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 12d | La station qui s'agrandit | Terminée |
 | 12e | Les huit guides | Terminée |
 | 13 | L'usine à panneaux | Terminée |
-| 14 | Le Stock, le memory | À faire |
-| 15 | La Fabrique | À faire |
-| 16 | Le Plan | À faire |
-| 17 | Habillage | À faire |
+| 14 | Le Stock, le memory | Terminée |
+| 15 | La Fabrique | Terminée |
+| 16 | Le Plan | Terminée |
+| 17 | Habillage | Terminée, et le rendu ne convient pas |
+| 18 | Le style de la référence | 18a faite, planche à valider |
 
 ## Phase 0, ce qui est fait
 
@@ -2731,7 +2732,60 @@ du HUD »* — et c'est écrit dans PIEGES.md depuis. **Je l'ai relu au début d
 quand même refait**, parce que « adosser un meuble au mur du fond » est un réflexe de dessin et
 non une décision qu'on prend en consultant une liste. Les meubles sont au mur du bas.
 
-## L'habillage est terminé
+## Phase 18a, ce qui est fait
+
+Le 5 septembre 2026, six captures d'un RPG de console portable du début des années 2000 servent de
+**référence visuelle** : le jeu doit leur ressembler, et la phase 17 n'y est pas. Diagnostic,
+feuille de style et découpage dans **PLAN-PHASE-18.md**. Les captures sont une feuille de style,
+pas une banque d'images : aucun pixel n'en est copié, la ROM n'a pas été ouverte.
+
+- **Le diagnostic** : la phase 17 a travaillé la *couleur* de chaque élément, jamais sa *forme*.
+  Herbe en bruit là où la référence a une trame régulière ; chemins à angles carrés là où elle
+  arrondit chaque coin ; arbres d'une case sans contour là où elle a des frondaisons de deux
+  cases ; maisons de 16 px là où elle a un toit en plan sur la moitié de la hauteur ;
+  personnages sans contour à tête d'un tiers ; HUD à nu là où tout est dans une boîte blanche.
+- **La feuille de style**, huit règles : sols sans contour à trame régulière ; un trait d'un pixel
+  autour de tout ce qui se dresse, dans le sombre de sa famille ; trois tons par matière ; vue
+  3/4 ; une ombre au sol ; des coins arrondis ; un personnage est d'abord une tête ; palette pastel.
+- **Seize couleurs** ajoutées à `Palette`, par familles nommées : `Lawn` ×4 (la pelouse menthe),
+  `Leaf` ×4 (le feuillage, dont `LeafShadow`, le contour des plantes), `Sand` ×2, `Roof` ×2,
+  `WoodLight`, `SkinShadow`, `Rust`, `FlowerPink`. 34 → 50. Toutes ont leur `Shade`. Les verts et
+  l'ocre de la phase 17 restent le temps de la transition ; 18h retirera ce que plus rien ne porte.
+- **Les primitives du style**, dans `PlaceholderArtGenerator.Style.cs` (le générateur devient
+  `partial`) : `Outline` — le trait posé dans le vide autour d'une silhouette, donc on dessine en
+  retrait d'un pixel —, `RoundedBox`, `Plot` borné, `Tuft`, `LeafBlob` (la texture du feuillage,
+  période 8 pour se poursuivre de case en case), `CornerDistance` (le quart de cercle d'un coin de
+  chemin). Et les premiers dessins : pelouse, chemin à seize masques, eau, arbre 16×32, pied
+  d'arbre, buisson à seize masques, fleurs, maison 32×40, poteau, personnage, goutte, boîte,
+  pictos soleil et printemps.
+- **La planche d'essai**, `Sous La Ville/Planche d'essai 18` → `Captures/planche_essai_18.png` :
+  onze cases sur huit composées avec ces dessins, à quatre fois, **sans toucher à une image du
+  jeu**. C'est elle qui se valide.
+
+### Ce que la planche a dit, en trois passes
+
+1. **Le bouquet d'arbres était sous la boîte du HUD.** Première composition : les arbres — ce que
+   la planche devait montrer d'abord — en haut à gauche, exactement sous la boîte de couche et de
+   saison. Le piège de la rangée du haut, une troisième fois, dans une planche que j'avais
+   composée moi-même. Recomposée : rien sous les deux boîtes.
+2. **Les arbres sortaient en cyprès.** Une cime de quatorze pixels de large sur vingt-deux de
+   haut est un ovale debout, quelle que soit sa texture, et la texture en diagonales lisait comme
+   un tricot. Redessinée en boule à deux lobes et trois bosses, texturée de touffes en quinconce.
+3. **Les buissons sortaient en pile de boîtes rayées** : une bande d'ombre par case, répétée tous
+   les seize pixels. L'ombre n'est plus qu'au pied de la haie et la lumière qu'à son sommet ;
+   entre les deux, la texture du feuillage, qui se poursuit de case en case parce que sa période
+   divise seize.
+
+## Phase 18a, vérifications faites
+
+- Compilation par le pont MCP : zéro erreur, zéro avertissement — deux champs `static readonly`
+  déclarés pour 18c et 18d ont été retirés avant compilation, un champ privé jamais lu étant un
+  CS0414.
+- La planche regardée trois fois, corrigée deux fois. `git diff ProjectSettings/` vide.
+- Aucune image du jeu n'a changé : `ValidatePalette` et `ValidateDistinct` n'ont rien de neuf à
+  lire. Les seize couleurs n'y changent rien, un ajout ne peut pas mettre une image hors palette.
+
+## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
 sous-sol, les personnages, l'interface, les panneaux, les intérieurs. **266 images, 34 couleurs**,
@@ -2752,13 +2806,29 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : Victorien joue
+## Prochaine étape : la phase 18b, après validation de la planche
 
-Il n'y a plus de phase. Ce qui reste est d'une autre nature : le regarder jouer, et corriger ce
-que la partie montre. Les questions ouvertes du bas de ce fichier sont celles qu'une vraie partie
-tranchera — le tableau de la phase 8, la difficulté des crêtes, le contraste des saisons.
+La planche d'essai de 18a attend ta validation, et trois décisions avec elle (PLAN-PHASE-18.md
+§ 7) : les arbres de deux cases, les maisons de deux cases sur deux, les saisons par images. Puis
+18b, les sols et le tri par Y ; 18c à 18h à la suite, une par une. Victorien joue après.
 
 ## Décisions prises
+
+### Phase 18a, tranchées le 5 septembre 2026
+
+- **Les captures de référence sont une feuille de style, pas des assets.** Proportions, trames,
+  rampes, perspective ; aucun pixel copié. CLAUDE.md tient, la ROM reste fermée.
+- **La palette passe de 34 à 50 couleurs**, par rampes de quatre. Revient sur « une trentaine »
+  de 17a : la référence demande contour, ombre, base et éclat pour chaque matière qui se dresse,
+  et une pelouse menthe qui n'est aucun des trois verts de 17.
+- **La pelouse s'appelle `Lawn`, pas `Grass`** : les trois `Grass` de la phase 17 restent le temps
+  de la transition, et deux familles du même nom se seraient confondues dans quatre mille lignes.
+- **Le pointillé central des routes disparaît** en 18b : la référence n'en a pas, ce sont des rues
+  de village, et ce sont les panneaux qui disent « route ».
+- **Les pictos du HUD font 24 px dans une boîte de 32** : l'emprise de la phase 5 ne change pas,
+  c'est le cadre qui prend la marge.
+- **En attente de ta décision** : arbres de deux cases, maisons de deux sur deux, saisons par
+  images — PLAN-PHASE-18.md § 7, recommandations comprises.
 
 ### Phase 17c, tranchée le 5 septembre 2026
 
