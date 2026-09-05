@@ -176,6 +176,13 @@ C'est la méthode du projet.
 **Un validateur qui dit toujours oui ne vaut rien.** Le vérifier **par sabotage** : casser le
 monde exprès, reconstruire, et exiger qu'il refuse en nommant la case et la raison.
 
+**Agrandir un sprite au gabarit de ce qui le cache ne le montre pas.** L'échelle disparaissait
+sous le joueur ; portée à 16x24 avec le même pivot que lui, elle est restée **exactement**
+recouverte — deux rectangles identiques au même endroit. Ce qui rend visible n'est pas la taille
+mais **l'endroit où l'on dépasse** : les montants aux colonnes 1 et 14, hors du corps qui occupe
+le milieu. Le premier essai compilait, passait les deux validateurs, et ne changeait rien à
+l'écran. Tombé en phase 17c.
+
 **Retirer un défaut de style à un endroit le rend visible partout où il restait.** Chaque sol du
 jeu était un aplat bordé d'un liseré : cent fois de suite, cela dessine une grille. L'herbe
 texturée de la phase 17b a réglé la grille — et révélé d'un coup que les 126 arbres se dressaient

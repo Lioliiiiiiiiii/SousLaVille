@@ -2508,6 +2508,58 @@ Le contrôle de palette l'acceptait, et il avait raison : ce sont de bonnes coul
 des familles aussi : la tuile est bien distincte des autres. Corriger un défaut de style à un
 endroit **le rend visible partout où il restait**, et seule une capture le dit.
 
+## Phase 17c, ce qui est fait
+
+**Le sous-sol.** Même traitement qu'en surface — les sols perdent leur liseré — plus deux
+réponses à des questions ouvertes depuis les phases 2 et 3.
+
+### LA PROFONDEUR SE COMPTE
+
+C'est la décision de la sous-phase, et elle mérite d'être relue. « L'écart entre profondeur 1 et
+2 » est une question ouverte depuis la phase 3 : *« distinct sur les captures, mais l'écart est
+faible »*. Une nuance de brun ne se compare **qu'en voyant les deux côte à côte** — et sous terre
+on voit une case à la fois.
+
+Chaque case porte désormais **autant de cailloux clairs que sa profondeur** : un à la profondeur 1,
+deux à la 2, trois à la 3, aux mêmes places d'une tuile à l'autre. Un nombre se compte sur **une
+seule case**. La nuance de brun reste, elle ne remplace rien ; elle est doublée d'une quantité.
+
+La règle de profondeur croissante EST le puzzle selon CLAUDE.md, et c'était la seule chose du jeu
+que le joueur devait lire sans qu'aucun retour ne la lui dise sur place.
+
+### L'échelle ne disparaît plus sous le joueur
+
+Elle tenait dans une seule case : debout dessus, le joueur la **recouvrait entièrement** et le
+seul chemin vers la surface s'effaçait sous ses pieds. Relevé en phase 2, laissé à l'habillage.
+
+Elle passe au gabarit du personnage, 16 sur 24, pivot au tiers — **et ses montants passent aux
+colonnes 1 et 14**. Le premier essai les avait laissés au milieu, sous le corps du joueur : au
+même gabarit que lui, l'échelle était *exactement* recouverte et rien n'avait changé. Aux bords,
+elle dépasse de chaque côté.
+
+### Le reste
+
+Terre et galeries texturées sans bord, grain plus sombre, raccord sans couture. Les 48
+canalisations ont été relues sur la planche et gardées : leurs motifs se lisent, et c'est le motif
+et non la teinte qui dit le type depuis la phase 9b.
+
+## Phase 17c, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs, la palette (262 images,
+  34 couleurs) et les familles distinctes.
+- **Les six sols du sous-sol regardés en 3×3**, terre et galerie aux trois profondeurs : les
+  cailloux se comptent, 1, 2 puis 3 par case.
+- **Le sous-sol regardé en jeu**, debout sur l'échelle — et c'est là que le premier essai a montré
+  qu'il ne servait à rien.
+
+### Note d'atelier : agrandir un sprite au gabarit de ce qui le cache ne le montre pas
+
+L'échelle disparaissait sous le joueur. La portée au gabarit du personnage — même taille, même
+pivot — l'a laissée **exactement recouverte** : deux rectangles de mêmes dimensions au même
+endroit, l'un derrière l'autre. Ce qui la rend visible n'est pas sa taille mais **l'endroit où
+elle dépasse** : ses montants aux colonnes 1 et 14, hors du corps du joueur qui occupe le milieu.
+Le premier essai a compilé, généré, passé les deux validateurs et n'a **rien changé à l'écran**.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2519,13 +2571,20 @@ endroit **le rend visible partout où il restait**, et seule une capture le dit.
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17c : le sous-sol
+## Prochaine étape, phase 17d : les personnages
 
-Terre et galeries aux trois profondeurs — l'écart entre 1 et 2 est à creuser, c'est une question
-ouverte depuis la phase 3 —, les 48 canalisations, l'échelle qui doit déborder vers le haut pour
-ne plus disparaître sous le personnage, l'arrivée de maison, la cuve et les bassins.
+Cinq silhouettes distinctes au lieu de cinq recolorations : l'artisan, l'ouvrier et les trois de
+l'usine à panneaux ne se distinguent aujourd'hui que par la couleur du corps. Plus le joueur en
+quatre directions, et les huit guides.
 
 ## Décisions prises
+
+### Phase 17c, tranchée le 5 septembre 2026
+
+- **La profondeur se compte.** Chaque case de terre ou de galerie porte autant de cailloux clairs
+  que sa profondeur. Réponse à la question ouverte depuis la phase 3 sur l'écart entre les
+  profondeurs 1 et 2 : une nuance ne se compare qu'en voyant deux cases ensemble, un nombre se
+  lit sur une seule. **À rouvrir si tu préfères t'en tenir à la nuance seule.**
 
 ### Phase 17, tranchées le 5 septembre 2026
 

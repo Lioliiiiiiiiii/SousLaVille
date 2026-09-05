@@ -616,8 +616,8 @@ namespace SousLaVille.EditorTools
 
                 for (int depth = 1; depth <= DepthCount; depth++)
                 {
-                    WriteTexture(EarthTexture(depth), BuildTile(EarthColors[depth - 1]));
-                    WriteTexture(TunnelTexture(depth), BuildTile(TunnelColors[depth - 1]));
+                    WriteTexture(EarthTexture(depth), BuildEarthTile(depth));
+                    WriteTexture(TunnelTexture(depth), BuildTunnelTile(depth));
                 }
 
                 for (int pattern = 0; pattern < PipePatternCount; pattern++)
@@ -629,7 +629,7 @@ namespace SousLaVille.EditorTools
                 }
 
                 WriteTexture(ManholeTexture, BuildManhole());
-                WriteTexture(LadderTexture, BuildLadder());
+                WriteTexture(LadderTexture, BuildLadder(), PlayerWidth);
                 WriteTexture(HouseTexture, BuildHouse(), PlayerWidth);
                 WriteTexture(HouseInletTexture, BuildHouseInlet());
 
@@ -881,7 +881,7 @@ namespace SousLaVille.EditorTools
             }
 
             ConfigureImporter(ManholeTexture, null);
-            ConfigureImporter(LadderTexture, null);
+            ConfigureImporter(LadderTexture, PlayerPivot);
             ConfigureImporter(HouseInletTexture, null);
 
             for (int level = 0; level < ReserveLevelCount; level++)
@@ -1837,6 +1837,95 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
+        /// LA TERRE PLEINE, phase 17c. Un aplat borde d'un lisere dessinait sous terre la meme
+        /// grille qu'en surface. Ici, des cailloux et des veines, sans aucun bord.
+        ///
+        /// LA PROFONDEUR SE COMPTE, elle ne se devine plus a la nuance. Chaque case porte autant
+        /// de CAILLOUX CLAIRS que sa profondeur : un a la profondeur 1, deux a la 2, trois a la 3.
+        /// L'ecart entre les profondeurs 1 et 2 etait une question ouverte depuis la phase 3 —
+        /// « distinct sur les captures, mais l'ecart est faible » —, et une nuance de brun ne se
+        /// compare qu'en voyant les deux cote a cote. Un nombre se compte sur une seule case, et
+        /// la regle de profondeur croissante EST le puzzle selon CLAUDE.md.
+        /// </summary>
+        private static Color32[] BuildEarthTile(int depth)
+        {
+            Color32 body = EarthColors[Mathf.Clamp(depth - 1, 0, EarthColors.Length - 1)];
+            Color32 grain = Palette.Shade(body);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = body;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    if (Speckle(x, y, 53 + depth) % 14 == 0)
+                    {
+                        pixels[y * TileSize + x] = grain;
+                    }
+                }
+            }
+
+            DrawDepthPebbles(pixels, depth, Palette.StoneDark);
+            return pixels;
+        }
+
+        /// <summary>
+        /// LE SOL D'UNE GALERIE. Meme lecture de la profondeur, meme absence de bord : la
+        /// galerie se creuse dans la terre, elle ne se pose pas dessus en carreaux.
+        /// </summary>
+        private static Color32[] BuildTunnelTile(int depth)
+        {
+            Color32 body = TunnelColors[Mathf.Clamp(depth - 1, 0, TunnelColors.Length - 1)];
+            Color32 grain = Palette.Shade(body);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = body;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    if (Speckle(x, y, 71 + depth) % 22 == 0)
+                    {
+                        pixels[y * TileSize + x] = grain;
+                    }
+                }
+            }
+
+            DrawDepthPebbles(pixels, depth, grain);
+            return pixels;
+        }
+
+        /// <summary>
+        /// Autant de cailloux que la profondeur, aux memes places d'une tuile a l'autre : on les
+        /// compte d'un coup d'oeil au lieu de comparer deux bruns.
+        /// </summary>
+        private static void DrawDepthPebbles(Color32[] pixels, int depth, Color32 pebble)
+        {
+            Vector2Int[] places =
+            {
+                new Vector2Int(3, 11),
+                new Vector2Int(11, 6),
+                new Vector2Int(7, 2)
+            };
+
+            for (int i = 0; i < depth && i < places.Length; i++)
+            {
+                Vector2Int place = places[i];
+                Fill(pixels, TileSize, place.x, place.x + 1, place.y, place.y + 1, pebble);
+            }
+        }
+
+        /// <summary>
         /// LE MUR DE L'ENCEINTE de la station : des blocs de beton peint, decales d'une assise a
         /// l'autre, et l'arete du haut eclairee. C'etait un aplat bleu borde d'un lisere, donc
         /// une boite de plus sur l'herbe texturee.
@@ -2251,19 +2340,45 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>
+        /// <summary>
+        /// L'ECHELLE, redessinee en phase 17c AU GABARIT DU PERSONNAGE, 16 sur 24.
+        ///
+        /// Elle tenait dans une seule case, donc debout dessus le joueur la RECOUVRAIT ENTIEREMENT
+        /// et le seul chemin vers la surface disparaissait sous ses pieds — releve en phase 2 et
+        /// laisse a l'habillage. Elle monte desormais huit pixels plus haut que sa case, comme la
+        /// tete du personnage : elle reste visible derriere lui, et l'on voit ou l'on remonte.
+        ///
+        /// Le pivot est celui du joueur, au tiers : le transform se pose au centre de la case et
+        /// le haut deborde.
+        /// </summary>
         private static Color32[] BuildLadder()
         {
+            const int width = PlayerWidth;
+            const int height = PlayerHeight;
+
             Color32 rail = Palette.Gold;
             Color32 rung = Palette.Shade(rail);
+            Color32 shadow = Palette.Ink;
 
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
+            Color32[] pixels = NewTransparent(width * height);
 
-            Fill(pixels, TileSize, 3, 4, 1, 14, rail);
-            Fill(pixels, TileSize, 11, 12, 1, 14, rail);
+            // LES MONTANTS SONT AUX BORDS, et c'est tout l'interet. Les mettre a 3 et 10 les
+            // plaçait sous le corps du joueur, qui occupe le milieu : au meme gabarit que lui,
+            // l'echelle etait EXACTEMENT recouverte et le premier essai n'a rien change. Aux
+            // colonnes 1 et 14 elle depasse de chaque cote, et l'on voit ou l'on remonte meme
+            // debout dessus.
+            Fill(pixels, width, 1, 3, 1, height - 2, rail);
+            Fill(pixels, width, 12, 14, 1, height - 2, rail);
 
-            foreach (int y in new[] { 3, 7, 11 })
+            // Leur cote sombre : l'echelle a une epaisseur, elle n'est pas peinte au mur.
+            Fill(pixels, width, 3, 3, 1, height - 2, shadow);
+            Fill(pixels, width, 14, 14, 1, height - 2, shadow);
+
+            // Les barreaux, tous les quatre pixels, sur toute la hauteur.
+            for (int y = 3; y < height - 2; y += 4)
             {
-                Fill(pixels, TileSize, 5, 10, y, y + 1, rung);
+                Fill(pixels, width, 3, 12, y, y + 1, rung);
+                Fill(pixels, width, 3, 12, y + 1, y + 1, shadow);
             }
 
             return pixels;
