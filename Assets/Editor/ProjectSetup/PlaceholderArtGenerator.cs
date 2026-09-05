@@ -3234,7 +3234,20 @@ namespace SousLaVille.EditorTools
                         }
                     }
 
-                    Fill(pixels, width, cx - 3, cx + 2, cy - 1, cy, white);
+                    // LE MOT, ET NON UNE BARRE. Phase 17f : la plaque portait un seul trait
+                    // blanc horizontal, ce qui donne, dans un octogone rouge de seize pixels,
+                    // presque exactement le SENS INTERDIT du rang 18 — un disque rouge a barre
+                    // blanche. Or le jeu montre les deux : le stop dans les rues, le sens
+                    // interdit sur la planche de l'usine.
+                    //
+                    // Quatre traits verticaux de trois rangees se lisent comme un MOT, jamais
+                    // comme une barre. On ne peut pas ecrire STOP en huit pixels ; on peut
+                    // ecrire qu'il y a quelque chose d'ecrit, et c'est ce qui separe les deux.
+                    for (int letter = 0; letter < 4; letter++)
+                    {
+                        int x = cx - 4 + letter * 2;
+                        Fill(pixels, width, x, x, cy - 1, cy + 1, white);
+                    }
                     break;
 
                 case 2:

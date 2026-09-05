@@ -2657,6 +2657,42 @@ le rendu, et les validateurs qui mesurent les noms pour vérifier qu'ils tiennen
 du quiz. C'est une refonte, pas un réglage, et elle n'a qu'un blanc un peu large pour bénéfice.
 Le dos de carte du memory et le cadre de choix restent des aplats : ils se lisent.
 
+## Phase 17f, ce qui est fait
+
+**Les panneaux.** Un défaut corrigé, et un autre qui n'en était pas un.
+
+### Le STOP portait une barre, comme un sens interdit
+
+`AB4` était un octogone rouge avec **un seul trait blanc horizontal**. À seize pixels, c'est
+presque exactement `B1`, le sens interdit : un rouge, une barre blanche. Et le jeu montre **les
+deux** — le stop dans les rues, le sens interdit sur la planche de l'usine.
+
+Il porte désormais **quatre traits verticaux** de trois rangées. On ne peut pas écrire STOP en
+huit pixels ; on peut écrire **qu'il y a quelque chose d'écrit**, et c'est ce qui sépare les deux
+d'un coup d'œil. Vu côte à côte, très agrandi, avant et après.
+
+### AB1 n'a pas de défaut : c'est le Code qui a deux exceptions
+
+La phase 14 avait noté « AB1 se lit comme un panneau de danger ». En le regardant à douze fois, sa
+croix de Saint-André est **nette et juste** — le dessin n'est pas en cause.
+
+Ce qui est en cause, c'est la leçon que la pièce prétend enseigner : *« la forme dit la famille
+avant que le dessin dise le détail »*. **Elle est fausse deux fois**, et pas par notre faute :
+`AB1` (priorité à droite) et `AB25` (giratoire) sont des **triangles bordés de rouge** — la forme
+de la famille DANGER — alors qu'ils appartiennent à INTERSECTION. C'est le Code de la route qui en
+décide, et on ne le corrige pas en redessinant.
+
+La rangée du haut de la planche contient donc deux triangles qui ressemblent à ceux de la rangée
+d'en dessous. **C'est une propriété du sujet, pas un placeholder** ; la ligne est reformulée dans
+les placeholders plutôt que laissée comme un défaut à réparer.
+
+## Phase 17f, vérifications faites
+
+- Compilation : **zéro erreur, zéro warning**. Les six validateurs, la palette et les familles
+  distinctes — dont les 29 panneaux, toujours deux à deux différents.
+- **Les vingt-neuf regardés sur une planche à sept fois**, puis les cinq qui se ressemblent
+  — stop, sens interdit, circulation interdite, AB1, AB25 — **à douze fois, côte à côte**.
+
 ## Les documents du projet
 
 - **CLAUDE.md** — les contraintes non négociables. Ne se discute pas.
@@ -2668,11 +2704,11 @@ Le dos de carte du memory et le cadre de choix restent des aplats : ils se lisen
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape, phase 17f : les panneaux
+## Prochaine étape, phase 17g : les intérieurs
 
-Les vingt-neuf panneaux du Code : le STOP avec ses lettres, pour qu'il cesse de ressembler à un
-sens interdit à seize pixels, et la croix d'AB1 assez nette pour qu'un panneau d'INTERSECTION ne
-se lise plus comme un triangle de DANGER. Chaque numéro revérifié sur une source.
+La dernière sous-phase de l'habillage. Les pièces sont propres mais vides : *« trois échantillons
+et deux personnages dans une salle de vingt sur dix : c'est propre, mais ce n'est pas encore un
+lieu »*. Mobilier, établi, étagères.
 
 ## Décisions prises
 
@@ -3222,17 +3258,17 @@ signalisation ; l'usine en fait un lieu du jeu, sur le Code de la route françai
 
 ## Placeholders à remplacer
 
-- **Le STOP à seize pixels ressemble à un sens interdit** : un octogone rouge avec une barre
-  blanche pour le mot, contre un disque rouge à barre blanche. Vu en phase 16 sur la planche du
-  plan, où les deux se posent côte à côte. La forme est juste — l'octogone — c'est la barre qui
-  les rapproche. À reprendre à l'habillage avec les lettres du mot STOP.
+- ~~**Le STOP à seize pixels ressemble à un sens interdit**~~ **Fait en phase 17f** : quatre
+  traits verticaux au lieu d'une barre horizontale. On ne peut pas écrire STOP en huit pixels ;
+  on peut écrire qu'il y a quelque chose d'écrit.
 - **Le poteau vide de la phase 16** : un poteau et un pointillé. Il se lit, c'est un aplat.
 
-- **AB1 se lit comme un panneau de danger à seize pixels.** Le triangle bordé de rouge portant
-  une croix noire — priorité à droite, famille INTERSECTION — est passé pour un triangle de
-  danger en relisant une capture de la phase 14. La forme est juste, c'est la croix qui ne se
-  distingue pas des pictogrammes des triangles A1b et A1c à cette taille. À reprendre à
-  l'habillage : c'est exactement la grammaire que la planche prétend enseigner.
+- **AB1 et AB25 sont des triangles dans la famille INTERSECTION**, et ce n'est PAS un
+  placeholder. Vérifié en phase 17f à douze fois : la croix de Saint-André d'AB1 est nette et
+  juste. C'est le **Code de la route** qui met deux triangles bordés de rouge — la forme de la
+  famille DANGER — dans la famille INTERSECTION. La leçon de la pièce, « la forme dit la famille
+  avant que le dessin dise le détail », a donc **deux exceptions**, et aucun dessin ne les
+  supprimera. À dire à Victorien plutôt qu'à corriger.
 - **Le dos d'un panneau et le cadre de carte de la phase 14** : une plaque grise à bride et deux
   boulons, et quatre équerres jaune pâle. Les deux se lisent, les deux sont des aplats.
 
