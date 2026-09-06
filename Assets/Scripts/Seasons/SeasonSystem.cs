@@ -16,9 +16,13 @@ namespace SousLaVille.Seasons
     /// qui se perd. Il s'accroche juste apres la resolution, parce qu'il a besoin de
     /// savoir quelles maisons sont desservies et si le bassin a une route.
     ///
-    /// C'est le coeur de la rejouabilite : l'hiver gele les tuyaux peu profonds, donc
-    /// l'hiver recompense ceux qui ont creuse profond. La regle de profondeur cesse d'etre
-    /// une contrainte abstraite, elle devient une lecon qui revient chaque annee.
+    /// C'est le coeur de la rejouabilite : chaque hiver gele une part du reseau, chaque
+    /// automne en bouche une autre, et jamais les memes tuyaux. L'isole ne gele pas, le
+    /// grillage ne se bouche pas : c'est la saison qui vient qui decide du tuyau qu'on pose,
+    /// et cette lecon-la revient chaque annee.
+    ///
+    /// PHASE 21 : ni le gel ni les feuilles ne regardent plus la profondeur. Ils frappaient
+    /// la profondeur 1, la meme frontiere que le puzzle d'ecoulement, retiree avec lui.
     ///
     /// Rien n'est jamais perdu : le gel et le bouchon se defont tout seuls ou d'un geste,
     /// l'usure se repare. Aucun echec puni.
@@ -27,13 +31,6 @@ namespace SousLaVille.Seasons
     /// </summary>
     public class SeasonSystem : MonoBehaviour
     {
-        /// <summary>
-        /// « Peu profond », pour les feuilles de l'automne : la profondeur 1, celle que
-        /// l'hiver gele. Constante et non champ de saison : c'est la meme frontiere que
-        /// celle du gel, et le plan ne decrit qu'un seul reglage de bouchon.
-        /// </summary>
-        private const int ShallowDepth = 1;
-
         /// <summary>Ce qu'une maison desservie envoie au reseau par saison : ses eaux usees.</summary>
         public const int HouseVolumePerSeason = 1;
 
@@ -279,9 +276,13 @@ namespace SousLaVille.Seasons
 
         private static void ApplyToSegment(SeasonDefinition season, PipeSegment segment)
         {
-            // Un segment est aussi expose que son extremite la moins profonde : c'est par
-            // la que le froid et les feuilles entrent.
-            int depth = Mathf.Min(segment.NodeA.Depth, segment.NodeB.Depth);
+            // PHASE 21 : LA PROFONDEUR NE DECIDE PLUS DE RIEN. Le gel et les feuilles frappent
+            // au hasard, n'importe ou sur le reseau. Avant, ils ne touchaient que la
+            // profondeur 1 — la meme frontiere que celle du puzzle, retiree avec lui.
+            //
+            // Ce qui ne change pas, et qui EST la boucle du jeu : la resistance du type de
+            // tuyau. L'isole ne gele jamais, le grillage ne se bouche jamais. C'est toujours
+            // la saison qui vient qui decide du tuyau qu'on pose.
 
             // 1. Le degel d'abord : le printemps efface l'hiver, sans un geste du joueur.
             if (season.Thaws)
@@ -289,19 +290,20 @@ namespace SousLaVille.Seasons
                 segment.IsFrozen = false;
             }
 
-            // 2. Le gel. La resistance est une probabilite de tenir : 0 gele des le premier
-            // hiver, 1 ne gele jamais. Elle est celle du bout le plus faible du segment,
-            // depuis la phase 9b : une route isolee l'est de bout en bout, ou elle gele.
-            if (season.FreezeMaxDepth > 0 && depth <= season.FreezeMaxDepth
+            // 2. Le gel. Deux tirages : celui de la saison, qui dit combien de tuyaux sont
+            // touches, puis celui de la resistance, qui dit lesquels tiennent. La resistance
+            // est celle du bout le plus faible du segment, depuis la phase 9b : une route
+            // isolee l'est de bout en bout, ou elle gele.
+            if (season.FreezeChance > 0f
+                && UnityEngine.Random.value < season.FreezeChance
                 && UnityEngine.Random.value >= segment.FrostResistance)
             {
                 segment.IsFrozen = true;
             }
 
-            // 3. Les feuilles de l'automne, sur les tuyaux peu profonds seulement. La
-            // resistance aux feuilles se lit exactement comme celle au gel : c'est sa
-            // jumelle, et le grillage est a l'automne ce que l'isole est a l'hiver.
-            if (season.ClogChance > 0f && depth <= ShallowDepth
+            // 3. Les feuilles de l'automne, lues exactement comme le gel : c'est sa jumelle,
+            // et le grillage est a l'automne ce que l'isole est a l'hiver.
+            if (season.ClogChance > 0f
                 && UnityEngine.Random.value < season.ClogChance
                 && UnityEngine.Random.value >= segment.LeafResistance)
             {

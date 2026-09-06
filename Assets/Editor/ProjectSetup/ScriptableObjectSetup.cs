@@ -154,24 +154,29 @@ namespace SousLaVille.EditorTools
         private static void CreateSeasons()
         {
             WriteSeason(SeasonSpring, "Printemps", PlaceholderArtGenerator.PictoSpring,
-                new Color(0.94f, 1f, 0.94f), freezeMaxDepth: 0, clogChance: 0f,
+                new Color(0.94f, 1f, 0.94f), freezeChance: 0f, clogChance: 0f,
                 wearMultiplier: 1f, thaws: true, rainVolume: 2);
 
             WriteSeason(SeasonSummer, "Été", PlaceholderArtGenerator.PictoSummer,
-                new Color(1f, 0.98f, 0.90f), freezeMaxDepth: 0, clogChance: 0f,
+                new Color(1f, 0.98f, 0.90f), freezeChance: 0f, clogChance: 0f,
                 wearMultiplier: 0.5f, thaws: false, rainVolume: 0);
 
+            // PHASE 21 : 0,25 tombe a 0,20. La valeur ne frappait que la profondeur 1 ; elle
+            // frappe maintenant TOUT le reseau, et la garder aurait rendu l'automne bien plus
+            // dur qu'avant sans que personne ne l'ait demande.
             WriteSeason(SeasonAutumn, "Automne", PlaceholderArtGenerator.PictoAutumn,
-                new Color(1f, 0.93f, 0.84f), freezeMaxDepth: 0, clogChance: 0.25f,
+                new Color(1f, 0.93f, 0.84f), freezeChance: 0f, clogChance: 0.20f,
                 wearMultiplier: 1f, thaws: false, rainVolume: 8);
 
+            // Un tuyau sur cinq, n'importe ou. Avant la phase 21, l'hiver gelait TOUTE la
+            // profondeur 1, sans tirage : c'etait une certitude, c'est devenu une proportion.
             WriteSeason(SeasonWinter, "Hiver", PlaceholderArtGenerator.PictoWinter,
-                new Color(0.90f, 0.94f, 1f), freezeMaxDepth: 1, clogChance: 0f,
+                new Color(0.90f, 0.94f, 1f), freezeChance: 0.20f, clogChance: 0f,
                 wearMultiplier: 1.5f, thaws: false, rainVolume: 1);
         }
 
         private static void WriteSeason(string assetPath, string displayName, string pictoPath,
-            Color lightColor, int freezeMaxDepth, float clogChance, float wearMultiplier,
+            Color lightColor, float freezeChance, float clogChance, float wearMultiplier,
             bool thaws, int rainVolume)
         {
             SerializedObject serialized =
@@ -181,7 +186,7 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("picto").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<Sprite>(pictoPath);
             serialized.FindProperty("lightColor").colorValue = lightColor;
-            serialized.FindProperty("freezeMaxDepth").intValue = freezeMaxDepth;
+            serialized.FindProperty("freezeChance").floatValue = freezeChance;
             serialized.FindProperty("clogChance").floatValue = clogChance;
             serialized.FindProperty("wearMultiplier").floatValue = wearMultiplier;
             serialized.FindProperty("thaws").boolValue = thaws;

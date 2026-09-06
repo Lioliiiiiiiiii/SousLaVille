@@ -75,11 +75,23 @@ Le réseau est un **graphe**, pas une simulation de fluide.
   bool isFrozen, bool isClogged
 - `PipeNetwork` : liste d'adjacence, plus les méthodes d'ajout et de suppression
 - `FlowSolver` : pour chaque maison, parcours en largeur jusqu'à la station.
-  Un segment ne transporte que si `nodeB.depth >= nodeA.depth` dans le sens de
-  l'écoulement, et si condition > 0.3, et si non gelé, et si non bouché.
+  Un segment transporte si condition > 0.3, s'il n'est pas gelé et s'il n'est
+  pas bouché. **Rien d'autre.** Deux tuyaux qui se touchent laissent passer
+  l'eau.
 
-Cette règle de profondeur croissante EST le puzzle. Elle remplace toute
-simulation de gravité.
+**La règle de profondeur croissante a été retirée en phase 21.** Elle a tenu des
+phases 4 à 20 et ce fichier en faisait le puzzle du jeu. Ce qui l'a emportée est
+une mesure, prise sur les quatorze destinations de la carte : elle ne rendait
+aucune maison impossible, mais elle **multipliait la longueur de la route par 2
+à 3,6**. La maison (27,35) demandait 113 cases au lieu de 31 — trois fois plus
+de creusements et de poses, sur un tracé contre-intuitif. Le puzzle était devenu
+un péage.
+
+`depth` reste dans les données et à l'écran : les trois nuances de terre font la
+beauté du sous-sol. Elles ne décident plus de rien.
+
+Ce qui porte la difficulté à sa place : **le labyrinthe et la distance**, déjà
+dans la carte, et **le choix du tuyau** face à la saison qui vient.
 
 Le solveur ne tourne que sur changement de réseau et à chaque tick de saison.
 Jamais à chaque frame.

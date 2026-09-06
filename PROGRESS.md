@@ -33,6 +33,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 18 | Le style de la référence | Terminée |
 | 19 | Le jeu chez Victorien | Terminée |
 | 20 | Deux villages | Terminée |
+| 21 | L'eau coule où les tuyaux se touchent | Terminée |
 
 ## Phase 0, ce qui est fait
 
@@ -3294,6 +3295,63 @@ sheet et la découpe : `LoadAssetAtPath<Sprite>` rend alors la **première lettr
 L'écran a d'abord affiché « V » et « N ». Les noms sont donc dans `VillageScreenTextures`, avec
 les pictos, et la liste sert aux deux usages qui doivent rester d'accord : régler l'importeur, et
 vérifier que rien ne manque.
+
+## Phase 21, ce qui est fait
+
+**La règle de profondeur croissante est retirée.** Elle a tenu des phases 4 à 20, et CLAUDE.md
+en faisait le puzzle du jeu. Le plan complet est dans `PLAN-PHASE-21.md`.
+
+- **`FlowSolver`** : une ligne en moins. Un segment transporte s'il tient, s'il n'est ni gelé ni
+  bouché. Deux tuyaux qui se touchent laissent passer l'eau.
+- **Le gel et les bouchons frappent au hasard, partout.** `freezeChance` remplace
+  `freezeMaxDepth` sur `SeasonDefinition`. Hiver 0,20, automne 0,20 — contre 0,25 avant, parce
+  que la valeur ne touchait que la profondeur 1 et touche maintenant tout le réseau.
+- **La boucle du jeu ne bouge pas** : l'isolé ne gèle jamais, le grillagé ne se bouche jamais.
+  C'est toujours la saison qui vient qui décide du tuyau — et cela compte désormais partout.
+- **Rien ne change à l'écran.** Les trois nuances de terre restent, elles ne décident plus rien.
+- Trois phrases de guides réécrites, et `Lesson.Depth` devient `Lesson.Route` — sa condition n'a
+  pas bougé d'une ligne, seule sa formulation a changé.
+
+## Phase 21, la mesure qui a tranché
+
+Le doute portait sur autre chose : « l'eau ne passe pas en reliant certaines maisons ».
+**Ce n'était pas cela.** Sur la partie réelle, les quatorze parcours rendaient le même résultat
+avec et sans la règle. Onze maisons sur treize n'avaient aucun tuyau posé, et aucune n'était
+raccordée jusqu'au bout puis refusée.
+
+La mesure sur toute la carte, en supposant tout creusable, a tranché autrement :
+
+| Maison | Route naturelle | Avec la règle | Facteur |
+|---|---|---|---|
+| (27,35) | 31 cases | 113 | ×3,6 |
+| (43,25) | 37 | 113 | ×3,1 |
+| (28,14) | 33 | 109 | ×3,3 |
+| (13,17) | 15 | 47 | ×3,1 |
+| (34,4) | 49 | 121 | ×2,5 |
+| (58,41) | 68 | 144 | ×2,1 |
+
+**La règle ne rendait aucune maison impossible** — zéro sur quatorze — mais elle multipliait la
+route par 2 à 3,6. Chaque case étant un creusement ET une pose, relier une maison passait de
+~70 appuis à ~220. C'est cela, et rien d'autre, qui a emporté la décision.
+
+## Phase 21, vérifications faites
+
+Toutes en mode play, sur la vraie scène `Boot` et la vraie partie.
+
+- **Compilation propre**, art régénéré, palette tenue à 47 couleurs, familles distinctes.
+- **La preuve directe** : la maison (13,17) reliée par le plus court chemin naturel, dont les
+  profondeurs sont `2,2,2,1,2,2,2,3,3,3…`. Il **redescend à 1 en cours de route**, donc
+  l'ancienne règle le refusait. 8 creusements, 9 tuyaux, et la maison est desservie : 3/13.
+- **Les saisons frappent partout** : automne 12 bouchés sur 60 (p1 1, p2 5, p3 6), hiver
+  11 gelés sur 60 (p1 4, p2 2, p3 5). Réparti sur les trois profondeurs, à ~20 %.
+- **La boucle tient** : une ligne d'isolé et une de grillagé, une année complète. Isolé
+  0 gelé / 1 bouché. Grillagé 5 gelés / 0 bouché.
+
+**Une erreur de méthode, corrigée** : ces essais ont été menés sur `VILLAGE 1`, la vraie partie,
+qui a donc été creusée et vieillie de plusieurs années par la sauvegarde automatique. Elle a été
+restaurée au hash près depuis `partie.json`, que la migration ne touche jamais, et la version
+des essais est mise de côté sous `partie-de-cote-tests-phase21.json`. **Un prochain essai de ce
+genre doit se faire sur `VILLAGE 2`.**
 
 ## Reste à faire
 

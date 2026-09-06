@@ -345,15 +345,16 @@ namespace SousLaVille.EditorTools
             // 2. LA BOUCHE. Pres d'une bouche.
             new[] { "ON DESCEND PAR LA BOUCHE" },
             // 3. LES SAISONS. En surface.
-            new[] { "L'AUTOMNE BOUCHE LES TUYAUX", "L'HIVER GELE LES PEU PROFONDS" },
+            new[] { "L'AUTOMNE BOUCHE DES TUYAUX", "L'HIVER EN GELE D'AUTRES" },
             // 4. REPARER. Pres d'une flaque.
             new[] { "UNE FLAQUE ? UN TUYAU FUIT", "DESCENDS LE REPARER" },
             // 5. CREUSER. Sous terre, devant la terre pleine.
             new[] { "APPUIE POUR CREUSER LA TERRE" },
             // 6. POSER. Sous terre, devant une galerie.
             new[] { "PUIS POSE UN TUYAU" },
-            // 7. LA PROFONDEUR. La lecon centrale, et la seule que rien n'affichait.
-            new[] { "L'EAU NE REMONTE JAMAIS", "CREUSE TOUJOURS PLUS PROFOND", "CHERCHE LE PASSAGE" },
+            // 7. LA ROUTE. Depuis la phase 21, la profondeur ne decide plus de rien : ce qui
+            // casse une route, c'est un trou dedans, et c'est cela qu'il faut savoir chercher.
+            new[] { "TU CHOISIS LA ROUTE", "AUCUN TROU DANS LE TUYAU", "CHERCHE LE PASSAGE" },
             // 8. LE BASSIN. Pres de sa chambre.
             new[] { "L'ORAGE REMPLIT LE BASSIN", "RELIE-LE AUSSI" }
         };

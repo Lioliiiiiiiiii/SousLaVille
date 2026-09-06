@@ -396,7 +396,7 @@ namespace SousLaVille.EditorTools
         {
             new GuideAssignment(new Vector2Int(11, 10), GuidePost.Lesson.Dig),
             new GuideAssignment(new Vector2Int(5, 22), GuidePost.Lesson.PlacePipe),
-            new GuideAssignment(new Vector2Int(39, 26), GuidePost.Lesson.Depth),
+            new GuideAssignment(new Vector2Int(39, 26), GuidePost.Lesson.Route),
             new GuideAssignment(new Vector2Int(11, 16), GuidePost.Lesson.Reserve)
         };
 

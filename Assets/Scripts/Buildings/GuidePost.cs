@@ -12,8 +12,8 @@ namespace SousLaVille.Buildings
     ///
     /// Pourquoi il en fallait huit. Le jeu comptait sept phrases avant cette phase, toutes
     /// derriere les portes de deux boutiques et toutes sur le choix des plaques et des tuyaux.
-    /// Rien ne disait le but, rien ne disait qu'on creuse, et surtout rien ne disait LA REGLE
-    /// DE PROFONDEUR, qui EST le puzzle selon CLAUDE.md.
+    /// Rien ne disait le but, rien ne disait qu'on creuse, et rien ne disait comment lire une
+    /// route qui n'aboutit pas.
     ///
     /// SANS MEMOIRE, decision du 4 septembre. Il se tait quand sa condition redevient fausse et
     /// reparle si elle redevient vraie. Reexpliquer a un relancement ne punit rien, ne coute
@@ -37,7 +37,7 @@ namespace SousLaVille.Buildings
             Repair,
             Dig,
             PlacePipe,
-            Depth,
+            Route,
             Reserve
         }
 
@@ -170,23 +170,26 @@ namespace SousLaVille.Buildings
                 case Lesson.PlacePipe:
                     return network == null || network.SegmentCount == 0;
 
-                // LA PROFONDEUR, la lecon centrale. Il parle quand de l'EAU MORTE existe
-                // AU-DELA des destinations elles-memes : une route commencee qui n'aboutit
-                // pas. C'est la frontiere publiee par le solveur depuis la phase 12a, et c'est
-                // ce qui rend cette lecon enseignable — on ne peut pas expliquer OU ca casse
-                // tant que le jeu l'ignore.
+                // LA ROUTE. Il parle quand de l'EAU MORTE existe AU-DELA des destinations
+                // elles-memes : une route commencee qui n'aboutit pas. C'est la frontiere
+                // publiee par le solveur depuis la phase 12a, et c'est ce qui rend cette lecon
+                // enseignable — on ne peut pas expliquer OU ca casse tant que le jeu l'ignore.
+                //
+                // La lecon s'appelait « Profondeur » jusqu'a la phase 21. La condition n'a pas
+                // bouge d'une ligne : une route inachevee laisse la meme eau morte qu'une route
+                // qui remontait. Seul ce qu'il en dit a change.
                 //
                 // Le seuil compte. A `> 0` il parlait des le premier lancement, avant qu'une
                 // seule case soit creusee : sans tuyau, chaque destination est deja sa propre
                 // frontiere, et la lecon serait arrivee avant qu'il y ait de l'eau a expliquer.
-                case Lesson.Depth:
+                case Lesson.Route:
                     return flow != null
                         && flow.StrandedCount > flow.DestinationCount + flow.ReserveCount;
 
                 // Les saisons : a l'automne et a l'hiver, celles qui abiment.
                 case Lesson.Seasons:
                     return seasons != null && seasons.Current != null
-                        && (seasons.Current.ClogChance > 0f || seasons.Current.FreezeMaxDepth > 0);
+                        && (seasons.Current.ClogChance > 0f || seasons.Current.FreezeChance > 0f);
 
                 // Reparer : tant qu'un tuyau demande une reparation.
                 case Lesson.Repair:

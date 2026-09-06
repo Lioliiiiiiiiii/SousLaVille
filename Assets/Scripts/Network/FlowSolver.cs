@@ -9,12 +9,21 @@ namespace SousLaVille.Network
     /// largeur jusqu'a la station. Aucune simulation de fluide, un graphe et une regle.
     ///
     /// Depuis la phase 8, le bassin d'orage est trace de la meme facon, sur un noeud de
-    /// plus : il obeit a la regle de profondeur, au gel, aux bouchons et a l'usure sans une
-    /// ligne de code particuliere. C'est le meme parcours.
+    /// plus : il obeit au gel, aux bouchons et a l'usure sans une ligne de code
+    /// particuliere. C'est le meme parcours.
     ///
-    /// Une arete n'est franchissable que si la profondeur ne diminue pas dans le sens de
-    /// l'ecoulement, si le segment tient encore, s'il n'est pas gele et s'il n'est pas bouche.
-    /// La regle de profondeur croissante remplace toute gravite.
+    /// Une arete n'est franchissable que si le segment tient encore, s'il n'est pas gele et
+    /// s'il n'est pas bouche. RIEN D'AUTRE.
+    ///
+    /// LA REGLE DE PROFONDEUR CROISSANTE A ETE RETIREE EN PHASE 21. Elle a tenu des phases 4 a
+    /// 20, et CLAUDE.md en faisait le puzzle du jeu. Ce qui l'a emportee n'est pas une opinion
+    /// mais une mesure, prise sur les quatorze destinations de la carte : elle ne rendait
+    /// aucune maison impossible, et elle multipliait la longueur de la route par 2 a 3,6.
+    /// Trois fois plus de creusements et de poses, sur un trace contre-intuitif, pour un
+    /// enfant de six ans : le puzzle etait devenu un peage.
+    ///
+    /// Ce qui reste comme difficulte : le labyrinthe et la distance. C'est ce que Victorien
+    /// aime, et c'est deja dans la carte.
     ///
     /// Ne tourne que sur changement de reseau, et plus tard aux ticks de saison. Jamais par
     /// frame.
@@ -255,8 +264,16 @@ namespace SousLaVille.Network
 
                     PipeNode next = segment.Other(current);
 
-                    // La regle : l'eau ne remonte pas.
-                    if (next.Depth < current.Depth || !visited.Add(next.GridPos))
+                    // PHASE 21 : PLUS DE REGLE DE PROFONDEUR ICI. Un tuyau qui tient, qui n'est
+                    // ni gele ni bouche, transporte — quelle que soit la profondeur de ses deux
+                    // bouts. La profondeur reste peinte dans la carte, elle ne decide plus rien.
+                    //
+                    // Mesure du 6 septembre 2026, sur les quatorze destinations de la carte :
+                    // la regle ne rendait AUCUNE maison impossible, mais elle multipliait la
+                    // longueur de la route par 2 a 3,6. La maison (27,35) demandait 113 cases
+                    // au lieu de 31, soit trois fois plus de creusements ET de poses, sur un
+                    // trace dont la forme n'a rien d'intuitif. C'est ce qui a coute la regle.
+                    if (!visited.Add(next.GridPos))
                     {
                         continue;
                     }

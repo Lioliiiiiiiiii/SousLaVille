@@ -21,11 +21,11 @@ namespace SousLaVille.Seasons
         [Tooltip("Couleur de la lumiere globale de la surface pendant cette saison.")]
         [SerializeField] private Color lightColor = Color.white;
 
-        [Tooltip("Profondeur jusqu'a laquelle les tuyaux gelent. 0 : aucun gel.")]
-        [Range(0, 3)]
-        [SerializeField] private int freezeMaxDepth;
+        [Tooltip("Probabilite qu'un tuyau gele, ou qu'il soit. 0 : aucun gel.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float freezeChance;
 
-        [Tooltip("Probabilite qu'un tuyau peu profond se bouche. 0 : aucun bouchon.")]
+        [Tooltip("Probabilite qu'un tuyau se bouche, ou qu'il soit. 0 : aucun bouchon.")]
         [Range(0f, 1f)]
         [SerializeField] private float clogChance;
 
@@ -44,8 +44,12 @@ namespace SousLaVille.Seasons
         public Sprite Picto => picto;
         public Color LightColor => lightColor;
 
-        /// <summary>1 gele les tuyaux peu profonds, 0 n'en gele aucun.</summary>
-        public int FreezeMaxDepth => freezeMaxDepth;
+        /// <summary>
+        /// Part des tuyaux que l'hiver gele, tiree au sort a chaque tick, SANS regarder la
+        /// profondeur depuis la phase 21. La resistance du type de tuyau s'applique ensuite :
+        /// l'isole ne gele jamais, quelle que soit cette valeur.
+        /// </summary>
+        public float FreezeChance => freezeChance;
 
         public float ClogChance => clogChance;
         public float WearMultiplier => wearMultiplier;
