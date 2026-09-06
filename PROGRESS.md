@@ -35,6 +35,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 20 | Deux villages | Terminée |
 | 21 | L'eau coule où les tuyaux se touchent | Terminée |
 | 22 | Les touches se disent | Terminée |
+| 23 | L'impasse du memory | Terminée |
 
 ## Phase 0, ce qui est fait
 
@@ -3405,6 +3406,43 @@ bassin de la phase 8 n'a plus de signe visible dans la rue.
   Fabrique, `VALIDER` puis `SUITE` après une bonne réponse.
 - **Les cadres rouges** s'allument sur les rangées écartées et s'éteignent à la question
   suivante.
+
+## Phase 23, ce qui est fait
+
+Deux défauts vus sur une capture de partie, dont un que la phase 22 avait introduit.
+
+### L'impasse du memory : on pouvait rester bloqué pour de bon
+
+**Le défaut le plus grave rencontré jusqu'ici.** `SignMemory.Step` parcourait le plateau EN
+LIGNE DROITE, sautait les cartes trouvées, et rendait -1 dès qu'il sortait du plateau. Si la
+rangée ENTIÈRE et la colonne ENTIÈRE du curseur étaient trouvées, **les quatre flèches rendaient
+-1** : plus rien ne bougeait, et la manche ne pouvait plus se finir.
+
+Ce n'est pas un cas d'école. Reproduit le 6 septembre 2026 avec **dix cartes encore en jeu** :
+curseur en (1,1), sa rangée et sa colonne trouvées, aucune des quatre flèches ne déplaçait quoi
+que ce soit.
+
+Le remède est celui du plan du village depuis la phase 7 : quand la ligne droite ne mène nulle
+part, `Reach` prend **la carte encore en jeu la plus proche DANS CETTE DIRECTION**, produit
+scalaire pour le demi-plan, distance pour le choix. Tant qu'il reste une carte quelque part, une
+direction au moins y mène. Vérifié sur l'impasse exacte : haut→0, bas→8, gauche→0, droite→2.
+
+### La bande d'aide écrasait le nom de la paire
+
+Introduit en phase 22 : la bande et le nom de la dernière paire trouvée étaient posés à la même
+hauteur, et « PISTE CYCLABLE » s'écrivait par-dessus le picto d'Espace. Le memory réserve
+maintenant `HintBarHeight` en plus, et son nom de paire remonte au-dessus de la bande.
+
+### La bande a un fond opaque
+
+Le Stock et La Fabrique la posent sur leur fond uni. **Le Plan ne le pouvait pas** : il occupe
+176 px sur 180 — cinq rangées de 32 plus les 16 px dont un panneau déborde au-dessus de sa case
+— et **deux de ses quinze plans garnissent la rangée la plus basse comme la plus haute**. Il n'y
+a aucune bande libre, ni en haut ni en bas ; décaler le plateau couperait des panneaux.
+
+La bande se pose donc par-dessus le bas de la carte, avec un fond qui la rend lisible au lieu de
+mêler ses mots à l'herbe. **Ce qu'elle couvre, et c'est assumé** : le pied des poteaux de la
+rangée basse. Les emplacements de panneaux, eux, restent visibles au-dessus d'elle.
 
 ## Reste à faire
 

@@ -372,7 +372,8 @@ namespace SousLaVille.Minigames
 
                 if (row < 0 || row >= rows || column < 0 || column >= columns)
                 {
-                    return -1;
+                    // Rien en ligne droite. On ne s'arrete PAS la : voir Reach.
+                    return Reach(from, direction);
                 }
 
                 int index = row * columns + column;
@@ -381,6 +382,60 @@ namespace SousLaVille.Minigames
                     return index;
                 }
             }
+        }
+
+        /// <summary>
+        /// LE FILET CONTRE L'IMPASSE, phase 23. La carte encore en jeu la plus proche DANS
+        /// CETTE DIRECTION, sans exiger qu'elle soit sur la meme ligne ni sur la meme colonne.
+        ///
+        /// Pourquoi il a fallu l'ajouter. Le parcours en ligne droite ci-dessus saute les
+        /// cartes trouvees et rend -1 des qu'il sort du plateau. Si la rangee ENTIERE et la
+        /// colonne ENTIERE du curseur sont trouvees, les quatre fleches rendent alors -1, et
+        /// le joueur est BLOQUE : plus rien ne bouge, et la manche ne peut plus se finir.
+        ///
+        /// Ce n'est pas un cas d'ecole. Reproduit le 6 septembre 2026 avec DIX cartes encore
+        /// en jeu : curseur en (1,1), sa rangee et sa colonne trouvees, et aucune des quatre
+        /// fleches ne deplacait quoi que ce soit. C'est ce que Victorien a rencontre.
+        ///
+        /// Le remede est celui du plan du village depuis la phase 7 : le produit scalaire
+        /// garde le demi-plan vise, la distance choisit la plus proche. Tant qu'il reste une
+        /// carte quelque part, une direction au moins y mene.
+        /// </summary>
+        private int Reach(int from, Vector2Int direction)
+        {
+            int fromRow = from / columns;
+            int fromColumn = from % columns;
+
+            int best = -1;
+            int bestDistance = int.MaxValue;
+
+            for (int index = 0; index < deck.Length; index++)
+            {
+                if (index == from || matched[index])
+                {
+                    continue;
+                }
+
+                int dx = index % columns - fromColumn;
+
+                // Y MONTE A L'ECRAN, la rangee 0 etant en haut : on retourne l'ecart de
+                // rangee pour que le produit scalaire parle le meme langage que la fleche.
+                int dy = fromRow - index / columns;
+
+                if (dx * direction.x + dy * direction.y <= 0)
+                {
+                    continue;
+                }
+
+                int distance = dx * dx + dy * dy;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = index;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>La carte encore en jeu la plus proche, en distance de plateau.</summary>

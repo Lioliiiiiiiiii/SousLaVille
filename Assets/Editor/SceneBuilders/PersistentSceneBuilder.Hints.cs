@@ -19,6 +19,12 @@ namespace SousLaVille.EditorTools
         /// <summary>Côté d'un picto de touche. Un indicateur, pas une cible : le plancher de 32 ne s'applique pas.</summary>
         private const float HintKeySize = 16f;
 
+        /// <summary>
+        /// Hauteur totale que la bande occupe en bas de l'ecran. Les mini-jeux la reservent :
+        /// sans cela, leur contenu s'ecrit par-dessus.
+        /// </summary>
+        private const float HintBarHeight = 16f;
+
         /// <summary>Blanc entre la touche et son mot.</summary>
         private const float HintKeyGap = 3f;
 
@@ -43,6 +49,21 @@ namespace SousLaVille.EditorTools
             ValidateHintWords();
 
             float y = -ReferenceHeight * 0.5f + ScreenMargin + HintKeySize * 0.5f;
+
+            // UN FOND OPAQUE, PLEINE LARGEUR, phase 23.
+            //
+            // Le Stock et La Fabrique posent la bande sur leur fond uni : elle s'y voit sans
+            // rien. LE PLAN, lui, occupe 176 px sur 180 — cinq rangees de 32 plus les 16 px
+            // dont un panneau deborde au-dessus de sa case — et deux de ses quinze plans
+            // garnissent la rangee la plus basse comme la plus haute. Il n'y a donc AUCUNE
+            // bande libre, ni en haut ni en bas : decaler le plateau couperait des panneaux.
+            //
+            // La bande se pose donc PAR-DESSUS le bas de la carte, et son fond la rend lisible
+            // au lieu de melanger ses mots a l'herbe et aux poteaux. Les panneaux eux-memes
+            // restent visibles : c'est le pied des poteaux et le sol qu'elle couvre.
+            Image fond = CreateCenteredImage(panel, "Hint_Background", new Vector2(0f, y),
+                new Vector2(ReferenceWidth, HintBarHeight + ScreenMargin * 2f));
+            fond.color = MiniGameBackground;
 
             Image arrowsWord = CreateHintGroup(panel, "Hint_Arrows", HintGroupX[0], y,
                 PlaceholderArtGenerator.PictoKeyArrows, null);

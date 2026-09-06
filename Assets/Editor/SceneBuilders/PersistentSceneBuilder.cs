@@ -115,7 +115,8 @@ namespace SousLaVille.EditorTools
             }
 
             float height = MemoryRows * MemoryCardSize + (MemoryRows - 1) * MemoryGutter;
-            float roomForHeight = ReferenceHeight - MemoryBandHeight - 2 * ScreenMargin;
+            float roomForHeight =
+                ReferenceHeight - MemoryBandHeight - HintBarHeight - 2 * ScreenMargin;
 
             if (height > roomForHeight)
             {
@@ -1022,7 +1023,10 @@ namespace SousLaVille.EditorTools
             nameBand.rectTransform.anchorMin = new Vector2(0.5f, 0f);
             nameBand.rectTransform.anchorMax = new Vector2(0.5f, 0f);
             nameBand.rectTransform.pivot = new Vector2(0.5f, 0f);
-            nameBand.rectTransform.anchoredPosition = new Vector2(0f, ScreenMargin);
+            // AU-DESSUS DE LA BANDE D'AIDE, phase 23. Les deux etaient posees a la meme
+            // hauteur, et « PISTE CYCLABLE » s'ecrivait par-dessus le picto d'Espace.
+            nameBand.rectTransform.anchoredPosition =
+                new Vector2(0f, ScreenMargin + HintBarHeight);
 
             // LE PICTO DE SORTIE EST CELUI DES BATIMENTS, pas un dessin de plus : refermer un
             // ecran fini et sortir d'une porte sont le meme geste, et il n'y a rien a apprendre.
