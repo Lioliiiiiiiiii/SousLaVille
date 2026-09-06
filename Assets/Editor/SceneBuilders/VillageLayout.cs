@@ -151,7 +151,7 @@ namespace SousLaVille.EditorTools
             "H.YY..#.######.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.............YYYH",
             "H.YY..###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY######AY......YYYH",
             "H.....#.#...V.XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
-            "H.....#.#...Y..HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
+            "H.....#.#.Y....HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
             "H.....#.#......HPHPHPHPHPHPHOPPPPHPHPHPHPP....#................H",
             "H.....#.#......HPHPHPHPHHHPHHHHHHHHHPHPHPH....#............Y...H",
             "H.....#.#......HPHPHPHPPPPPPPPPPPPPPPHPHPH....#................H",
@@ -481,6 +481,20 @@ namespace SousLaVille.EditorTools
 
             foreach (Vector2Int tree in FindAll(Tree))
             {
+                // PHASE 18C : un arbre fait deux cases de haut, et sa cime COUVRE toute la case
+                // du nord. Rien de ce qu'on doit voir ou toucher ne s'y tient : ni guide, ni
+                // bouche, ni porte, ni maison, ni fontaine, ni depart. Le guide du but en (12, 16)
+                // avait le corps mange par la cime de l'arbre de (12, 15) ; l'arbre a recule de
+                // deux cases. Une rue y passe si elle veut : marcher derriere un arbre est le jeu.
+                char north = At(tree.x, tree.y + 1);
+                if (north == GuidePost || north == Manhole || north == PlayerStart || north == House
+                    || north == Fountain || north == PlantInlet || System.Array.IndexOf(Doors, north) >= 0)
+                {
+                    Debug.LogError($"[Sous la Ville] L'arbre {tree} a « {north} » juste au nord : sa " +
+                                   "cime de deux cases le cacherait. Recule l'arbre ou déplace le marqueur.");
+                    ok = false;
+                }
+
                 foreach (Vector2Int manhole in manholes)
                 {
                     int distance = Mathf.Abs(tree.x - manhole.x) + Mathf.Abs(tree.y - manhole.y);

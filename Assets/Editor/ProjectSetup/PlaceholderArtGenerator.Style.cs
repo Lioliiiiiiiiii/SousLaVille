@@ -299,10 +299,15 @@ namespace SousLaVille.EditorTools
         // ---------------------------------------------------------------- la vegetation
 
         /// <summary>
-        /// L'ARBRE de la reference, 16 sur 32. Un tronc court dans la case, et une frondaison ovale
-        /// qui prend toute la case du nord : trois bosses au sommet, le bas dans l'ombre, des
-        /// eclats en haut a gauche ou vient la lumiere, et des traits de feuillage en travers. Le
-        /// tronc se cerne de brun, la cime de vert profond — chaque matiere son trait, regle 2.
+        /// L'ARBRE de la reference, 16 sur 32. Un tronc court dans la case, et une frondaison qui
+        /// prend toute la case du nord : UNE BOULE QUI SE RESSERRE EN BAS — large au milieu, en
+        /// dome a trois bosses au sommet, le bas qui se referme autour du tronc. Le flanc droit et
+        /// le bas dans l'ombre, un eclat en haut a gauche, et des arcs de feuillage clairs et
+        /// sombres. Le tronc se cerne de brun, la cime de vert profond — chaque matiere son trait.
+        ///
+        /// Trois jets avant celui-ci, tous regardes sur une planche : un ovale debout sortait en
+        /// cypres, une capsule a flancs droits en cornichon. C'est le bas qui se resserre et le
+        /// modele en croissant qui font lire un arbre dans seize pixels de large.
         ///
         /// Son ombre au sol n'est pas ici : elle est dans la tuile de son pied, BuildTreeBase,
         /// puisque c'est le sol qu'elle assombrit.
@@ -312,63 +317,119 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             Color32[] pixels = NewTransparent(width * TreeHeight);
 
-            // Le tronc, et son trait avant que la cime ne le recouvre.
+            // Le tronc a trois tons, et son trait avant que la cime ne le recouvre.
             Fill(pixels, width, 6, 9, 1, 9, Palette.Wood);
             Fill(pixels, width, 6, 6, 1, 9, Palette.WoodDark);
+            Fill(pixels, width, 9, 9, 2, 9, Palette.Bark);
             Fill(pixels, width, 6, 9, 1, 1, Palette.WoodDark);
             Outline(pixels, width, Palette.WoodDark);
 
-            // La cime : UNE MASSE RONDE, pas un ovale debout. Le premier jet la faisait de
-            // quatorze pixels de large sur vingt-deux de haut, et les trois arbres de la planche
-            // sortaient en cypres. Ici une boule, deux lobes qui l'elargissent au bas, trois
-            // bosses au sommet ; elle laisse huit rangees de tronc a decouvert et s'arrete deux
-            // rangees sous le bord.
-            FillEllipse(pixels, width, 7.5f, 18.5f, 7.0f, 8.5f, Palette.Leaf);
-            FillEllipse(pixels, width, 4f, 14f, 3.8f, 3.4f, Palette.Leaf);
-            FillEllipse(pixels, width, 11f, 14f, 3.8f, 3.4f, Palette.Leaf);
-            FillEllipse(pixels, width, 4.5f, 25f, 3.2f, 3.2f, Palette.Leaf);
-            FillEllipse(pixels, width, 10.5f, 25f, 3.2f, 3.2f, Palette.Leaf);
-            FillEllipse(pixels, width, 7.5f, 27f, 3.4f, 2.6f, Palette.Leaf);
+            // La silhouette : la masse, deux lobes au milieu, le bas qui pend, trois bosses.
+            FillEllipse(pixels, width, 7.5f, 21.0f, 6.9f, 8.2f, Palette.Leaf);
+            FillEllipse(pixels, width, 3.3f, 20.0f, 3.0f, 3.4f, Palette.Leaf);
+            FillEllipse(pixels, width, 11.7f, 20.0f, 3.0f, 3.4f, Palette.Leaf);
+            FillEllipse(pixels, width, 7.5f, 13.0f, 4.6f, 3.6f, Palette.Leaf);
+            FillEllipse(pixels, width, 4.8f, 27.8f, 2.6f, 2.6f, Palette.Leaf);
+            FillEllipse(pixels, width, 10.2f, 27.8f, 2.6f, 2.6f, Palette.Leaf);
+            FillEllipse(pixels, width, 7.5f, 28.9f, 2.6f, 2.0f, Palette.Leaf);
 
+            // Le modele : tout ce qui sort d'une ellipse decalee vers le haut et la gauche est
+            // dans l'ombre — un croissant au bas et au flanc droit — et un petit disque en haut a
+            // gauche prend la lumiere.
             for (int y = 8; y < TreeHeight; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int index = y * width + x;
-                    if (!Palette.Same(pixels[index], Palette.Leaf))
+                    if (!PixelIs(pixels, width, x, y, Palette.Leaf))
                     {
                         continue;
                     }
 
-                    if (y < 13 || (x >= 12 && y < 20))
+                    if (!InsideEllipse(x, y, 6.4f, 22.2f, 5.9f, 7.4f))
                     {
-                        // Le bas et le flanc droit dans l'ombre.
-                        pixels[index] = Palette.LeafDark;
+                        pixels[y * width + x] = Palette.LeafDark;
                     }
-                    else if (LeafBlob(x, y))
+                    else if (InsideEllipse(x, y, 5.0f, 24.5f, 2.5f, 2.9f))
                     {
-                        // Les touffes : claires la ou vient la lumiere, sombres ailleurs.
-                        pixels[index] = x <= 9 && y >= 15 ? Palette.LeafLight : Palette.LeafDark;
+                        pixels[y * width + x] = Palette.LeafLight;
                     }
                 }
+            }
+
+            // Les arcs de feuillage : clairs sur le dessus des touffes, sombres en dessous.
+            foreach (Vector2Int arc in new[] { new Vector2Int(2, 21), new Vector2Int(8, 26),
+                         new Vector2Int(3, 16), new Vector2Int(9, 21), new Vector2Int(6, 15) })
+            {
+                LeafArc(pixels, width, arc.x, arc.y, light: true);
+            }
+
+            foreach (Vector2Int arc in new[] { new Vector2Int(5, 18), new Vector2Int(10, 24),
+                         new Vector2Int(1, 19), new Vector2Int(11, 16), new Vector2Int(6, 12) })
+            {
+                LeafArc(pixels, width, arc.x, arc.y, light: false);
             }
 
             Outline(pixels, width, Palette.LeafShadow);
             return pixels;
         }
 
+        private static bool PixelIs(Color32[] pixels, int width, int x, int y, Color32 color)
+        {
+            return IsOpaque(pixels, width, x, y) && Palette.Same(pixels[y * width + x], color);
+        }
+
+        private static bool InsideEllipse(int x, int y, float cx, float cy, float rx, float ry)
+        {
+            float dx = (x - cx) / rx;
+            float dy = (y - cy) / ry;
+            return dx * dx + dy * dy <= 1f;
+        }
+
         /// <summary>
-        /// LA TEXTURE DU FEUILLAGE : des touffes de deux pixels sur deux, en quinconce, periode
-        /// huit — qui divise seize, donc le motif se poursuit d'une case de haie a la suivante
-        /// sans couture. Le meme motif habille la cime des arbres et les buissons : c'est la
-        /// meme matiere.
+        /// UN ARC DE FEUILLAGE, trois pixels : clair, c'est le dessus d'une touffe qui prend la
+        /// lumiere, en accent circonflexe ouvert ; sombre, c'est son dessous, en coupe. Il ne se
+        /// pose que sur du vert de base, pour ne pas mordre l'ombre ni l'eclat.
         /// </summary>
-        private static bool LeafBlob(int x, int y)
+        private static void LeafArc(Color32[] pixels, int width, int x, int y, bool light)
+        {
+            if (light)
+            {
+                if (!PixelIs(pixels, width, x, y, Palette.Leaf) || !PixelIs(pixels, width, x + 2, y + 1, Palette.Leaf))
+                {
+                    return;
+                }
+
+                Plot(pixels, width, x, y, Palette.LeafLight);
+                Plot(pixels, width, x + 1, y + 1, Palette.LeafLight);
+                Plot(pixels, width, x + 2, y + 1, Palette.LeafLight);
+            }
+            else
+            {
+                if (!PixelIs(pixels, width, x, y + 1, Palette.Leaf) || !PixelIs(pixels, width, x + 2, y, Palette.Leaf))
+                {
+                    return;
+                }
+
+                Plot(pixels, width, x, y + 1, Palette.LeafDark);
+                Plot(pixels, width, x + 1, y, Palette.LeafDark);
+                Plot(pixels, width, x + 2, y, Palette.LeafDark);
+            }
+        }
+
+        /// <summary>
+        /// LA TEXTURE DU FEUILLAGE des buissons : dans chaque carre de huit, un arc clair et un
+        /// arc sombre, decales d'une demi-periode a chaque rangee de huit. Periode huit, qui
+        /// divise seize : le motif se poursuit d'une case de haie a la suivante sans couture.
+        /// Rend 0 pour le vert de base, 1 pour un pixel clair, 2 pour un pixel sombre.
+        /// </summary>
+        private static int LeafTexture(int x, int y)
         {
             int bx = (x + (y / 8) * 4) % 8;
             int by = y % 8;
-            return (bx == 2 || bx == 3) && (by == 5 || by == 6)
-                || (bx == 6 || bx == 7) && (by == 1 || by == 2);
+
+            if ((bx == 1 && by == 5) || ((bx == 2 || bx == 3) && by == 6)) return 1;
+            if ((bx == 5 && by == 2) || ((bx == 6 || bx == 7) && by == 1)) return 2;
+            return 0;
         }
 
         /// <summary>
@@ -428,12 +489,27 @@ namespace SousLaVille.EditorTools
                     {
                         color = Palette.LeafLight;
                     }
-                    else if (LeafBlob(x, y))
+                    else
                     {
-                        color = y % 8 >= 4 ? Palette.LeafLight : Palette.LeafDark;
+                        int texture = LeafTexture(x, y);
+                        color = texture == 1 ? Palette.LeafLight : texture == 2 ? Palette.LeafDark : Palette.Leaf;
                     }
 
                     pixels[y * TileSize + x] = color;
+                }
+            }
+
+            // LE SOMMET FESTONNE : sur un dessus libre, deux pixels sur huit se rognent, et le
+            // trait suivra le creux. Une haie a bord droit est un mur peint en vert ; ce sont ces
+            // creux qui en font des touffes.
+            if (!north)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    if (x % 8 == 3 || x % 8 == 4)
+                    {
+                        pixels[y1 * TileSize + x] = new Color32(0, 0, 0, 0);
+                    }
                 }
             }
 
@@ -453,6 +529,27 @@ namespace SousLaVille.EditorTools
             DrawFlower(pixels, 11, 3);
 
             Outline(pixels, TileSize, Palette.LeafShadow);
+            return pixels;
+        }
+
+        /// <summary>
+        /// LA PELOUSE FLEURIE : la tuile de pelouse, et les deux fleurs posees dessus, trait
+        /// compris. C'est une tuile de SOL, pas un sprite : elle se peint dans la tilemap du sol a
+        /// la place de la pelouse nue, et la phase 18g la fera changer avec la saison.
+        /// </summary>
+        private static Color32[] BuildFlowersTile()
+        {
+            Color32[] pixels = BuildLawnTile();
+            Color32[] flowers = BuildFlowers();
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (flowers[i].a != 0)
+                {
+                    pixels[i] = flowers[i];
+                }
+            }
+
             return pixels;
         }
 

@@ -133,6 +133,12 @@ namespace SousLaVille.EditorTools
             }
             Tile fountainTile = LoadTile(PlaceholderArtGenerator.TileFountain);
             Tile tree = LoadTile(PlaceholderArtGenerator.TileTree);
+            Tile flowers = LoadTile(PlaceholderArtGenerator.TileFlowers);
+            HashSet<Vector2Int> signCells = new HashSet<Vector2Int>();
+            foreach (RoadSign sign in VillageLayout.RoadSigns())
+            {
+                signCells.Add(sign.Cell);
+            }
 
             // PHASE 12C : seize tuiles par famille, choisies par un masque de raccord, sur le
             // patron exact des canalisations de la phase 3.
@@ -178,7 +184,12 @@ namespace SousLaVille.EditorTools
                             groundTiles[index] = grass;
                             break;
                         default:
-                            groundTiles[index] = grass;
+                            // PHASE 18C : une case d'herbe libre sur vingt porte des fleurs, toujours
+                            // les memes, choisies par un hachage de la case. Jamais sous un panneau,
+                            // dont le poteau se plante dans l'herbe.
+                            bool free = VillageLayout.At(x, y) == VillageLayout.Grass
+                                     && !signCells.Contains(new Vector2Int(x, y));
+                            groundTiles[index] = free && IsFlowerCell(x, y) ? flowers : grass;
                             break;
                     }
 
@@ -213,6 +224,19 @@ namespace SousLaVille.EditorTools
             blocking.SetTilesBlock(bounds, blockingTiles);
             ground.CompressBounds();
             blocking.CompressBounds();
+        }
+
+        /// <summary>
+        /// Une case sur vingt environ, par un hachage STABLE de ses coordonnees : les fleurs
+        /// tombent aux memes places a chaque construction, et ne dessinent ni ligne ni damier.
+        /// Une regle lineaire — « x + 2y multiple de n » — ferait une diagonale, et l'oeil la lit.
+        /// </summary>
+        private static bool IsFlowerCell(int x, int y)
+        {
+            int hash = x * 374761393 + y * 668265263 + 18;
+            hash = (hash ^ (hash >> 13)) * 1274126177;
+            hash = (hash ^ (hash >> 16)) & 0x7FFFFFFF;
+            return hash % 20 == 0;
         }
 
         /// <summary>
@@ -403,8 +427,13 @@ namespace SousLaVille.EditorTools
 
                 SpriteRenderer renderer = signObject.AddComponent<SpriteRenderer>();
                 renderer.sprite = LoadSprite(PlaceholderArtGenerator.SignTexture((int)sign.Kind));
-                // Un panneau ne bloque pas : on marche dessus, il passe donc sous les pieds.
-                SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
+                // PHASE 18C : un panneau SE DRESSE — sa plaque monte de vingt-quatre pixels — et il
+                // se trie par Y comme un arbre, sinon un arbre au nord le couvrait de son tronc
+                // (vu sur une capture, a l'ordre -1 de 18b). Il ne bloque pas : le joueur debout
+                // sur sa case est a egalite de Y avec lui, et l'ordre entre les deux est alors
+                // indefini l'espace d'un pas. Un panneau qu'on cache un instant en marchant dessus
+                // vaut mieux qu'un panneau cache pour toujours par un arbre.
+                SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
             }
         }
 

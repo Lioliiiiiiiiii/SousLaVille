@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a et 18b faites, 18c à 18h à faire |
+| 18 | Le style de la référence | 18a à 18c faites, 18d à 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -2826,6 +2826,69 @@ s'accrochait à `EditorApplication.update` dans un `[InitializeOnLoadMethod]`, e
 rechargement de domaine de l'entrée en play — qui **n'a pas eu lieu**. Il s'accroche désormais
 aussi dans la commande de menu. Consigné dans PIEGES.md.
 
+## Phase 18c, ce qui est fait
+
+La végétation de la référence, règles 2, 3, 5 et 6 de la feuille de style.
+
+- **L'arbre fait deux cases**, `tree.png` 16×32, pivot au quart (`TreePivot`, le centre des seize
+  pixels du bas) : le tronc dans sa case, la cime sur toute la case du nord, et le tri par Y de 18b
+  fait le reste. Les 126 arbres se posent sans qu'une ligne du builder change. La cime est **une
+  boule qui se resserre sur le tronc** : la masse, deux lobes au milieu, le bas qui pend, trois
+  bosses au sommet ; un croissant d'ombre au bas et au flanc droit, un éclat en haut à gauche, des
+  arcs de feuillage clairs et sombres ; tronc cerné de brun, cime de vert profond. Son ombre au
+  sol est dans la tuile de son pied (18b).
+- **Les buissons du labyrinthe**, seize masques (`BuildBushTile`) : retrait d'un pixel et angle
+  arrondi sur chaque côté libre, ombre au pied et lumière au sommet seulement aux bouts de la
+  haie, **sommet festonné** (deux pixels sur huit rognés sur un dessus libre, le trait suit le
+  creux), et la texture `LeafTexture` — un arc clair et un arc sombre par carré de huit, en
+  quinconce, période qui divise seize donc sans couture de case en case. La tuile `tile_hedge`
+  sans masque est le buisson fermé de toutes parts.
+- **Les fleurs**, `tile_flowers.png` / `Tile_Flowers` : la pelouse et deux fleurs roses à cœur
+  jaune, cernées. Une tuile de **sol**, semée par `SurfaceSceneBuilder.IsFlowerCell` sur une case
+  d'herbe libre sur vingt, par un hachage stable des coordonnées — jamais sous un panneau. C'est la
+  tuile que 18g fera changer avec la saison d'un seul `SwapTile`. En attendant, elle fleurit toute
+  l'année : placeholder assumé.
+- **Un filet neuf dans `ValidateDecor`** : rien de ce qu'on doit voir ou toucher — guide, bouche,
+  porte, maison, fontaine, entrée de station, départ — juste au nord d'un arbre, dont la cime le
+  couvrirait. Une rue peut y passer : marcher derrière un arbre est le jeu.
+- **Un arbre a reculé** : celui de (12, 15) mangeait le corps du guide du but en (12, 16), vu sur
+  la capture. Il est en (10, 15). Le plan ne change que là ; 126 arbres, 2233 cases praticables,
+  32 panneaux, inchangés.
+- **Les panneaux de rue passent au tri « ce qui se dresse »** (ordre 0, par Y) : à l'ordre −1 de
+  18b, un panneau au sud d'un arbre passait derrière son tronc, vu sur la capture de la pelouse.
+  Sa plaque monte de vingt-quatre pixels ; ce n'est pas une chose qu'on foule. Le joueur debout sur
+  sa case est alors à égalité de Y avec lui : ordre indéfini l'espace d'un pas, assumé.
+- Suppression de `BuildTree`, `BuildHedge` et `LeafBlob` : les remplacés ne restent pas.
+
+### Ce que les planches ont dit
+
+Trois passes sur la cime, chacune regardée à six fois avant d'être crue. La cime de 18a — un
+ovale de quatorze sur vingt et une texture en pois — sortait **en capsule** une fois posée dans le
+jeu : côtés droits, sommet plat, presque pas de modelé. Un prototype Python avec la palette exacte
+a permis d'itérer en secondes : d'abord le modelé en croissant, qui donnait du volume mais gardait
+le cornichon ; puis **le bas qui se resserre** sur le tronc et les lobes du milieu, et l'arbre
+s'est lu. Porté en C# à l'identique, planche des images du jeu relue : la même.
+
+## Phase 18c, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement, trois fois (le dessin, le filet, le sabotage).
+- Art régénéré : **267 textures, 116 tuiles** ; palette tenue, 50 couleurs ; familles distinctes.
+- Cinq scènes construites ; « 126 arbre(s), 32 panneau(x) dérivé(s) ».
+- **Sabotage** : l'arbre remis en (12, 15) sous le guide → « L'arbre (12, 15) a « V » juste au
+  nord : sa cime de deux cases le cacherait », et la scène Surface **n'a pas été écrite**. Réparé,
+  recompilé, reconstruit.
+- **Captures en jeu regardées** : le bosquet de trois sur deux fait un mur de cimes rondes, les
+  troncs du rang sud passent devant ; le labyrinthe est une haie festonnée à bouts ronds et non
+  une pile de boîtes ; les fleurs par paires sur la pelouse ; le guide du but dégagé.
+- `git diff ProjectSettings/` vide.
+
+### Note d'atelier : `BuildHedge` n'avait pas de résumé
+
+En coupant « du résumé de `BuildHedge` à la fin de `BuildTree` », la coupe est remontée au résumé
+précédent et a emporté `BuildPlantBasin`, deux méthodes plus haut. Un CS0103 l'a dit à la
+compilation suivante ; remis à sa place. Une suppression par script se relit dans le diff avant de
+compiler, ligne à ligne, et pas seulement par le nom de ce qu'on voulait supprimer.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -2847,10 +2910,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18c, la végétation
+## Prochaine étape : la phase 18d, les bâtiments
 
-Arbres de deux cases (le sprite et son pivot au quart), buissons du labyrinthe à seize masques,
-fleurs. Puis 18d à 18h, une par une. Victorien joue après.
+Maisons de deux cases sur deux et le plan qui les reçoit, les trois façades, la station, la
+fontaine, la bouche, les portes, les enseignes, les poteaux. Puis 18e à 18h. Victorien joue après.
 
 ## Décisions prises
 
@@ -2871,6 +2934,9 @@ fleurs. Puis 18d à 18h, une par une. Victorien joue après.
   deux sur deux, saisons par images.
 - **Phase 18b.** Ce qu'on foule est à l'ordre −1, ce qui se dresse à 0 et se trie par Y au pivot.
   Le réglage vit dans l'asset du Renderer2D, versionné sous `Assets/Settings`.
+- **Phase 18c.** Les fleurs sont une tuile de sol semée par hachage, une case d'herbe libre sur
+  vingt : c'est la tuile que les saisons échangeront. Rien de ce qu'on doit voir ne se tient juste
+  au nord d'un arbre ; le plan bouge d'un arbre pour cela.
 
 ### Phase 17c, tranchée le 5 septembre 2026
 

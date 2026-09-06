@@ -273,6 +273,16 @@ INTERSECTION. Écrire les cases à la main, dans l'ordre de lecture, et vérifie
 **Une donnée dérivée sauvegardée est une donnée qui peut mentir.** Les maisons desservies, l'eau
 du village, l'état de la fontaine : tout se recalcule. On sauvegarde des **gestes**, pas un état.
 
+**Un arbre de deux cases couvre toute la case du nord.** Depuis 18c, ce qui se tient juste au
+nord d'un arbre disparaît sous sa cime : le guide du but en (12, 16) n'avait plus que la tête.
+`ValidateDecor` refuse désormais tout marqueur qu'on doit voir ou toucher au nord d'un arbre.
+Plus largement : **un sprite qui grandit recouvre ce que le plan mettait à côté**, et seul l'écran
+le montre — le plan, lui, n'a pas changé.
+
+**Une suppression par script qui cherche « le résumé d'avant » remonte trop haut** si la méthode
+visée n'a pas de résumé : la coupe de `BuildHedge` a emporté `BuildPlantBasin`. Relire le diff de
+la suppression ligne à ligne avant de compiler.
+
 **`maxTextureSize` réduit une image de moitié EN SILENCE.** Depuis la phase 12a il est calculé
 depuis l'en-tête du PNG ; ne pas le réécrire à la main.
 

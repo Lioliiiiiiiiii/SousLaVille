@@ -97,10 +97,19 @@ namespace SousLaVille.EditorTools
         // une nappe beige sans direction.
         public const int DecorMaskCount = 16;
 
-        /// <summary>L'arbre, phase 12c. Bloquant comme une maison, et de la meme hauteur.</summary>
+        /// <summary>L'arbre. Bloquant comme une maison ; depuis la phase 18c, deux cases de haut.</summary>
         public const string TreeTexture = SpritesFolder + "/tree.png";
         public const string TreeTileTexture = TilesFolder + "/tile_tree.png";
         public const string TileTree = TilesFolder + "/Tile_Tree.asset";
+
+        /// <summary>
+        /// LA PELOUSE FLEURIE, phase 18c : la tuile de pelouse et deux fleurs dessus. Semee ca et
+        /// la sur l'herbe libre du village par SurfaceSceneBuilder, toujours aux memes cases.
+        /// C'est la tuile que la phase 18g fera changer avec la saison — fleurs au printemps,
+        /// feuilles mortes a l'automne, neige l'hiver — par un seul SwapTile.
+        /// </summary>
+        public const string FlowersTexture = TilesFolder + "/tile_flowers.png";
+        public const string TileFlowers = TilesFolder + "/Tile_Flowers.asset";
 
         /// <summary>
         /// Le catalogue de panneaux, phase 12c. Quatre panneaux de rue et quatre panneaux de
@@ -532,6 +541,13 @@ namespace SousLaVille.EditorTools
         // centre de la case et la tete du personnage deborde vers le haut.
         private static readonly Vector2 PlayerPivot = new Vector2(0.5f, 1f / 3f);
 
+        /// <summary>
+        /// Phase 18c : l'arbre fait trente-deux pixels de haut, et son pivot tombe AU QUART —
+        /// le centre des seize pixels du bas, la case du tronc. La cime deborde de toute la case
+        /// du nord, et le tri par Y se fait au pied de l'arbre, la ou il se tient.
+        /// </summary>
+        private static readonly Vector2 TreePivot = new Vector2(0.5f, 0.25f);
+
         // Le brun s'assombrit avec la profondeur, et la galerie vire au gris froid au plus
         // profond : la nuance se lit sans legende.
         private static readonly Color32[] EarthColors =
@@ -644,7 +660,10 @@ namespace SousLaVille.EditorTools
                     BuildSlabTile(Palette.SteelLight, Palette.Paper, Palette.Steel));
                 WriteTexture($"{TilesFolder}/tile_plant_floor.png",
                     BuildSlabTile(Palette.Steel, Palette.SteelLight, Palette.SteelDark));
-                WriteTileTexture("tile_hedge", Palette.GrassDeep);
+                // PHASE 18C : la vegetation de la reference. La haie sans masque est le buisson
+                // ferme de toutes parts ; la pelouse fleurie est la pelouse et deux fleurs.
+                WriteTexture($"{TilesFolder}/tile_hedge.png", BuildBushTile(DecorMaskCount - 1));
+                WriteTexture(FlowersTexture, BuildFlowersTile());
                 WriteTexture($"{TilesFolder}/tile_plant_wall.png", BuildPlantWallTile());
                 WriteTileTexture("tile_house", Palette.Brick);
 
@@ -705,14 +724,16 @@ namespace SousLaVille.EditorTools
                 WriteTexture(FountainTexture, BuildFountainBase());
                 WriteTexture(FountainSprite, BuildFountainSprite(), PlayerWidth);
 
-                // Le decor de la phase 12c.
+                // Le decor de la phase 12c, redessine en 18b (les chemins) et 18c (les buissons).
                 for (int mask = 0; mask < DecorMaskCount; mask++)
                 {
-                    WriteTexture(HedgeTexture(mask), BuildHedge(mask));
+                    WriteTexture(HedgeTexture(mask), BuildBushTile(mask));
                     WriteTexture(RoadTexture(mask), BuildSandTile(mask));
                 }
 
-                WriteTexture(TreeTexture, BuildTree(), PlayerWidth);
+                // L'arbre de deux cases, phase 18c : seize sur trente-deux, la cime sur la case
+                // du nord, et son ombre au sol dans la tuile de son pied.
+                WriteTexture(TreeTexture, BuildTreeV2(), PlayerWidth);
                 WriteTexture(TreeTileTexture, BuildTreeBase());
 
                 for (int kind = 0; kind < SignCount; kind++)
@@ -839,8 +860,9 @@ namespace SousLaVille.EditorTools
             }
 
             ConfigureImporter(FountainSprite, PlayerPivot);
-            ConfigureImporter(TreeTexture, PlayerPivot);
+            ConfigureImporter(TreeTexture, TreePivot);
             ConfigureImporter(TreeTileTexture, null);
+            ConfigureImporter(FlowersTexture, null);
 
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
@@ -969,6 +991,7 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TileWater, $"{TilesFolder}/tile_water.png");
             CreateTileAsset(TileFountain, FountainTexture);
             CreateTileAsset(TileTree, TreeTileTexture);
+            CreateTileAsset(TileFlowers, FlowersTexture);
 
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
@@ -1473,7 +1496,7 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain, TileTree
+                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain, TileTree, TileFlowers
             };
 
             foreach (string path in tiles)
@@ -2970,84 +2993,6 @@ namespace SousLaVille.EditorTools
             Fill(pixels, TileSize, 1, 14, 1, 14, wall);
             Fill(pixels, TileSize, 3, 12, 3, 12, water);
             Fill(pixels, TileSize, 4, 7, 9, 10, glint);
-
-            return pixels;
-        }
-
-        private static Color32[] BuildHedge(int mask)
-        {
-            Color32 leaf = Palette.GrassDeep;
-            Color32 crown = Palette.GrassDark;
-            Color32 shade = Palette.Shade(leaf);
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            // Le corps se retire d'un pixel de chaque cote LIBRE, et touche le bord partout
-            // ou une haie continue.
-            int x0 = (mask & 8) != 0 ? 0 : 1;
-            int x1 = (mask & 2) != 0 ? TileSize - 1 : TileSize - 2;
-            int y0 = (mask & 4) != 0 ? 0 : 1;
-            int y1 = (mask & 1) != 0 ? TileSize - 1 : TileSize - 2;
-
-            Fill(pixels, TileSize, x0, x1, y0, y1, leaf);
-
-            // Le feuillage : des touffes claires, toujours au meme endroit, pour que deux
-            // haies voisines ne se lisent pas comme une seule masse plate.
-            for (int y = y0; y <= y1; y++)
-            {
-                for (int x = x0; x <= x1; x++)
-                {
-                    if ((x + 2 * y) % 5 == 0)
-                    {
-                        pixels[y * TileSize + x] = crown;
-                    }
-                }
-            }
-
-            // L'ombre portee sur les cotes libres : c'est elle qui donne l'epaisseur du mur.
-            if ((mask & 4) == 0) Fill(pixels, TileSize, x0, x1, y0, y0, shade);
-            if ((mask & 8) == 0) Fill(pixels, TileSize, x0, x0, y0, y1, shade);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// Un arbre, phase 12c. Seize sur vingt-quatre comme la maison et le personnage : sa
-        /// cime deborde vers le haut et son tronc tient dans sa case. Il BLOQUE, et sa tuile
-        /// bloquante est une image separee, BuildTreeBase.
-        /// </summary>
-        private static Color32[] BuildTree()
-        {
-            const int width = PlayerWidth;
-            const int height = PlayerHeight;
-
-            Color32 trunk = Palette.Wood;
-            Color32 bark = Palette.Shade(trunk);
-            Color32 leaf = Palette.GrassDark;
-            Color32 light = Palette.Grass;
-
-            Color32[] pixels = NewTransparent(width * height);
-
-            Fill(pixels, width, 6, 9, 0, 9, trunk);
-            Fill(pixels, width, 6, 6, 0, 9, bark);
-
-            // La cime : trois rangs de plus en plus larges, puis un sommet arrondi.
-            Fill(pixels, width, 2, 13, 9, 18, leaf);
-            Fill(pixels, width, 3, 12, 18, 20, leaf);
-            Fill(pixels, width, 5, 10, 20, 22, leaf);
-            Fill(pixels, width, 7, 8, 22, 23, leaf);
-
-            for (int y = 9; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int index = y * width + x;
-                    if (pixels[index].a != 0 && (x + 3 * y) % 7 == 0)
-                    {
-                        pixels[index] = light;
-                    }
-                }
-            }
 
             return pixels;
         }
