@@ -600,7 +600,7 @@ namespace SousLaVille.EditorTools
             Palette.Brick,      // Le Stock
             Palette.Violet,     // La Fabrique
             Palette.Gold,       // Le Plan
-            Palette.Grass       // les huit guides
+            Palette.Leaf        // les huit guides — le vert du feuillage, depuis 18h
         };
 
         /// <summary>Le metier de chacun des trois, dans l'ordre de SignFactoryVillagers.</summary>
@@ -782,10 +782,11 @@ namespace SousLaVille.EditorTools
                 // depasse autour de son trait est de l'herbe.
                 WriteTexture($"{TilesFolder}/tile_house.png", BuildLawnTile());
 
+                // PHASE 18H : la roche en blocs cernes, le sol de galerie en trame reguliere.
                 for (int depth = 1; depth <= DepthCount; depth++)
                 {
-                    WriteTexture(EarthTexture(depth), BuildEarthTile(depth));
-                    WriteTexture(TunnelTexture(depth), BuildTunnelTile(depth));
+                    WriteTexture(EarthTexture(depth), BuildRockTile(depth));
+                    WriteTexture(TunnelTexture(depth), BuildGalleryFloorTile(depth));
                 }
 
                 for (int pattern = 0; pattern < PipePatternCount; pattern++)
@@ -802,7 +803,7 @@ namespace SousLaVille.EditorTools
                 // de seize pour la carte du mini-jeu Le Plan.
                 WriteTexture(HouseTexture, BuildHouseV2(), HouseWidth);
                 WriteTexture(HouseIconTexture, BuildHouseIcon(), PlayerWidth);
-                WriteTexture(HouseInletTexture, BuildHouseInlet());
+                WriteTexture(HouseInletTexture, BuildHouseInletV2());
                 WriteTexture(PlantInletTexture, BuildPlantInlet());
 
                 // PHASE 18E : les personnages de la reference, la tete fait la moitie, cernes.
@@ -832,7 +833,7 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoAutumn, BuildAutumnPictoV2(), HudPictoSize);
                 WriteTexture(PictoWinter, BuildWinterPictoV2(), HudPictoSize);
 
-                WriteTexture($"{TilesFolder}/tile_workshop.png", BuildPavingTile(Palette.Steel));
+                WriteTexture($"{TilesFolder}/tile_workshop.png", BuildPlankFloorTile());
 
                 for (int mask = 0; mask < DecorMaskCount; mask++)
                 {
@@ -900,7 +901,7 @@ namespace SousLaVille.EditorTools
                     WriteWord(SignNameTexture(SignBoard[slot]), SignBoardNames[slot]);
                 }
                 WriteTileTexture("tile_facade", Palette.Bark);
-                WriteTexture($"{TilesFolder}/tile_wall.png", BuildRoomWallTile());
+                WriteTexture($"{TilesFolder}/tile_wall.png", BuildRoomWallV2());
 
                 for (int piece = 0; piece < FurnitureTextures.Length; piece++)
                 {
@@ -965,7 +966,7 @@ namespace SousLaVille.EditorTools
 
                 for (int level = 0; level < ReserveLevelCount; level++)
                 {
-                    WriteTexture(ReserveTexture(level), BuildReserve(level));
+                    WriteTexture(ReserveTexture(level), BuildReserveV2(level));
                 }
             }
             finally
@@ -1246,6 +1247,7 @@ namespace SousLaVille.EditorTools
             string[] folders = { TilesFolder, SpritesFolder, PictosFolder };
             int checkedFiles = 0;
             int faults = 0;
+            HashSet<int> used = new HashSet<int>();
 
             foreach (string folder in folders)
             {
@@ -1279,8 +1281,14 @@ namespace SousLaVille.EditorTools
                     for (int i = 0; i < pixels.Length; i++)
                     {
                         Color32 pixel = pixels[i];
-                        if (pixel.a == 0 || Palette.Contains(pixel))
+                        if (pixel.a == 0)
                         {
+                            continue;
+                        }
+
+                        if (Palette.Contains(pixel))
+                        {
+                            used.Add(Palette.Key(pixel));
                             continue;
                         }
 
@@ -1306,8 +1314,29 @@ namespace SousLaVille.EditorTools
                 return false;
             }
 
+            // ET AUCUNE COULEUR SANS IMAGE, phase 18h : une couleur de la palette que plus aucune
+            // image ne porte est une couleur qui n'existe plus, et elle sort de la table plutot
+            // que d'y dormir. Trois verts de la phase 17 en sont sortis ainsi.
+            int orphans = 0;
+            for (int i = 0; i < Palette.All.Length; i++)
+            {
+                if (used.Contains(Palette.Key(Palette.All[i])))
+                {
+                    continue;
+                }
+
+                Debug.LogError($"[Sous la Ville] La couleur « {Palette.Names[i]} » n'est portée par " +
+                               "aucune image : retire-la de Palette, ou dessine avec.");
+                orphans++;
+            }
+
+            if (orphans > 0)
+            {
+                return false;
+            }
+
             Debug.Log($"[Sous la Ville] Palette tenue : {checkedFiles} image(s), " +
-                      $"{Palette.All.Length} couleurs et pas une de plus.");
+                      $"{Palette.All.Length} couleurs et pas une de plus, toutes portées.");
             return true;
         }
 
@@ -1867,124 +1896,6 @@ namespace SousLaVille.EditorTools
         // ---------------------------------------------------------------- dessin
 
         /// <summary>
-        /// UN BRUIT STABLE, phase 17b. Le meme (x, y) rend toujours la meme valeur : la texture
-        /// d'un sol est donc reproductible d'une generation a l'autre, et un diff d'image ne
-        /// bouge pas sans raison. Ce n'est pas du hasard, c'est un motif qu'on ne lit pas comme
-        /// un motif.
-        /// </summary>
-        private static int Speckle(int x, int y, int salt)
-        {
-            int hash = x * 374761393 + y * 668265263 + salt * 2147483647;
-            hash = (hash ^ (hash >> 13)) * 1274126177;
-            return (hash ^ (hash >> 16)) & 0x7FFFFFFF;
-        }
-
-        /// <summary>
-        /// LE PAVAGE : quatre dalles de huit pixels, un joint sombre entre elles, et un eclat
-        /// clair en haut a gauche de chaque dalle. Le joint tombe sur le bord de la tuile, donc
-        /// les dalles se poursuivent d'une case a l'autre sans decalage.
-        /// </summary>
-        private static Color32[] BuildPavingTile(Color32 stone)
-        {
-            Color32 joint = Palette.Shade(stone);
-
-            // L'eclat est la nuance CLAIRE de la dalle. Ecrit d'abord « = stone », il ne faisait
-            // rien du tout : la dalle etait uniforme et personne ne l'aurait su sans la regarder.
-            Color32 shine = Palette.Tint(stone);
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    bool onJoint = x % 8 == 0 || y % 8 == 0;
-                    pixels[y * TileSize + x] = onJoint ? joint : stone;
-                }
-            }
-
-            // L'eclat : le coin haut-gauche de chaque dalle prend la nuance claire du dessus.
-            for (int slab = 0; slab < 4; slab++)
-            {
-                int ox = (slab % 2) * 8 + 1;
-                int oy = (slab / 2) * 8 + 6;
-
-                Fill(pixels, TileSize, ox, ox + 4, oy, oy, shine);
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// LA TERRE PLEINE, phase 17c. Un aplat borde d'un lisere dessinait sous terre la meme
-        /// grille qu'en surface. Ici, des cailloux et des veines, sans aucun bord.
-        ///
-        /// LA PROFONDEUR SE COMPTE, elle ne se devine plus a la nuance. Chaque case porte autant
-        /// de CAILLOUX CLAIRS que sa profondeur : un a la profondeur 1, deux a la 2, trois a la 3.
-        /// L'ecart entre les profondeurs 1 et 2 etait une question ouverte depuis la phase 3 —
-        /// « distinct sur les captures, mais l'ecart est faible » —, et une nuance de brun ne se
-        /// compare qu'en voyant les deux cote a cote. Un nombre se compte sur une seule case, et
-        /// la regle de profondeur croissante EST le puzzle selon CLAUDE.md.
-        /// </summary>
-        private static Color32[] BuildEarthTile(int depth)
-        {
-            Color32 body = EarthColors[Mathf.Clamp(depth - 1, 0, EarthColors.Length - 1)];
-            Color32 grain = Palette.Shade(body);
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = body;
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    if (Speckle(x, y, 53 + depth) % 14 == 0)
-                    {
-                        pixels[y * TileSize + x] = grain;
-                    }
-                }
-            }
-
-            DrawDepthPebbles(pixels, depth, Palette.StoneDark);
-            return pixels;
-        }
-
-        /// <summary>
-        /// LE SOL D'UNE GALERIE. Meme lecture de la profondeur, meme absence de bord : la
-        /// galerie se creuse dans la terre, elle ne se pose pas dessus en carreaux.
-        /// </summary>
-        private static Color32[] BuildTunnelTile(int depth)
-        {
-            Color32 body = TunnelColors[Mathf.Clamp(depth - 1, 0, TunnelColors.Length - 1)];
-            Color32 grain = Palette.Shade(body);
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = body;
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    if (Speckle(x, y, 71 + depth) % 22 == 0)
-                    {
-                        pixels[y * TileSize + x] = grain;
-                    }
-                }
-            }
-
-            DrawDepthPebbles(pixels, depth, grain);
-            return pixels;
-        }
-
-        /// <summary>
         /// Autant de cailloux que la profondeur, aux memes places d'une tuile a l'autre : on les
         /// compte d'un coup d'oeil au lieu de comparer deux bruns.
         /// </summary>
@@ -2002,48 +1913,6 @@ namespace SousLaVille.EditorTools
                 Vector2Int place = places[i];
                 Fill(pixels, TileSize, place.x, place.x + 1, place.y, place.y + 1, pebble);
             }
-        }
-
-        /// <summary>
-        /// LE MUR D'UNE PIECE : des planches verticales et deux lisses horizontales, plutot
-        /// qu'un aplat de bois borde d'un lisere. C'est un mur d'atelier, on doit y accrocher
-        /// des choses.
-        /// </summary>
-        private static Color32[] BuildRoomWallTile()
-        {
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = Palette.Wood;
-            }
-
-            Color32 joint = Palette.Shade(Palette.Wood);
-
-            // Les planches, quatre par case, et leur grain.
-            for (int x = 0; x < TileSize; x += 4)
-            {
-                Fill(pixels, TileSize, x, x, 0, TileSize - 1, joint);
-            }
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    if (Speckle(x, y, 97) % 17 == 0)
-                    {
-                        pixels[y * TileSize + x] = Palette.Bark;
-                    }
-                }
-            }
-
-            // Les deux lisses : elles courent d'une case a l'autre sans se couper.
-            Fill(pixels, TileSize, 0, TileSize - 1, 3, 4, Palette.Bark);
-            Fill(pixels, TileSize, 0, TileSize - 1, 11, 12, Palette.Bark);
-            Fill(pixels, TileSize, 0, TileSize - 1, 2, 2, joint);
-            Fill(pixels, TileSize, 0, TileSize - 1, 10, 10, joint);
-
-            return pixels;
         }
 
         /// <summary>
@@ -2222,66 +2091,6 @@ namespace SousLaVille.EditorTools
             {
                 Fill(pixels, TileSize, 0, 5, 6 - grow, 9 + grow, color);
             }
-        }
-
-        /// <summary>
-        /// L'arrivee d'une maison, vue du sous-sol : une collerette de raccordement, pour
-        /// qu'on la distingue d'un tuyau ordinaire.
-        /// </summary>
-        private static Color32[] BuildHouseInlet()
-        {
-            Color32 flange = Palette.StoneLight;
-            Color32 mouth = Palette.WoodDark;
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            Fill(pixels, TileSize, 2, 13, 2, 13, flange);
-            Fill(pixels, TileSize, 5, 10, 5, 10, mouth);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// La cuve du bassin d'orage, vue de dessus : un cadre de beton, un interieur
-        /// sombre, et l'eau qui monte du bas. Douze pixels d'interieur, trois par palier :
-        /// les cinq niveaux se distinguent a leur taille reelle. Trois traits clairs sur le
-        /// bord gauche marquent les quarts, comme les graduations d'un verre doseur.
-        /// </summary>
-        private static Color32[] BuildReserve(int level)
-        {
-            Color32 outline = Palette.Charcoal;
-            Color32 rim = Palette.SteelDark;
-            Color32 inside = Palette.Charcoal;
-            Color32 water = Palette.Water;
-            Color32 waterTop = Palette.Ice;
-            Color32 tick = Palette.SteelLight;
-
-            const int innerBottom = 2;
-            const int innerTop = 13;
-            const int pixelsPerLevel = 3;
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            Fill(pixels, TileSize, 0, 15, 0, 15, outline);
-            Fill(pixels, TileSize, 1, 14, 1, 14, rim);
-            Fill(pixels, TileSize, innerBottom, innerTop, innerBottom, innerTop, inside);
-
-            int height = Mathf.Clamp(level, 0, ReserveLevelCount - 1) * pixelsPerLevel;
-            if (height > 0)
-            {
-                int top = innerBottom + height - 1;
-                Fill(pixels, TileSize, innerBottom, innerTop, innerBottom, top, water);
-                Fill(pixels, TileSize, innerBottom, innerTop, top, top, waterTop);
-            }
-
-            // Les graduations passent par-dessus l'eau : elles se lisent cuve vide ou pleine.
-            for (int mark = 1; mark < ReserveLevelCount - 1; mark++)
-            {
-                int y = innerBottom + mark * pixelsPerLevel - 1;
-                Fill(pixels, TileSize, innerBottom, innerBottom + 1, y, y, tick);
-            }
-
-            return pixels;
         }
 
         /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>

@@ -812,6 +812,175 @@ namespace SousLaVille.EditorTools
             (Palette.Brick, Palette.SteelLight)
         };
 
+        // ---------------------------------------------------------------- le sous-sol et les pieces
+
+        /// <summary>
+        /// LA TERRE PLEINE, phase 18h : des BLOCS DE ROCHE CERNES, a face du dessus claire — le
+        /// diagnostic de 18a. Deux assises de huit pixels, decalees d'une demi-largeur, le joint
+        /// dans l'ombre et l'arete du haut de chaque bloc a la nuance claire ; et toujours autant
+        /// de cailloux que la profondeur, decision de 17c : LA PROFONDEUR SE COMPTE.
+        /// </summary>
+        private static Color32[] BuildRockTile(int depth)
+        {
+            Color32 body = EarthColors[Mathf.Clamp(depth - 1, 0, EarthColors.Length - 1)];
+            Color32 joint = Palette.Shade(body);
+            Color32[] faces = { Palette.Bark, Palette.Earth, Palette.EarthMid };
+            Color32 face = faces[Mathf.Clamp(depth - 1, 0, faces.Length - 1)];
+
+            Color32[] p = new Color32[TileSize * TileSize];
+            for (int i = 0; i < p.Length; i++)
+            {
+                p[i] = body;
+            }
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                int course = y / 8;
+                if (y % 8 == 0)
+                {
+                    Fill(p, TileSize, 0, 15, y, y, joint);
+                    continue;
+                }
+
+                if (y % 8 == 7)
+                {
+                    Fill(p, TileSize, 0, 15, y, y, face);
+                }
+
+                for (int x = (course % 2) * 4; x < TileSize; x += 8)
+                {
+                    p[y * TileSize + x] = joint;
+                }
+            }
+
+            DrawDepthPebbles(p, depth, Palette.StoneDark);
+            return p;
+        }
+
+        /// <summary>
+        /// LE SOL D'UNE GALERIE, phase 18h, regle 1 : un fond, la trame reguliere de points
+        /// clairs, deux fissures dans l'ombre — la dalle du parc en terre battue —, et les
+        /// cailloux qui comptent la profondeur. Plus de bruit.
+        /// </summary>
+        private static Color32[] BuildGalleryFloorTile(int depth)
+        {
+            Color32 body = TunnelColors[Mathf.Clamp(depth - 1, 0, TunnelColors.Length - 1)];
+            Color32[] lights = { Palette.Bone, Palette.Tunnel, Palette.TunnelMid };
+            Color32 light = lights[Mathf.Clamp(depth - 1, 0, lights.Length - 1)];
+
+            Color32[] p = BuildSlabTile(body, light, Palette.Shade(body));
+            DrawDepthPebbles(p, depth, Palette.Shade(body));
+            return p;
+        }
+
+        /// <summary>L'arrivee d'une maison vue du sous-sol : une bouche de tuyau ronde, cernee, a bord eclaire.</summary>
+        private static Color32[] BuildHouseInletV2()
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            FillEllipse(p, w, 7.5f, 7.5f, 6.4f, 6.4f, Palette.Steel);
+            LightRim(p, w, 7.5f, 7.5f, 6.4f, Palette.SteelLight);
+            FillEllipse(p, w, 7.5f, 7.5f, 3.6f, 3.6f, Palette.Charcoal);
+            Fill(p, w, 7, 8, 1, 1, Palette.SteelDark);
+            Fill(p, w, 7, 8, 14, 14, Palette.SteelDark);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LA CUVE DU BASSIN D'ORAGE, phase 18h : une boite d'acier arrondie et cernee, l'interieur
+        /// sombre, l'eau qui monte par paliers de trois pixels, et ses graduations. Cinq niveaux.
+        /// </summary>
+        private static Color32[] BuildReserveV2(int level)
+        {
+            const int w = TileSize;
+            const int innerBottom = 3;
+            const int innerTop = 12;
+            const int pixelsPerLevel = 2;
+
+            Color32[] p = NewTransparent(w * w);
+            RoundedBox(p, w, 1, 14, 1, 14, Palette.Charcoal, Palette.SteelDark, Palette.Steel);
+
+            int height = Mathf.Clamp(level, 0, ReserveLevelCount - 1) * pixelsPerLevel;
+            if (height > 0)
+            {
+                int top = innerBottom + height - 1;
+                Fill(p, w, innerBottom, innerTop, innerBottom, top, Palette.Water);
+                Fill(p, w, innerBottom, innerTop, top, top, Palette.Ice);
+            }
+
+            for (int mark = 1; mark < ReserveLevelCount - 1; mark++)
+            {
+                int y = innerBottom + mark * pixelsPerLevel - 1;
+                Fill(p, w, innerBottom, innerBottom + 1, y, y, Palette.SteelLight);
+            }
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LE PLANCHER d'une piece, phase 18h : des lames de bois de quatre pixels, leurs joints
+        /// dans l'ombre et un eclat au bord de chaque lame, les abouts decales d'une lame a
+        /// l'autre. Un sol, sans contour, regle 1 ; plus le pave gris de l'atelier de la phase 7.
+        /// </summary>
+        private static Color32[] BuildPlankFloorTile()
+        {
+            const int w = TileSize;
+            Color32[] p = new Color32[w * w];
+            for (int i = 0; i < p.Length; i++)
+            {
+                p[i] = Palette.Bark;
+            }
+
+            for (int y = 0; y < w; y++)
+            {
+                if (y % 4 == 0)
+                {
+                    Fill(p, w, 0, 15, y, y, Palette.Wood);
+                }
+                else if (y % 4 == 3)
+                {
+                    Fill(p, w, 0, 15, y, y, Palette.WoodLight);
+                }
+            }
+
+            // Les abouts : un joint vertical par lame, decale d'une demi-case a chaque lame.
+            Fill(p, w, 3, 3, 1, 3, Palette.Wood);
+            Fill(p, w, 11, 11, 5, 7, Palette.Wood);
+            Fill(p, w, 6, 6, 9, 11, Palette.Wood);
+            Fill(p, w, 14, 14, 13, 15, Palette.Wood);
+
+            return p;
+        }
+
+        /// <summary>
+        /// LE MUR d'une piece, phase 18h : le bardage clair a lignes des maisons, une plinthe de
+        /// bois au pied et une corniche sombre en haut. Une case de mur se lit comme le bas d'un
+        /// mur, ou qu'elle soit ; les planches verticales de 17g faisaient une palissade.
+        /// </summary>
+        private static Color32[] BuildRoomWallV2()
+        {
+            const int w = TileSize;
+            Color32[] p = new Color32[w * w];
+            for (int i = 0; i < p.Length; i++)
+            {
+                p[i] = Palette.Bone;
+            }
+
+            Fill(p, w, 0, 15, 6, 6, Palette.StoneLight);
+            Fill(p, w, 0, 15, 10, 10, Palette.StoneLight);
+            Fill(p, w, 0, 15, 0, 2, Palette.Wood);          // la plinthe
+            Fill(p, w, 0, 15, 2, 2, Palette.WoodLight);
+            Fill(p, w, 0, 15, 0, 0, Palette.WoodDark);
+            Fill(p, w, 0, 15, 14, 15, Palette.SteelDark);   // la corniche
+            Fill(p, w, 0, 15, 13, 13, Palette.SteelLight);
+
+            return p;
+        }
+
         // ---------------------------------------------------------------- les batiments
 
         /// <summary>

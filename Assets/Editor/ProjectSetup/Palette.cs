@@ -43,12 +43,6 @@ namespace SousLaVille.EditorTools
         public static readonly Color32 Steel = Rgb(0x8C, 0x92, 0x9C);
         public static readonly Color32 SteelLight = Rgb(0xC2, 0xC8, 0xD0);
 
-        // ------------------------------------------------------------------ verts
-
-        public static readonly Color32 GrassDeep = Rgb(0x1F, 0x5C, 0x2E);
-        public static readonly Color32 GrassDark = Rgb(0x2C, 0x6E, 0x35);
-        public static readonly Color32 Grass = Rgb(0x4E, 0x9A, 0x3E);
-
         // ------------------------------------------------------------------ bois
 
         public static readonly Color32 WoodDark = Rgb(0x4A, 0x2E, 0x1E);
@@ -166,7 +160,6 @@ namespace SousLaVille.EditorTools
         public static readonly Color32[] All =
         {
             Ink, Charcoal, Paper, SteelDark, Steel, SteelLight,
-            GrassDeep, GrassDark, Grass,
             WoodDark, Wood, Bark,
             StoneDark, Stone, StoneLight, Bone,
             Earth, EarthMid, EarthDeep,
@@ -185,7 +178,6 @@ namespace SousLaVille.EditorTools
         public static readonly string[] Names =
         {
             "Ink", "Charcoal", "Paper", "SteelDark", "Steel", "SteelLight",
-            "GrassDeep", "GrassDark", "Grass",
             "WoodDark", "Wood", "Bark",
             "StoneDark", "Stone", "StoneLight", "Bone",
             "Earth", "EarthMid", "EarthDeep",
@@ -292,7 +284,7 @@ namespace SousLaVille.EditorTools
 
         /// <summary>Le rouge, le vert et le bleu en un seul entier. L'ALPHA NE COMPTE PAS : l'eau
         /// et le voile du fondu sont des couleurs de la palette rendues translucides.</summary>
-        private static int Key(Color32 color)
+        public static int Key(Color32 color)
         {
             return (color.r << 16) | (color.g << 8) | color.b;
         }
@@ -327,9 +319,6 @@ namespace SousLaVille.EditorTools
                 { Key(Charcoal), Charcoal },
                 { Key(Ink), Charcoal },
 
-                { Key(Grass), GrassDark },
-                { Key(GrassDark), GrassDeep },
-                { Key(GrassDeep), Ink },
 
                 { Key(Bark), Wood },
                 { Key(Wood), WoodDark },
@@ -361,7 +350,7 @@ namespace SousLaVille.EditorTools
                 { Key(Sun), Gold },
                 { Key(Gold), Bark },
 
-                { Key(Teal), GrassDeep },
+                { Key(Teal), LeafShadow },
                 { Key(Violet), BlueDeep },
 
                 // Phase 18. La pelouse s'assombrit jusqu'au contour des plantes : l'ombre d'un

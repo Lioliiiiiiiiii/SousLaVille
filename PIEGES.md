@@ -297,6 +297,11 @@ during play mode` au fond d'une pile de dix appels. `BuildAllScenes` le refuse d
 Un pilote qui attend le focus laisse le play ouvert tant qu'Unity n'est pas devant : `osascript …
 activate` ne suffit pas toujours, `System Events … set frontmost` si.
 
+**Un filet peut se saboter sans toucher aux assets.** `Palette.All` est un tableau `static
+readonly` : ses cases se réécrivent en mémoire depuis `execute_code`, le temps d'un appel à
+`ValidatePalette`, puis se remettent. Pas de compilation, pas de fichier déplacé, pas de
+génération à refaire — deux minutes de moins que le sabotage par édition de source.
+
 **`maxTextureSize` réduit une image de moitié EN SILENCE.** Depuis la phase 12a il est calculé
 depuis l'en-tête du PNG ; ne pas le réécrire à la main.
 

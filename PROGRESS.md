@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a à 18g faites, 18h à faire |
+| 18 | Le style de la référence | Terminée |
 
 ## Phase 0, ce qui est fait
 
@@ -3095,6 +3095,57 @@ plus la saison seule. La table du plan (§ 3.3), faite.
   picto de flocon dans sa boîte. Les façades d'hiver, ajoutées ensuite, sont vues sur leur planche.
 - `git diff ProjectSettings/` vide.
 
+## Phase 18h, ce qui est fait
+
+Le sous-sol et les intérieurs, puis le ménage.
+
+- **La terre pleine est de la roche en blocs cernés** (`BuildRockTile`) : deux assises de huit
+  pixels décalées, le joint dans l'ombre, l'arête du haut de chaque bloc à la nuance claire — le
+  diagnostic de 18a, « des blocs de roche cernés, à face du dessus claire ». Et toujours autant de
+  cailloux que la profondeur, décision de 17c. **Le sol des galeries** suit la règle 1
+  (`BuildGalleryFloorTile`) : la trame régulière de la dalle du parc en terre battue, deux fissures,
+  les cailloux ; plus de bruit.
+- **La bouche d'une maison au sous-sol** est un tuyau vu en bout, rond, cerné, à bord éclairé
+  (`BuildHouseInletV2`). **La cuve du bassin** est une boîte d'acier arrondie et cernée, l'eau qui
+  monte par paliers, les graduations (`BuildReserveV2`).
+- **Les pièces** : un parquet de lames à joints décalés et éclat de bord (`BuildPlankFloorTile`) à la
+  place du pavé gris de la phase 7 ; un mur au bardage clair des maisons, plinthe de bois et
+  corniche sombre (`BuildRoomWallV2`) à la place de la palissade de 17g.
+- **Le ménage de la palette** : les trois verts de la phase 17 — `Grass`, `GrassDark`, `GrassDeep` —
+  n'étaient plus portés que par le corps du guide et par `Shade(Teal)`. Le guide passe au vert du
+  feuillage `Leaf`, `Shade(Teal)` à `LeafShadow`, et les trois sortent de la table : **47 couleurs**.
+  `ValidatePalette` refuse désormais **une couleur sans image** — une couleur que plus rien ne
+  porte est une couleur qui n'existe plus — et l'annonce : « 47 couleurs et pas une de plus,
+  toutes portées ». `Palette.Key` devient public pour cela.
+- Suppression de `BuildEarthTile`, `BuildTunnelTile`, `BuildPavingTile`, `BuildRoomWallTile`,
+  `BuildHouseInlet`, `BuildReserve` et `Speckle`, le bruit stable de 17b : plus une image n'en
+  porte.
+- **Le pilote de capture est supprimé**, `Pilot18.cs` et son `.meta`, jamais commités. La planche
+  d'essai de 18a reste : c'est une commande de menu, pas un pilote.
+
+## Phase 18h, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement.
+- Art régénéré : 346 textures, 189 tuiles ; **palette tenue, 47 couleurs, toutes portées** ;
+  familles distinctes.
+- Planche du sous-sol et des pièces regardée (`Captures/planche_18h_sous_sol_interieurs.png`).
+- Cinq scènes construites.
+- **Sabotage du filet des couleurs orphelines**, sans toucher aux assets : `Palette.All[0]`
+  remplacé en mémoire par une couleur qu'aucune image ne porte → `ValidatePalette` rend faux et
+  nomme « Ink » ; remis, il rend vrai. Le filet lit les images, pas une supposition.
+- **Captures en jeu regardées** : le sous-sol par le routeur — la roche en blocs à face claire,
+  la galerie à cailloux, l'échelle, la bouche ronde d'une maison. **L'atelier n'a pas été capturé
+  en jeu** : le second voyage du pilote, vers la couche intérieure, n'a pas eu lieu et la capture
+  montre encore le sous-sol. Le parquet, le mur et les meubles sont vus sur la planche.
+- `git diff ProjectSettings/` vide.
+
+### Ce qui reste à l'œil
+
+- Le sous-sol est **sombre** : lumière à 0,8 et blocs de roche cernés font un écran chargé. À
+  juger en jouant ; le remède serait du côté de la lumière ou de la densité des joints.
+- Le parquet des pièces se lit aussi comme un mur de briques posé au sol : des lames plus longues
+  le diraient mieux.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -3116,10 +3167,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18h, le sous-sol et les intérieurs
+## Prochaine étape : Victorien joue
 
-Les blocs de roche cernés du sous-sol, le plancher et le mur des pièces, puis le ménage de la
-palette et la suppression du pilote. Victorien joue après.
+La phase 18 est terminée : le jeu ressemble à sa référence, de la surface au sous-sol, aux quatre
+saisons. Reste ce qui ne se décide qu'en regardant quelqu'un jouer.
 
 ## Décisions prises
 
@@ -3140,6 +3191,9 @@ palette et la suppression du pilote. Victorien joue après.
   deux sur deux, saisons par images.
 - **Phase 18b.** Ce qu'on foule est à l'ordre −1, ce qui se dresse à 0 et se trie par Y au pivot.
   Le réglage vit dans l'asset du Renderer2D, versionné sous `Assets/Settings`.
+- **Phase 18h.** Une couleur de la palette qu'aucune image ne porte est refusée par
+  `ValidatePalette` : la palette dit ce que le jeu montre, ni plus ni moins. Le guide est vert
+  feuillage ; les trois verts de la phase 17 sont sortis.
 - **Phase 18g.** Les saisons s'échangent par asset : un asset par famille et par saison, même à
   image égale, parce que `SwapTile` ne connaît que des assets. La scène est peinte au printemps.
   La lumière accompagne, elle ne porte plus.
