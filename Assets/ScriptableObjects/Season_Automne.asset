@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SousLaVille.Runtime::SousLaVille.Seasons.SeasonDefinition
   displayName: Automne
   picto: {fileID: 21300000, guid: dddd692ff13cf46c99542000740d1dd4, type: 3}
-  lightColor: {r: 1, g: 0.82, b: 0.6, a: 1}
+  lightColor: {r: 1, g: 0.93, b: 0.84, a: 1}
   freezeMaxDepth: 0
   clogChance: 0.25
   wearMultiplier: 1

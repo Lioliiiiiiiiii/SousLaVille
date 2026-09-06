@@ -127,6 +127,95 @@ namespace SousLaVille.EditorTools
         public const string FlowersTexture = TilesFolder + "/tile_flowers.png";
         public const string TileFlowers = TilesFolder + "/Tile_Flowers.asset";
 
+        // ---- PHASE 18G, LES SAISONS ---------------------------------------------------------
+        //
+        // Les saisons changent le SOL et les CIMES, pas seulement la lumiere. Chaque famille de
+        // tuiles a une variante par saison qui en a besoin, et SeasonalTiles les echange d'un
+        // SwapTile ; chaque arbre et chaque maison porte un SeasonalSprite. Rien ne s'instancie,
+        // rien ne boucle par image. Les rangs des saisons sont ceux du cycle : 0 printemps,
+        // 1 ete, 2 automne, 3 hiver.
+        public const int SeasonCount = 4;
+
+        public const string AutumnLawnTexture = TilesFolder + "/tile_grass_autumn.png";
+        public const string TileAutumnLawn = TilesFolder + "/Tile_Grass_Autumn.asset";
+        public const string SnowTexture = TilesFolder + "/tile_grass_winter.png";
+        public const string TileSnow = TilesFolder + "/Tile_Grass_Winter.asset";
+        public const string TileHouseWinter = TilesFolder + "/Tile_House_Winter.asset";
+
+        /// <summary>La case de decor selon la saison : fleurs, herbe haute, tas de feuilles, touffe sous la neige.</summary>
+        public const string TuftsTexture = TilesFolder + "/tile_tufts.png";
+        public const string TileDecorSummer = TilesFolder + "/Tile_Decor_Summer.asset";
+        public const string LeavesTexture = TilesFolder + "/tile_leaves.png";
+        public const string TileDecorAutumn = TilesFolder + "/Tile_Decor_Autumn.asset";
+        public const string SnowTuftTexture = TilesFolder + "/tile_snow_tuft.png";
+        public const string TileDecorWinter = TilesFolder + "/Tile_Decor_Winter.asset";
+
+        public const string IceTexture = TilesFolder + "/tile_ice.png";
+        public const string TileIce = TilesFolder + "/Tile_Ice.asset";
+
+        public const string TreeTileAutumnTexture = TilesFolder + "/tile_tree_autumn.png";
+        public const string TileTreeAutumn = TilesFolder + "/Tile_Tree_Autumn.asset";
+        public const string TreeTileWinterTexture = TilesFolder + "/tile_tree_winter.png";
+        public const string TileTreeWinter = TilesFolder + "/Tile_Tree_Winter.asset";
+
+        public static string SnowPathTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_snow_path_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileSnowPathMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_SnowPath_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        public static string AutumnHedgeTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_hedge_autumn_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileAutumnHedgeMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Hedge_Autumn_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        public static string WinterFacadeTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_facade_winter_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileWinterFacadeMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Facade_Winter_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        public static string WinterHedgeTexture(int mask)
+        {
+            return $"{TilesFolder}/tile_hedge_winter_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.png";
+        }
+
+        public static string TileWinterHedgeMasked(int mask)
+        {
+            return $"{TilesFolder}/Tile_Hedge_Winter_{Mathf.Clamp(mask, 0, DecorMaskCount - 1):00}.asset";
+        }
+
+        /// <summary>L'arbre selon la saison. Le rang 1, l'ete, est tree.png lui-meme.</summary>
+        public static string TreeSeasonTexture(int season)
+        {
+            switch (season)
+            {
+                case 0: return SpritesFolder + "/tree_spring.png";
+                case 2: return SpritesFolder + "/tree_autumn.png";
+                case 3: return SpritesFolder + "/tree_winter.png";
+                default: return TreeTexture;
+            }
+        }
+
+        /// <summary>La maison selon la saison : la meme trois saisons sur quatre, sous la neige l'hiver.</summary>
+        public static string HouseSeasonTexture(int season)
+        {
+            return season == 3 ? SpritesFolder + "/house_winter.png" : HouseTexture;
+        }
+
         /// <summary>
         /// Le catalogue de panneaux, phase 12c. Quatre panneaux de rue et quatre panneaux de
         /// direction, un par point cardinal. L'USINE A PANNEAUX DE LA PHASE 13 REPREND CE
@@ -770,6 +859,28 @@ namespace SousLaVille.EditorTools
                 WriteTexture(TreeTexture, BuildTreeV2(), PlayerWidth);
                 WriteTexture(TreeTileTexture, BuildTreeBase());
 
+                // PHASE 18G : les saisons du sol et des cimes.
+                WriteTexture(AutumnLawnTexture, BuildAutumnLawnTile());
+                WriteTexture(SnowTexture, BuildSnowTile());
+                WriteTexture(TuftsTexture, BuildTuftsTile());
+                WriteTexture(LeavesTexture, BuildLeavesTile());
+                WriteTexture(SnowTuftTexture, BuildSnowTuftTile());
+                WriteTexture(IceTexture, BuildIceTile());
+                WriteTexture(TreeTileAutumnTexture, BuildTreeBaseSeason(winter: false));
+                WriteTexture(TreeTileWinterTexture, BuildTreeBaseSeason(winter: true));
+                for (int mask = 0; mask < DecorMaskCount; mask++)
+                {
+                    WriteTexture(SnowPathTexture(mask), BuildSnowPathTile(mask));
+                    WriteTexture(AutumnHedgeTexture(mask), ToAutumnLeaves(BuildBushTile(mask)));
+                    WriteTexture(WinterHedgeTexture(mask), BuildWinterBushTile(mask));
+                    WriteTexture(WinterFacadeTexture(mask), BuildWinterFacade(mask));
+                }
+                foreach (int season in new[] { 0, 2, 3 })
+                {
+                    WriteTexture(TreeSeasonTexture(season), BuildTreeSeason(season), PlayerWidth);
+                }
+                WriteTexture(HouseSeasonTexture(3), BuildWinterHouse(), HouseWidth);
+
                 for (int kind = 0; kind < SignCount; kind++)
                 {
                     WriteTexture(SignTexture(kind), BuildSign(kind), PlayerWidth);
@@ -897,6 +1008,27 @@ namespace SousLaVille.EditorTools
             ConfigureImporter(TreeTexture, TreePivot);
             ConfigureImporter(TreeTileTexture, null);
             ConfigureImporter(FlowersTexture, null);
+
+            foreach (string path in new[] { AutumnLawnTexture, SnowTexture, TuftsTexture, LeavesTexture,
+                         SnowTuftTexture, IceTexture, TreeTileAutumnTexture, TreeTileWinterTexture })
+            {
+                ConfigureImporter(path, null);
+            }
+
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                ConfigureImporter(SnowPathTexture(mask), null);
+                ConfigureImporter(AutumnHedgeTexture(mask), null);
+                ConfigureImporter(WinterHedgeTexture(mask), null);
+                ConfigureImporter(WinterFacadeTexture(mask), null);
+            }
+
+            foreach (int season in new[] { 0, 2, 3 })
+            {
+                ConfigureImporter(TreeSeasonTexture(season), TreePivot);
+            }
+
+            ConfigureImporter(HouseSeasonTexture(3), HousePivot);
 
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
@@ -1032,6 +1164,27 @@ namespace SousLaVille.EditorTools
             CreateTileAsset(TileFountain, FountainTexture);
             CreateTileAsset(TileTree, TreeTileTexture);
             CreateTileAsset(TileFlowers, FlowersTexture);
+
+            // Les saisons, phase 18g. Un asset PAR FAMILLE ET PAR SAISON, meme quand deux
+            // familles partagent une image : SwapTile echange des assets, et une image partagee
+            // ferait basculer la maison avec la pelouse.
+            CreateTileAsset(TileAutumnLawn, AutumnLawnTexture);
+            CreateTileAsset(TileSnow, SnowTexture);
+            CreateTileAsset(TileHouseWinter, SnowTexture);
+            CreateTileAsset(TileDecorSummer, TuftsTexture);
+            CreateTileAsset(TileDecorAutumn, LeavesTexture);
+            CreateTileAsset(TileDecorWinter, SnowTuftTexture);
+            CreateTileAsset(TileIce, IceTexture);
+            CreateTileAsset(TileTreeAutumn, TreeTileAutumnTexture);
+            CreateTileAsset(TileTreeWinter, TreeTileWinterTexture);
+
+            for (int mask = 0; mask < DecorMaskCount; mask++)
+            {
+                CreateTileAsset(TileSnowPathMasked(mask), SnowPathTexture(mask));
+                CreateTileAsset(TileAutumnHedgeMasked(mask), AutumnHedgeTexture(mask));
+                CreateTileAsset(TileWinterHedgeMasked(mask), WinterHedgeTexture(mask));
+                CreateTileAsset(TileWinterFacadeMasked(mask), WinterFacadeTexture(mask));
+            }
 
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
@@ -1536,7 +1689,9 @@ namespace SousLaVille.EditorTools
             string[] tiles =
             {
                 TileGrass, TilePath, TilePark, TilePlantFloor, TileHedge, TilePlantWall, TileHouse,
-                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain, TileTree, TileFlowers
+                TileWorkshop, TileFacade, TileWall, TileWater, TileFountain, TileTree, TileFlowers,
+                TileAutumnLawn, TileSnow, TileHouseWinter, TileDecorSummer, TileDecorAutumn,
+                TileDecorWinter, TileIce, TileTreeAutumn, TileTreeWinter
             };
 
             foreach (string path in tiles)
@@ -1574,7 +1729,20 @@ namespace SousLaVille.EditorTools
             {
                 if (AssetDatabase.LoadAssetAtPath<Tile>(TileHedgeMasked(mask)) == null
                     || AssetDatabase.LoadAssetAtPath<Tile>(TileRoadMasked(mask)) == null
-                    || AssetDatabase.LoadAssetAtPath<Tile>(TileFacadeMasked(mask)) == null)
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileFacadeMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileSnowPathMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileAutumnHedgeMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileWinterHedgeMasked(mask)) == null
+                    || AssetDatabase.LoadAssetAtPath<Tile>(TileWinterFacadeMasked(mask)) == null)
+                {
+                    return false;
+                }
+            }
+
+            for (int season = 0; season < SeasonCount; season++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(TreeSeasonTexture(season)) == null
+                    || AssetDatabase.LoadAssetAtPath<Sprite>(HouseSeasonTexture(season)) == null)
                 {
                     return false;
                 }

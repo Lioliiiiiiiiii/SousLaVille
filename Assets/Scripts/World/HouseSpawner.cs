@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SousLaVille.Core;
+using SousLaVille.Seasons;
 using UnityEngine;
 
 namespace SousLaVille.World
@@ -22,6 +23,9 @@ namespace SousLaVille.World
 
         [SerializeField] private GridMap map;
         [SerializeField] private Sprite houseSprite;
+
+        [Tooltip("La maison selon la saison, phase 18g : printemps, ete, automne, hiver.")]
+        [SerializeField] private Sprite[] houseSeasons;
         [SerializeField] private Sprite dropServed;
         [SerializeField] private Sprite dropIdle;
 
@@ -102,6 +106,12 @@ namespace SousLaVille.World
                 // Phase 18b : le tri par Y se fait au PIVOT, pose au sol, et non au centre du
                 // sprite, qui monte avec le toit. Meme regle que SceneBuilderUtility.ApplyStandingSort.
                 body.spriteSortPoint = SpriteSortPoint.Pivot;
+
+                // Phase 18g : le toit se couvre de neige l'hiver.
+                if (houseSeasons != null && houseSeasons.Length > 0)
+                {
+                    houseObject.AddComponent<SeasonalSprite>().Initialize(body, houseSeasons);
+                }
 
                 GameObject dropObject = new GameObject("Drop");
                 dropObject.transform.SetParent(houseObject.transform, false);

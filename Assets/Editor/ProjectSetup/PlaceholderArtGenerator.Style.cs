@@ -571,6 +571,247 @@ namespace SousLaVille.EditorTools
             Plot(pixels, TileSize, cx, cy, Palette.Sun);
         }
 
+        // ---------------------------------------------------------------- les saisons
+
+        /// <summary>
+        /// REPEINT une image couleur par couleur, phase 18g : chaque pixel d'une couleur de la
+        /// liste prend celle qui lui fait face. C'est ainsi qu'un arbre d'ete devient un arbre
+        /// d'automne — meme forme, meme trait, quatre verts qui deviennent roux et or — sans
+        /// redessiner un pixel. La liste est en couples ; rien hors palette ne peut en sortir.
+        /// </summary>
+        private static Color32[] Recolor(Color32[] pixels, params (Color32 from, Color32 to)[] map)
+        {
+            Color32[] result = (Color32[])pixels.Clone();
+
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (result[i].a == 0)
+                {
+                    continue;
+                }
+
+                foreach ((Color32 from, Color32 to) in map)
+                {
+                    if (Palette.Same(result[i], from))
+                    {
+                        result[i] = Palette.WithAlpha(to, result[i].a);
+                        break;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>Les quatre verts du feuillage en roux et or : l'automne des arbres et des buissons.</summary>
+        private static Color32[] ToAutumnLeaves(Color32[] pixels)
+        {
+            return Recolor(pixels,
+                (Palette.LeafLight, Palette.Gold),
+                (Palette.Leaf, Palette.Rust),
+                (Palette.LeafDark, Palette.Brick),
+                (Palette.LeafShadow, Palette.WoodDark));
+        }
+
+        /// <summary>
+        /// LA NEIGE, regle 1 comme la pelouse : un fond de papier, la trame de points en gris
+        /// clair, et deux touffes vert sombre qui percent — la pelouse est dessous.
+        /// </summary>
+        private static Color32[] BuildSnowTile()
+        {
+            Color32[] pixels = new Color32[TileSize * TileSize];
+
+            for (int y = 0; y < TileSize; y++)
+            {
+                for (int x = 0; x < TileSize; x++)
+                {
+                    bool dot = (x % 8 == 1 && y % 8 == 2) || (x % 8 == 5 && y % 8 == 6);
+                    pixels[y * TileSize + x] = dot ? Palette.SteelLight : Palette.Paper;
+                }
+            }
+
+            Tuft(pixels, TileSize, 3, 11, Palette.LawnDark);
+            Tuft(pixels, TileSize, 10, 3, Palette.LawnDark);
+
+            return pixels;
+        }
+
+        /// <summary>L'automne de la pelouse : la menthe, et trois feuilles tombees, rousses et or.</summary>
+        private static Color32[] BuildAutumnLawnTile()
+        {
+            Color32[] pixels = BuildLawnTile();
+
+            Plot(pixels, TileSize, 6, 13, Palette.Rust);
+            Plot(pixels, TileSize, 7, 13, Palette.Rust);
+            Plot(pixels, TileSize, 12, 7, Palette.Gold);
+            Plot(pixels, TileSize, 2, 4, Palette.Rust);
+            Plot(pixels, TileSize, 3, 4, Palette.Gold);
+
+            return pixels;
+        }
+
+        /// <summary>L'ete de la case de decor : la pelouse et trois touffes de plus — l'herbe haute.</summary>
+        private static Color32[] BuildTuftsTile()
+        {
+            Color32[] pixels = BuildLawnTile();
+
+            Tuft(pixels, TileSize, 6, 6, Palette.LawnDark);
+            Tuft(pixels, TileSize, 11, 12, Palette.LawnDark);
+            Tuft(pixels, TileSize, 1, 1, Palette.LawnDeep);
+            Tuft(pixels, TileSize, 7, 7, Palette.LawnDeep);
+
+            return pixels;
+        }
+
+        /// <summary>L'automne de la case de decor : un tas de feuilles mortes, roux, or et brique.</summary>
+        private static Color32[] BuildLeavesTile()
+        {
+            Color32[] pixels = BuildAutumnLawnTile();
+
+            FillEllipse(pixels, TileSize, 7.5f, 6.5f, 5.4f, 3.4f, Palette.Rust);
+            FillEllipse(pixels, TileSize, 6.0f, 7.5f, 2.6f, 1.8f, Palette.Gold);
+            Plot(pixels, TileSize, 10, 5, Palette.Gold);
+            Plot(pixels, TileSize, 11, 7, Palette.Gold);
+            Plot(pixels, TileSize, 4, 4, Palette.Brick);
+            Plot(pixels, TileSize, 9, 8, Palette.Brick);
+            Plot(pixels, TileSize, 12, 5, Palette.Brick);
+
+            return pixels;
+        }
+
+        /// <summary>L'hiver de la case de decor : la neige et une grosse touffe qui perce.</summary>
+        private static Color32[] BuildSnowTuftTile()
+        {
+            Color32[] pixels = BuildSnowTile();
+
+            Tuft(pixels, TileSize, 6, 7, Palette.LawnDeep);
+            Tuft(pixels, TileSize, 7, 6, Palette.LawnDark);
+            Tuft(pixels, TileSize, 8, 8, Palette.LawnDark);
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// LE CHEMIN SOUS LA NEIGE : la neige tassee, grise, aux memes coins arrondis que le sable,
+        /// sur la neige fraiche. Le meme dessin que BuildSandTile, trois couleurs pres.
+        /// </summary>
+        private static Color32[] BuildSnowPathTile(int mask)
+        {
+            return Recolor(BuildSandTile(mask),
+                (Palette.Lawn, Palette.Paper),
+                (Palette.LawnLight, Palette.SteelLight),
+                (Palette.LawnDark, Palette.LawnDark),
+                (Palette.Sand, Palette.SteelLight),
+                (Palette.SandLight, Palette.Paper),
+                (Palette.Stone, Palette.Steel));
+        }
+
+        /// <summary>LA GLACE : le bleu de l'eau devenu givre, et des fissures claires en travers.</summary>
+        private static Color32[] BuildIceTile()
+        {
+            Color32 ice = Palette.WithAlpha(Palette.Ice, 0xD8);
+            Color32 crack = Palette.WithAlpha(Palette.Paper, 0xE0);
+
+            Color32[] pixels = new Color32[TileSize * TileSize];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = ice;
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                Plot(pixels, TileSize, 2 + i, 9 + i, crack);
+                Plot(pixels, TileSize, 9 + i, 2 + i / 2, crack);
+            }
+
+            return pixels;
+        }
+
+        /// <summary>Le pied de l'arbre selon la saison : la pelouse ou la neige, et l'ombre de la cime.</summary>
+        private static Color32[] BuildTreeBaseSeason(bool winter)
+        {
+            Color32[] pixels = winter ? BuildSnowTile() : BuildAutumnLawnTile();
+
+            FillEllipse(pixels, TileSize, 7.5f, 5.5f, 7.2f, 3.4f, winter ? Palette.SteelLight : Palette.LawnDark);
+            FillEllipse(pixels, TileSize, 7.5f, 5.5f, 5.2f, 2.2f, winter ? Palette.Steel : Palette.LawnDeep);
+
+            return pixels;
+        }
+
+        /// <summary>Le buisson d'hiver : vert encore, la lumiere sur ses touffes devenue neige.</summary>
+        private static Color32[] BuildWinterBushTile(int mask)
+        {
+            return Recolor(BuildBushTile(mask), (Palette.LeafLight, Palette.Paper));
+        }
+
+        /// <summary>
+        /// L'ARBRE SELON LA SAISON. Printemps : le vert d'ete et des fleurs roses dans la cime.
+        /// Ete : BuildTreeV2. Automne : les quatre verts en roux et or. Hiver : la neige sur la
+        /// cime — les trois rangees du haut et les eclats — et le vert dessous.
+        /// </summary>
+        private static Color32[] BuildTreeSeason(int season)
+        {
+            Color32[] tree = BuildTreeV2();
+
+            switch (season)
+            {
+                case 0:
+                    foreach (Vector2Int blossom in new[] { new Vector2Int(4, 24), new Vector2Int(9, 27),
+                                 new Vector2Int(11, 20), new Vector2Int(6, 17), new Vector2Int(2, 20) })
+                    {
+                        if (PixelIs(tree, PlayerWidth, blossom.x, blossom.y, Palette.Leaf)
+                            || PixelIs(tree, PlayerWidth, blossom.x, blossom.y, Palette.LeafLight))
+                        {
+                            Plot(tree, PlayerWidth, blossom.x, blossom.y, Palette.FlowerPink);
+                        }
+                    }
+
+                    return tree;
+
+                case 2:
+                    return ToAutumnLeaves(tree);
+
+                case 3:
+                    tree = Recolor(tree, (Palette.LeafLight, Palette.Paper));
+                    for (int y = 27; y < TreeHeight; y++)
+                    {
+                        for (int x = 0; x < PlayerWidth; x++)
+                        {
+                            if (PixelIs(tree, PlayerWidth, x, y, Palette.Leaf)
+                                || PixelIs(tree, PlayerWidth, x, y, Palette.LeafDark))
+                            {
+                                tree[y * PlayerWidth + x] = Palette.Paper;
+                            }
+                        }
+                    }
+
+                    return tree;
+
+                default:
+                    return tree;
+            }
+        }
+
+        /// <summary>La maison sous la neige : le toit de papier, ses versants et ses planches en gris clair.</summary>
+        private static Color32[] BuildWinterHouse()
+        {
+            return Recolor(BuildHouseV2(), SnowRoof);
+        }
+
+        /// <summary>Une case de facade sous la neige : le meme toit de papier que la maison, le mur intact.</summary>
+        private static Color32[] BuildWinterFacade(int mask)
+        {
+            return Recolor(BuildFacadeV2(mask), SnowRoof);
+        }
+
+        /// <summary>Le toit qui se couvre de neige : la tuile devient papier, ses versants et ses planches gris clair.</summary>
+        private static readonly (Color32 from, Color32 to)[] SnowRoof =
+        {
+            (Palette.Roof, Palette.Paper),
+            (Palette.RoofLight, Palette.SteelLight),
+            (Palette.Brick, Palette.SteelLight)
+        };
+
         // ---------------------------------------------------------------- les batiments
 
         /// <summary>

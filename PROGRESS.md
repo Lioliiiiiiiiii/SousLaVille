@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a à 18f faites, 18g et 18h à faire |
+| 18 | Le style de la référence | 18a à 18g faites, 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -3054,6 +3054,47 @@ Le pilote est resté deux minutes en « playmode_transition », `is_focused` fau
 sont sorties dans la seconde. Et un play resté ouvert fait échouer la construction des scènes
 avec une exception au fond d'une pile : `BuildAllScenes` le dit désormais en clair.
 
+## Phase 18g, ce qui est fait
+
+Les saisons se **voient** : le sol, les cimes et les toits changent d'images, la lumière ne porte
+plus la saison seule. La table du plan (§ 3.3), faite.
+
+- **Les tuiles par saison**, une famille = un asset par saison, échangés par `SeasonalTiles` d'un
+  `Tilemap.SwapTile` par famille et par tilemap, sur le sol, la couche bloquante et l'eau. Les
+  familles : la pelouse (menthe ; automne à trois feuilles tombées ; hiver de neige, papier à trame
+  grise et deux touffes qui percent), la case de décor (fleurs ; herbe haute ; tas de feuilles ;
+  touffe sous la neige), le sol des maisons, le pied d'arbre, l'eau (glace fissurée l'hiver), les
+  seize chemins (neige tassée, grise, aux mêmes coins ronds), les seize haies (roux et or ;
+  neige sur les touffes) et les seize façades (toit de neige l'hiver, comme les maisons — vu sur
+  la capture d'hiver, où les trois bâtiments gardaient un toit rouge). **Un asset par famille et par saison même quand deux familles partagent
+  une image** — `Tile_House_Winter` et `Tile_Grass_Winter` montrent la même neige — parce que
+  `SwapTile` échange des assets et qu'une image partagée ferait basculer la maison avec la pelouse.
+  La scène est peinte au printemps ; c'est de là que part le premier échange.
+- **Les sprites par saison**, `SeasonalSprite` sur chaque arbre et chaque maison : quatre images
+  dans l'ordre du cycle, changées sur `SeasonChanged`, jamais par image. L'arbre fleurit de rose
+  au printemps, roussit à l'automne, se couvre de neige l'hiver — les trois rangées du haut et les
+  éclats ; la maison a son toit de neige. `HouseSpawner` reçoit les quatre maisons.
+- **`Recolor`** : une image repeinte couleur par couleur, en couples de la palette. L'automne des
+  arbres et des haies est l'été aux quatre verts devenus roux, or, brique et brun ; rien n'est
+  redessiné, rien ne sort de la palette.
+- **La lumière adoucie** : printemps (0,94 ; 1 ; 0,94), été (1 ; 0,98 ; 0,90), automne (1 ; 0,93 ;
+  0,84), hiver (0,90 ; 0,94 ; 1). Elle accompagne, elle ne porte plus.
+- Soixante-seize textures et soixante-treize tuiles de plus : **346 textures, 189 tuiles**.
+
+## Phase 18g, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement.
+- Art régénéré, palette tenue, 50 couleurs ; ScriptableObjects à jour, `lightColor` relu dans
+  `Season_Hiver.asset`.
+- Planche des quatre saisons regardée (`Captures/planche_18g_saisons.png`) : le même coin de
+  village quatre fois.
+- Cinq scènes construites.
+- **Captures en jeu regardées, les quatre saisons au même endroit** : le pilote avance le cycle par
+  `SeasonSystem.Advance()` entre deux clichés. Printemps fleuri, été, automne roux avec ses tas de
+  feuilles et son picto, hiver de neige jusque sur les cimes, la haie, le toit et le chemin, le
+  picto de flocon dans sa boîte. Les façades d'hiver, ajoutées ensuite, sont vues sur leur planche.
+- `git diff ProjectSettings/` vide.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -3075,10 +3116,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18g, les saisons
+## Prochaine étape : la phase 18h, le sous-sol et les intérieurs
 
-Les variantes de tuiles et de sprites par saison, `SwapTile`, `SeasonalSprite`, la lumière adoucie.
-Puis 18h. Victorien joue après.
+Les blocs de roche cernés du sous-sol, le plancher et le mur des pièces, puis le ménage de la
+palette et la suppression du pilote. Victorien joue après.
 
 ## Décisions prises
 
@@ -3099,6 +3140,9 @@ Puis 18h. Victorien joue après.
   deux sur deux, saisons par images.
 - **Phase 18b.** Ce qu'on foule est à l'ordre −1, ce qui se dresse à 0 et se trie par Y au pivot.
   Le réglage vit dans l'asset du Renderer2D, versionné sous `Assets/Settings`.
+- **Phase 18g.** Les saisons s'échangent par asset : un asset par famille et par saison, même à
+  image égale, parce que `SwapTile` ne connaît que des assets. La scène est peinte au printemps.
+  La lumière accompagne, elle ne porte plus.
 - **Phase 18d.** La case `A` reste la case de raccordement mais peut être n'importe laquelle des
   quatre du carré : la rue passe souvent juste au nord d'une maison, et son toit se tourne alors
   vers la rue. Une maison qui n'a aucun carré possible **déménage avec son alcôve** plutôt que de

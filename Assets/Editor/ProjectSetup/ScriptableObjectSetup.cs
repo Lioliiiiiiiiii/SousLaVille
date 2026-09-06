@@ -148,24 +148,25 @@ namespace SousLaVille.EditorTools
         /// c'est la saison qui met le reseau a l'epreuve et fait exister le bassin d'orage.
         ///
         /// Les couleurs de lumiere restent claires : une saison ne doit jamais rendre l'ecran
-        /// sombre ou illisible.
+        /// sombre ou illisible. ADOUCIES en phase 18g : depuis que le sol, les cimes et les toits
+        /// changent d'images, la lumiere ne porte plus la saison seule, elle l'accompagne.
         /// </summary>
         private static void CreateSeasons()
         {
             WriteSeason(SeasonSpring, "Printemps", PlaceholderArtGenerator.PictoSpring,
-                new Color(0.82f, 1f, 0.80f), freezeMaxDepth: 0, clogChance: 0f,
+                new Color(0.94f, 1f, 0.94f), freezeMaxDepth: 0, clogChance: 0f,
                 wearMultiplier: 1f, thaws: true, rainVolume: 2);
 
             WriteSeason(SeasonSummer, "Été", PlaceholderArtGenerator.PictoSummer,
-                new Color(1f, 0.95f, 0.72f), freezeMaxDepth: 0, clogChance: 0f,
+                new Color(1f, 0.98f, 0.90f), freezeMaxDepth: 0, clogChance: 0f,
                 wearMultiplier: 0.5f, thaws: false, rainVolume: 0);
 
             WriteSeason(SeasonAutumn, "Automne", PlaceholderArtGenerator.PictoAutumn,
-                new Color(1f, 0.82f, 0.60f), freezeMaxDepth: 0, clogChance: 0.25f,
+                new Color(1f, 0.93f, 0.84f), freezeMaxDepth: 0, clogChance: 0.25f,
                 wearMultiplier: 1f, thaws: false, rainVolume: 8);
 
             WriteSeason(SeasonWinter, "Hiver", PlaceholderArtGenerator.PictoWinter,
-                new Color(0.78f, 0.88f, 1f), freezeMaxDepth: 1, clogChance: 0f,
+                new Color(0.90f, 0.94f, 1f), freezeMaxDepth: 1, clogChance: 0f,
                 wearMultiplier: 1.5f, thaws: false, rainVolume: 1);
         }
 

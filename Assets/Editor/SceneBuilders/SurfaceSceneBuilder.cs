@@ -56,6 +56,7 @@ namespace SousLaVille.EditorTools
             Grid grid = CreateGrid(root, out ground, out blocking, out water);
 
             PaintVillage(ground, blocking);
+            AttachSeasonalTiles(root, ground, blocking, water);
             CreateBuildingSigns(root);
             CreateManholes(root);
             CreateTrees(root);
@@ -380,6 +381,11 @@ namespace SousLaVille.EditorTools
             }
 
             Sprite sprite = LoadSprite(PlaceholderArtGenerator.TreeTexture);
+            Sprite[] seasons = new Sprite[PlaceholderArtGenerator.SeasonCount];
+            for (int season = 0; season < seasons.Length; season++)
+            {
+                seasons[season] = LoadSprite(PlaceholderArtGenerator.TreeSeasonTexture(season));
+            }
 
             GameObject parent = new GameObject("Trees");
             parent.transform.SetParent(root.transform, false);
@@ -394,6 +400,18 @@ namespace SousLaVille.EditorTools
                 renderer.sprite = sprite;
                 // Phase 18b : plus d'ordre par rangee, c'est le TRI PAR Y qui place chacun.
                 SceneBuilderUtility.ApplyStandingSort(renderer, EntitiesSortingLayer);
+
+                // Phase 18g : la cime fleurit, roussit, se couvre de neige.
+                SeasonalSprite seasonal = tree.AddComponent<SeasonalSprite>();
+                SerializedObject serialized = new SerializedObject(seasonal);
+                serialized.FindProperty("target").objectReferenceValue = renderer;
+                SerializedProperty sprites = serialized.FindProperty("bySeason");
+                sprites.arraySize = seasons.Length;
+                for (int season = 0; season < seasons.Length; season++)
+                {
+                    sprites.GetArrayElementAtIndex(season).objectReferenceValue = seasons[season];
+                }
+                serialized.ApplyModifiedPropertiesWithoutUndo();
             }
         }
 
@@ -735,6 +753,13 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("map").objectReferenceValue = map;
             serialized.FindProperty("houseSprite").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.HouseTexture);
+            SerializedProperty houseSeasons = serialized.FindProperty("houseSeasons");
+            houseSeasons.arraySize = PlaceholderArtGenerator.SeasonCount;
+            for (int season = 0; season < PlaceholderArtGenerator.SeasonCount; season++)
+            {
+                houseSeasons.GetArrayElementAtIndex(season).objectReferenceValue =
+                    LoadSprite(PlaceholderArtGenerator.HouseSeasonTexture(season));
+            }
             serialized.FindProperty("dropServed").objectReferenceValue =
                 LoadSprite(PlaceholderArtGenerator.PictoDropFull);
             serialized.FindProperty("dropIdle").objectReferenceValue =
@@ -855,6 +880,74 @@ namespace SousLaVille.EditorTools
         ///
         /// Le sous-sol n'en recoit pas : les saisons se voient dessus, se subissent dessous.
         /// </summary>
+        /// <summary>
+        /// LES TUILES QUI CHANGENT AVEC LA SAISON, phase 18g. Les familles, dans l'ordre : la
+        /// pelouse, la case de decor, le sol des maisons, le pied d'arbre, l'eau, puis les seize
+        /// masques du chemin et les seize de la haie. La scene est peinte au printemps : les
+        /// fleurs sont posees, la neige et les feuilles viennent par echange. Les seize facades
+        /// n'ont qu'une variante, l'hiver : leur toit se couvre de neige comme celui des maisons.
+        /// </summary>
+        private static void AttachSeasonalTiles(GameObject root, Tilemap ground, Tilemap blocking,
+            Tilemap water)
+        {
+            List<TileBase>[] sets = new List<TileBase>[PlaceholderArtGenerator.SeasonCount];
+            for (int season = 0; season < sets.Length; season++)
+            {
+                sets[season] = new List<TileBase>();
+            }
+
+            void Family(string springPath, string summerPath, string autumnPath, string winterPath)
+            {
+                sets[0].Add(LoadTile(springPath));
+                sets[1].Add(LoadTile(summerPath));
+                sets[2].Add(LoadTile(autumnPath));
+                sets[3].Add(LoadTile(winterPath));
+            }
+
+            Family(PlaceholderArtGenerator.TileGrass, PlaceholderArtGenerator.TileGrass,
+                PlaceholderArtGenerator.TileAutumnLawn, PlaceholderArtGenerator.TileSnow);
+            Family(PlaceholderArtGenerator.TileFlowers, PlaceholderArtGenerator.TileDecorSummer,
+                PlaceholderArtGenerator.TileDecorAutumn, PlaceholderArtGenerator.TileDecorWinter);
+            Family(PlaceholderArtGenerator.TileHouse, PlaceholderArtGenerator.TileHouse,
+                PlaceholderArtGenerator.TileHouse, PlaceholderArtGenerator.TileHouseWinter);
+            Family(PlaceholderArtGenerator.TileTree, PlaceholderArtGenerator.TileTree,
+                PlaceholderArtGenerator.TileTreeAutumn, PlaceholderArtGenerator.TileTreeWinter);
+            Family(PlaceholderArtGenerator.TileWater, PlaceholderArtGenerator.TileWater,
+                PlaceholderArtGenerator.TileWater, PlaceholderArtGenerator.TileIce);
+
+            for (int mask = 0; mask < PlaceholderArtGenerator.DecorMaskCount; mask++)
+            {
+                Family(PlaceholderArtGenerator.TileRoadMasked(mask), PlaceholderArtGenerator.TileRoadMasked(mask),
+                    PlaceholderArtGenerator.TileRoadMasked(mask), PlaceholderArtGenerator.TileSnowPathMasked(mask));
+                Family(PlaceholderArtGenerator.TileHedgeMasked(mask), PlaceholderArtGenerator.TileHedgeMasked(mask),
+                    PlaceholderArtGenerator.TileAutumnHedgeMasked(mask), PlaceholderArtGenerator.TileWinterHedgeMasked(mask));
+                Family(PlaceholderArtGenerator.TileFacadeMasked(mask), PlaceholderArtGenerator.TileFacadeMasked(mask),
+                    PlaceholderArtGenerator.TileFacadeMasked(mask), PlaceholderArtGenerator.TileWinterFacadeMasked(mask));
+            }
+
+            SeasonalTiles seasonal = root.AddComponent<SeasonalTiles>();
+            SerializedObject serialized = new SerializedObject(seasonal);
+
+            SerializedProperty tilemaps = serialized.FindProperty("tilemaps");
+            tilemaps.arraySize = 3;
+            tilemaps.GetArrayElementAtIndex(0).objectReferenceValue = ground;
+            tilemaps.GetArrayElementAtIndex(1).objectReferenceValue = blocking;
+            tilemaps.GetArrayElementAtIndex(2).objectReferenceValue = water;
+
+            string[] names = { "spring", "summer", "autumn", "winter" };
+            for (int season = 0; season < sets.Length; season++)
+            {
+                SerializedProperty set = serialized.FindProperty(names[season]);
+                set.arraySize = sets[season].Count;
+                for (int i = 0; i < sets[season].Count; i++)
+                {
+                    set.GetArrayElementAtIndex(i).objectReferenceValue = sets[season][i];
+                }
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void AttachSeasonAmbience(GameObject root)
         {
             Light2D globalLight = root.GetComponentInChildren<Light2D>(true);
