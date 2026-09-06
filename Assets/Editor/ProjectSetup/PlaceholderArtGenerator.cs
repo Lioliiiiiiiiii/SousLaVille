@@ -64,6 +64,12 @@ namespace SousLaVille.EditorTools
         public const string PictoDropEmpty = PictosFolder + "/picto_drop_empty.png";
         public const string PictoRepair = PictosFolder + "/picto_repair.png";
 
+        /// <summary>
+        /// LA BOITE DU HUD, phase 18f : papier, trait d'Ink, filet gris, coins arrondis, en neuf
+        /// morceaux etirables. Toutes les boites du jeu en sortent.
+        /// </summary>
+        public const string HudBoxTexture = PictosFolder + "/hud_box.png";
+
         // Les quatre saisons, phase 5. Chacune dit sa couleur avant de dire son motif :
         // le fond suffit a reconnaitre la saison du coin de l'oeil.
         public const string PictoSpring = PictosFolder + "/picto_season_spring.png";
@@ -716,23 +722,26 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PlayerLeft, BuildPlayerV2(Vector2Int.left), PlayerWidth);
                 WriteTexture(PlayerRight, BuildPlayerV2(Vector2Int.right), PlayerWidth);
 
-                WriteTexture(PictoSurface, BuildSunPicto(), PictoSize);
-                WriteTexture(PictoUnderground, BuildLadderPicto(), PictoSize);
+                // PHASE 18F : les pictos du HUD font 24 pixels sur une plaque cernee, dans une
+                // boite de 32 ; les gouttes se cernent ; et la boite elle-meme est une image.
+                WriteTexture(PictoSurface, BuildSunPictoV2(), HudPictoSize);
+                WriteTexture(PictoUnderground, BuildLadderPictoV2(), HudPictoSize);
+                WriteTexture(HudBoxTexture, BuildHudBox(), HudBoxSize);
                 WriteTexture(PictoDown, BuildArrow(pointingDown: true));
                 WriteTexture(PictoUp, BuildArrow(pointingDown: false));
                 WriteTexture(PictoDig, BuildDigPicto());
                 WriteTexture(PictoRemove, BuildRemovePicto());
                 WriteTexture(CursorTarget, BuildCursor(TileSize));
-                WriteTexture(PictoDropFull, BuildDrop(full: true));
-                WriteTexture(PictoDropEmpty, BuildDrop(full: false));
+                WriteTexture(PictoDropFull, BuildDropV2(full: true));
+                WriteTexture(PictoDropEmpty, BuildDropV2(full: false));
                 WriteTexture(PictoRepair, BuildRepairPicto());
                 WriteTexture(PictoGrow, BuildGrowPicto());
                 WriteTexture(PlantBasinTexture, BuildPlantBasinV2());
 
-                WriteTexture(PictoSpring, BuildSpringPicto(), PictoSize);
-                WriteTexture(PictoSummer, BuildSummerPicto(), PictoSize);
-                WriteTexture(PictoAutumn, BuildAutumnPicto(), PictoSize);
-                WriteTexture(PictoWinter, BuildWinterPicto(), PictoSize);
+                WriteTexture(PictoSpring, BuildSpringPictoV2(), HudPictoSize);
+                WriteTexture(PictoSummer, BuildSummerPictoV2(), HudPictoSize);
+                WriteTexture(PictoAutumn, BuildAutumnPictoV2(), HudPictoSize);
+                WriteTexture(PictoWinter, BuildWinterPictoV2(), HudPictoSize);
 
                 WriteTexture($"{TilesFolder}/tile_workshop.png", BuildPavingTile(Palette.Steel));
 
@@ -1001,6 +1010,10 @@ namespace SousLaVille.EditorTools
             {
                 ConfigureImporter(path, null);
             }
+
+            // La boite en neuf morceaux porte sa bordure : c'est elle qui dit a Image.Type.Sliced
+            // ou s'arretent les coins.
+            ConfigureImporter(HudBoxTexture, null, border: HudBoxBorder);
 
             for (int mask = 0; mask < DecorMaskCount; mask++)
             {
@@ -1627,7 +1640,8 @@ namespace SousLaVille.EditorTools
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, VillagerGuide, PictoEnter, PictoExit, PictoTalk,
                 FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention,
-                SignBackTexture, PictoCardCursor, SignPostTexture, HouseIconTexture, PlantInletTexture
+                SignBackTexture, PictoCardCursor, SignPostTexture, HouseIconTexture, PlantInletTexture,
+                HudBoxTexture
             };
 
             foreach (string path in sprites)
@@ -2102,42 +2116,6 @@ namespace SousLaVille.EditorTools
             return pixels;
         }
 
-        /// <summary>
-        /// La goutte : pleine quand la maison est raccordee, vide sinon. Aucune croix, aucun
-        /// rouge : ne pas etre reliee n'est pas une faute.
-        /// </summary>
-        private static Color32[] BuildDrop(bool full)
-        {
-            Color32 fill = full
-                ? Palette.Water
-                : Palette.Steel;
-            Color32 outline = Palette.Ink;
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            DrawDrop(pixels, grow: 1, color: outline);
-            DrawDrop(pixels, grow: 0, color: fill);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// Une goutte : rond en bas, pointe en haut. Dessinee deux fois, la premiere elargie
-        /// d'un pixel, ce qui donne le contour.
-        /// </summary>
-        private static void DrawDrop(Color32[] pixels, int grow, Color32 color)
-        {
-            // Demi-largeur de chaque ligne, du bas vers le haut.
-            int[] halves = { 2, 3, 4, 5, 5, 5, 5, 4, 3, 2, 2, 1, 1, 1 };
-
-            for (int row = 0; row < halves.Length; row++)
-            {
-                int half = Mathf.Min(halves[row] + grow, 7);
-                int y = 1 + row;
-                Fill(pixels, TileSize, 8 - half, 7 + half, y, y, color);
-            }
-        }
-
         /// <summary>Echelle de remontee : deux montants et trois barreaux, fond transparent.</summary>
         /// <summary>
         /// L'ECHELLE, redessinee en phase 17c AU GABARIT DU PERSONNAGE, 16 sur 24.
@@ -2178,58 +2156,6 @@ namespace SousLaVille.EditorTools
             {
                 Fill(pixels, width, 3, 12, y, y + 1, rung);
                 Fill(pixels, width, 3, 12, y + 1, y + 1, shadow);
-            }
-
-            return pixels;
-        }
-
-        /// <summary>Repere « je suis en haut » : un soleil et ses quatre rayons sur fond de ciel.</summary>
-        private static Color32[] BuildSunPicto()
-        {
-            Color32 sky = Palette.BlueDeep;
-            Color32 sun = Palette.Sun;
-
-            Color32[] pixels = new Color32[PictoSize * PictoSize];
-            const float center = (PictoSize - 1) * 0.5f;
-
-            for (int y = 0; y < PictoSize; y++)
-            {
-                for (int x = 0; x < PictoSize; x++)
-                {
-                    float dx = x - center;
-                    float dy = y - center;
-                    pixels[y * PictoSize + x] = Mathf.Sqrt(dx * dx + dy * dy) <= 8f ? sun : sky;
-                }
-            }
-
-            // Quatre rayons, un par point cardinal.
-            Fill(pixels, PictoSize, 15, 16, 2, 5, sun);
-            Fill(pixels, PictoSize, 15, 16, 26, 29, sun);
-            Fill(pixels, PictoSize, 2, 5, 15, 16, sun);
-            Fill(pixels, PictoSize, 26, 29, 15, 16, sun);
-
-            return pixels;
-        }
-
-        /// <summary>Repere « je suis en bas » : une echelle sur fond de terre.</summary>
-        private static Color32[] BuildLadderPicto()
-        {
-            Color32 earth = Palette.WoodDark;
-            Color32 rail = Palette.Gold;
-            Color32 rung = Palette.Shade(rail);
-
-            Color32[] pixels = new Color32[PictoSize * PictoSize];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = earth;
-            }
-
-            Fill(pixels, PictoSize, 9, 11, 3, 28, rail);
-            Fill(pixels, PictoSize, 20, 22, 3, 28, rail);
-
-            foreach (int y in new[] { 6, 12, 18, 24 })
-            {
-                Fill(pixels, PictoSize, 12, 19, y, y + 1, rung);
             }
 
             return pixels;
@@ -2363,133 +2289,6 @@ namespace SousLaVille.EditorTools
             Fill(pixels, TileSize, 6, 9, 12, 12, outline);
 
             return pixels;
-        }
-
-        /// <summary>Printemps : une pousse qui sort de terre, sur un vert tendre.</summary>
-        private static Color32[] BuildSpringPicto()
-        {
-            Color32 sky = Palette.Grass;
-            Color32 soil = Palette.Wood;
-            Color32 plant = Palette.GrassDark;
-
-            Color32[] pixels = FilledPicto(sky);
-
-            Fill(pixels, PictoSize, 0, PictoSize - 1, 0, 4, soil);
-            Fill(pixels, PictoSize, 15, 16, 4, 24, plant);
-
-            // Deux feuilles, l'une plus haute que l'autre : une pousse n'est pas symetrique.
-            FillEllipse(pixels, PictoSize, 10f, 20f, 5f, 3f, plant);
-            FillEllipse(pixels, PictoSize, 21f, 14f, 5f, 3f, plant);
-
-            return pixels;
-        }
-
-        /// <summary>Ete : un soleil haut et plein, huit rayons, sur un or pale.</summary>
-        private static Color32[] BuildSummerPicto()
-        {
-            Color32 sky = Palette.Bone;
-            Color32 sun = Palette.Orange;
-
-            Color32[] pixels = FilledPicto(sky);
-
-            FillEllipse(pixels, PictoSize, 15.5f, 15.5f, 9f, 9f, sun);
-
-            // Quatre rayons cardinaux, quatre en diagonale : le soleil au zenith.
-            Fill(pixels, PictoSize, 15, 16, 27, 30, sun);
-            Fill(pixels, PictoSize, 15, 16, 1, 4, sun);
-            Fill(pixels, PictoSize, 1, 4, 15, 16, sun);
-            Fill(pixels, PictoSize, 27, 30, 15, 16, sun);
-
-            Fill(pixels, PictoSize, 5, 7, 24, 26, sun);
-            Fill(pixels, PictoSize, 24, 26, 24, 26, sun);
-            Fill(pixels, PictoSize, 5, 7, 5, 7, sun);
-            Fill(pixels, PictoSize, 24, 26, 5, 7, sun);
-
-            return pixels;
-        }
-
-        /// <summary>Automne : une feuille et sa nervure, sur un orange de feuillage.</summary>
-        private static Color32[] BuildAutumnPicto()
-        {
-            Color32 sky = Palette.Skin;
-            Color32 leaf = Palette.Brick;
-            Color32 vein = Palette.Orange;
-
-            Color32[] pixels = FilledPicto(sky);
-
-            // Un losange allonge : large au milieu, pointu aux deux bouts.
-            for (int y = 6; y <= 27; y++)
-            {
-                int half = Mathf.RoundToInt(9f - Mathf.Abs(y - 17f) * 0.85f);
-                if (half <= 0)
-                {
-                    continue;
-                }
-
-                Fill(pixels, PictoSize, 15 - half, 16 + half, y, y, leaf);
-            }
-
-            Fill(pixels, PictoSize, 15, 16, 3, 24, vein);
-
-            return pixels;
-        }
-
-        /// <summary>Hiver : un flocon a six branches, sur un bleu de givre.</summary>
-        private static Color32[] BuildWinterPicto()
-        {
-            Color32 sky = Palette.Ice;
-            Color32 flake = Palette.Paper;
-
-            Color32[] pixels = FilledPicto(sky);
-
-            Fill(pixels, PictoSize, 15, 16, 3, 28, flake);
-            Fill(pixels, PictoSize, 3, 28, 15, 16, flake);
-
-            // Les deux diagonales, tracees pixel par pixel plutot qu'en rectangles.
-            for (int step = -12; step <= 12; step++)
-            {
-                PlotThick(pixels, 15 + step, 15 + step, flake);
-                PlotThick(pixels, 15 + step, 16 - step, flake);
-            }
-
-            // Les pointes des quatre branches droites, comme sur un vrai flocon.
-            Fill(pixels, PictoSize, 12, 19, 25, 26, flake);
-            Fill(pixels, PictoSize, 12, 19, 5, 6, flake);
-            Fill(pixels, PictoSize, 5, 6, 12, 19, flake);
-            Fill(pixels, PictoSize, 25, 26, 12, 19, flake);
-
-            return pixels;
-        }
-
-        /// <summary>Un picto 32x32 rempli d'une couleur de fond.</summary>
-        private static Color32[] FilledPicto(Color32 background)
-        {
-            Color32[] pixels = new Color32[PictoSize * PictoSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = background;
-            }
-
-            return pixels;
-        }
-
-        /// <summary>Un point epais de 2x2, borne au picto. Sert aux traits en diagonale.</summary>
-        private static void PlotThick(Color32[] pixels, int x, int y, Color32 color)
-        {
-            for (int dy = 0; dy <= 1; dy++)
-            {
-                for (int dx = 0; dx <= 1; dx++)
-                {
-                    int px = x + dx;
-                    int py = y + dy;
-
-                    if (px >= 0 && px < PictoSize && py >= 0 && py < PictoSize)
-                    {
-                        pixels[py * PictoSize + px] = color;
-                    }
-                }
-            }
         }
 
         /// <summary>Une ellipse pleine, bornee a l'image. Feuilles et soleils.</summary>
@@ -3384,9 +3183,11 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static Color32[] BuildSentence(string sentence)
         {
-            return PixelFont.Render(sentence,
-                Palette.Paper,
-                Palette.Ink);
+            // PHASE 18F : les mots s'ecrivent en Ink SANS lisere, puisqu'ils se posent desormais
+            // tous sur du papier — la boite de dialogue, le cartel, les cartes et les rangees des
+            // mini-jeux. Le lisere blanc de la phase 7 protegeait un mot clair pose sur du pave ;
+            // il n'y a plus de mot pose sur le decor.
+            return PixelFont.Render(sentence, Palette.Ink, new Color32(0, 0, 0, 0));
         }
 
         /// <summary>
@@ -3661,7 +3462,7 @@ namespace SousLaVille.EditorTools
         }
 
         private static void ConfigureImporter(string assetPath, Vector2? customPivot,
-            int maxSize = 0)
+            int maxSize = 0, int border = 0)
         {
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
 
@@ -3707,6 +3508,9 @@ namespace SousLaVille.EditorTools
             {
                 settings.spriteAlignment = (int)SpriteAlignment.Center;
             }
+
+            // La bordure des neuf morceaux, phase 18f : zero partout sauf pour la boite du HUD.
+            settings.spriteBorder = new Vector4(border, border, border, border);
 
             importer.SetTextureSettings(settings);
             importer.SaveAndReimport();

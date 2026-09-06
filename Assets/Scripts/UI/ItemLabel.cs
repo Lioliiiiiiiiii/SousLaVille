@@ -38,7 +38,9 @@ namespace SousLaVille.UI
         private const float Padding = 6f;
 
         /// <summary>Cote du picto de saison. Deux tiers de la boite : il l'accompagne, il ne la remplit pas.</summary>
-        private const float IconSize = 18f;
+        // Vingt-quatre depuis la phase 18f : la taille exacte du picto, plus aucune mise a
+        // l'echelle a virgule.
+        private const float IconSize = 24f;
 
         /// <summary>Blanc entre le picto et le nom.</summary>
         private const float Gap = 5f;

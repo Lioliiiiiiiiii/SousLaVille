@@ -287,6 +287,16 @@ la suppression ligne à ligne avant de compiler.
 case d'un bloquant pour le photographier pose le joueur dessus, et le joueur le cache : la capture
 de la fontaine de 18d montrait le joueur. Viser la case voisine.
 
+**Une `Image` en `Sliced` a le même piège que `SetNativeSize`** : la bordure du sprite est divisée
+par ses pixels par unité, seize, puis multipliée par les cent du Canvas. Une bordure de six pixels
+en faisait trente-sept et la boîte du HUD n'était plus que deux coins. `pixelsPerUnitMultiplier =
+100 / 16` sur chaque boîte, phase 18f.
+
+**Construire les scènes pendant un play** finit en `InvalidOperationException: This cannot be used
+during play mode` au fond d'une pile de dix appels. `BuildAllScenes` le refuse désormais en clair.
+Un pilote qui attend le focus laisse le play ouvert tant qu'Unity n'est pas devant : `osascript …
+activate` ne suffit pas toujours, `System Events … set frontmost` si.
+
 **`maxTextureSize` réduit une image de moitié EN SILENCE.** Depuis la phase 12a il est calculé
 depuis l'en-tête du PNG ; ne pas le réécrire à la main.
 

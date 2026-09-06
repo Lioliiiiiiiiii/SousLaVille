@@ -36,6 +36,10 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private const int HudPictoSize = 24;
 
+        /// <summary>La boite du HUD en neuf morceaux : 24 pixels, dont une bordure de six.</summary>
+        private const int HudBoxSize = 24;
+        public const int HudBoxBorder = 6;
+
         // ---------------------------------------------------------------- primitives
 
         /// <summary>Pose un pixel, ou rien s'il tombe hors de l'image. Fill ne verifie pas ; ici on le fait.</summary>
@@ -1261,6 +1265,113 @@ namespace SousLaVille.EditorTools
                 Plot(p, w, 12 + step, 11 - step, Palette.Sun);
                 Plot(p, w, 11 - step, 11 - step, Palette.Sun);
             }
+
+            return p;
+        }
+
+        /// <summary>
+        /// LA BOITE DU HUD EN NEUF MORCEAUX, phase 18f : vingt-quatre pixels de cote, une bordure
+        /// de six, et Unity l'etire en Sliced a toute taille — les coins gardent leur arrondi et
+        /// leur filet, les bords et le centre s'allongent. Une seule image pour toutes les boites
+        /// du jeu : le HUD, le dialogue, le cartel, les cartes et les rangees des mini-jeux.
+        /// </summary>
+        private static Color32[] BuildHudBox()
+        {
+            return BuildBanner(HudBoxSize, HudBoxSize);
+        }
+
+        /// <summary>Le repere du sous-sol : une echelle d'or sur la terre.</summary>
+        private static Color32[] BuildLadderPictoV2()
+        {
+            Color32[] p = PictoPlate(Palette.Earth);
+            const int w = HudPictoSize;
+
+            Fill(p, w, 7, 8, 3, 20, Palette.Gold);
+            Fill(p, w, 15, 16, 3, 20, Palette.Gold);
+            Fill(p, w, 8, 8, 3, 20, Palette.Shade(Palette.Gold));
+            Fill(p, w, 16, 16, 3, 20, Palette.Shade(Palette.Gold));
+            foreach (int y in new[] { 5, 9, 13, 17 })
+            {
+                Fill(p, w, 9, 14, y, y + 1, Palette.Gold);
+                Fill(p, w, 9, 14, y, y, Palette.Shade(Palette.Gold));
+            }
+
+            return p;
+        }
+
+        /// <summary>L'ete : un soleil plein et ses huit rayons sur un sable chaud.</summary>
+        private static Color32[] BuildSummerPictoV2()
+        {
+            Color32[] p = PictoPlate(Palette.Sand);
+            const int w = HudPictoSize;
+
+            FillEllipse(p, w, 11.5f, 11.5f, 5.6f, 5.6f, Palette.Orange);
+            FillEllipse(p, w, 10.5f, 12.5f, 2.4f, 2.4f, Palette.Sun);
+
+            for (int step = 7; step <= 9; step++)
+            {
+                Fill(p, w, 11, 12, 12 + step, 12 + step, Palette.Orange);
+                Fill(p, w, 11, 12, 11 - step, 11 - step, Palette.Orange);
+                Fill(p, w, 12 + step, 12 + step, 11, 12, Palette.Orange);
+                Fill(p, w, 11 - step, 11 - step, 11, 12, Palette.Orange);
+            }
+
+            for (int step = 5; step <= 7; step++)
+            {
+                Plot(p, w, 12 + step, 12 + step, Palette.Orange);
+                Plot(p, w, 11 - step, 12 + step, Palette.Orange);
+                Plot(p, w, 12 + step, 11 - step, Palette.Orange);
+                Plot(p, w, 11 - step, 11 - step, Palette.Orange);
+            }
+
+            return p;
+        }
+
+        /// <summary>L'automne : une feuille rousse et sa nervure d'or, sur un fond chair.</summary>
+        private static Color32[] BuildAutumnPictoV2()
+        {
+            Color32[] p = PictoPlate(Palette.Skin);
+            const int w = HudPictoSize;
+
+            // Un losange allonge, large au milieu, pointu aux deux bouts.
+            for (int y = 4; y <= 19; y++)
+            {
+                int half = Mathf.RoundToInt(6.5f - Mathf.Abs(y - 11.5f) * 0.8f);
+                if (half <= 0)
+                {
+                    continue;
+                }
+
+                Fill(p, w, 11 - half, 12 + half, y, y, Palette.Rust);
+            }
+
+            Fill(p, w, 11, 12, 2, 17, Palette.Gold);
+            Fill(p, w, 8, 10, 12, 12, Palette.Gold);
+            Fill(p, w, 13, 15, 9, 9, Palette.Gold);
+
+            return p;
+        }
+
+        /// <summary>L'hiver : un flocon a six branches sur un bleu de givre.</summary>
+        private static Color32[] BuildWinterPictoV2()
+        {
+            Color32[] p = PictoPlate(Palette.Ice);
+            const int w = HudPictoSize;
+
+            Fill(p, w, 11, 12, 3, 20, Palette.Paper);
+            Fill(p, w, 3, 20, 11, 12, Palette.Paper);
+
+            for (int step = -8; step <= 8; step++)
+            {
+                Fill(p, w, 11 + step, 12 + step, 11 + step, 12 + step, Palette.Paper);
+                Fill(p, w, 11 + step, 12 + step, 11 - step, 12 - step, Palette.Paper);
+            }
+
+            // Les pointes des branches droites.
+            Fill(p, w, 9, 14, 19, 19, Palette.Paper);
+            Fill(p, w, 9, 14, 4, 4, Palette.Paper);
+            Fill(p, w, 4, 4, 9, 14, Palette.Paper);
+            Fill(p, w, 19, 19, 9, 14, Palette.Paper);
 
             return p;
         }

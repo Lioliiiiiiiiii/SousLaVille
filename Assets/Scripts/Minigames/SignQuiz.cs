@@ -63,12 +63,14 @@ namespace SousLaVille.Minigames
         [Tooltip("Leurres de la MEME famille a chaque lancement. La derniere valeur tient ensuite.")]
         [SerializeField] private int[] sameFamilyLuresPerRound = { 0, 1, 2 };
 
-        [SerializeField] private Color idleColor = new Color(0.23f, 0.26f, 0.31f, 1f);
-        [SerializeField] private Color selectedColor = new Color(0.85f, 0.83f, 0.78f, 1f);
-        [SerializeField] private Color rightColor = new Color(0.31f, 0.48f, 0.31f, 1f);
-        [SerializeField] private Color wrongColor = new Color(0.14f, 0.15f, 0.17f, 1f);
-        [SerializeField] private Color progressIdleColor = new Color(0.23f, 0.26f, 0.31f, 1f);
-        [SerializeField] private Color progressDoneColor = new Color(0.85f, 0.83f, 0.78f, 1f);
+        // Phase 18f : les rangees sont la boite de papier du HUD, teintee — gris acier au repos,
+        // blanc sous le curseur, vert feuille pour la bonne reponse, gris sombre pour l'autre.
+        [SerializeField] private Color idleColor = new Color(0.76f, 0.78f, 0.82f, 1f);
+        [SerializeField] private Color selectedColor = Color.white;
+        [SerializeField] private Color rightColor = new Color(0.63f, 0.88f, 0.44f, 1f);
+        [SerializeField] private Color wrongColor = new Color(0.55f, 0.57f, 0.61f, 1f);
+        [SerializeField] private Color progressIdleColor = new Color(0.76f, 0.78f, 0.82f, 1f);
+        [SerializeField] private Color progressDoneColor = new Color(0.35f, 0.72f, 0.28f, 1f);
 
         private Question[] questions = new Question[0];
         private int current;

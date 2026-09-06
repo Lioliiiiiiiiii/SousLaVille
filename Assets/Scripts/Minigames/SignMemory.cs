@@ -66,9 +66,11 @@ namespace SousLaVille.Minigames
         [Tooltip("Paires de chaque manche. La derniere valeur tient ensuite.")]
         [SerializeField] private int[] roundPairs = { 8, 12, 16 };
 
-        [SerializeField] private Color faceDownColor = new Color(0.23f, 0.26f, 0.31f, 1f);
-        [SerializeField] private Color faceUpColor = new Color(0.85f, 0.83f, 0.78f, 1f);
-        [SerializeField] private Color matchedColor = new Color(0.31f, 0.48f, 0.31f, 1f);
+        // Phase 18f : les cartes sont la boite de papier du HUD, teintee — gris acier de dos,
+        // blanc de face, vert feuille une fois la paire trouvee.
+        [SerializeField] private Color faceDownColor = new Color(0.76f, 0.78f, 0.82f, 1f);
+        [SerializeField] private Color faceUpColor = Color.white;
+        [SerializeField] private Color matchedColor = new Color(0.63f, 0.88f, 0.44f, 1f);
 
         private int[] deck = new int[0];
         private bool[] matched = new bool[0];

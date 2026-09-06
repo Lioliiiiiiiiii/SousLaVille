@@ -39,6 +39,13 @@ namespace SousLaVille.EditorTools
         private const int MemoryRows = 4;
 
         /// <summary>
+        /// Le fond des trois mini-jeux, phase 18f : le gris acier clair de la palette, opaque —
+        /// la raison de l'opacite est celle du memory, les gouttes du HUD passent dessous. Sur
+        /// ce gris, les cartes et les rangees sont des boites de papier, et les mots en Ink.
+        /// </summary>
+        private static readonly Color MiniGameBackground = new Color(0xC2 / 255f, 0xC8 / 255f, 0xD0 / 255f, 1f);
+
+        /// <summary>
         /// Cote d'une carte. C'est le plancher de zone cliquable de CLAUDE.md.
         ///
         /// static readonly et non const : le compilateur replie « 32f &lt; 32f » et signale le
@@ -599,6 +606,18 @@ namespace SousLaVille.EditorTools
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
             Image veil = CreateFullScreenVeil(canvasObject.transform);
+
+            // PHASE 18F : tout ce que le HUD montre est dans une BOITE DE PAPIER arrondie, regle 6
+            // et la reference. Deux boites en haut : a gauche la couche et la saison, a droite les
+            // gouttes. Creees AVANT leur contenu, pour passer dessous.
+            CreateHudBox(canvasObject.transform, "Box_Indicators", new Vector2(0f, 1f),
+                new Vector2(ScreenMargin, -ScreenMargin), new Vector2(HudPictoBoxWidth, HudPictoBoxHeight));
+            int dropCount = VillageLayout.FindAll(VillageLayout.House).Count
+                          + VillageLayout.FindAll(VillageLayout.Fountain).Count;
+            CreateHudBox(canvasObject.transform, "Box_Drops", new Vector2(1f, 1f),
+                new Vector2(-ScreenMargin, -ScreenMargin),
+                new Vector2(dropCount * DropSize + HudBoxPadding * 2f, DropSize + HudBoxPadding * 2f));
+
             Image icon = CreateLayerIcon(canvasObject.transform);
             Image seasonIcon = CreateSeasonIcon(canvasObject.transform);
             List<Image> drops = CreateHouseDrops(canvasObject.transform);
@@ -653,11 +672,64 @@ namespace SousLaVille.EditorTools
         /// Une goutte par maison, en haut a droite. Le seul but affiche du jeu, et il tient
         /// sans un mot.
         /// </summary>
+        /// <summary>Les mesures des boites du HUD, phase 18f : un picto de 24 dans une boite de 32.</summary>
+        private const float HudPicto = 24f;
+        private const float HudBoxPadding = 4f;
+        private const float HudPictoBoxWidth = HudBoxPadding * 3f + HudPicto * 2f;   // 64
+        private const float HudPictoBoxHeight = HudBoxPadding * 2f + HudPicto;       // 32
+        private const float DropSize = 16f;
+
+        /// <summary>
+        /// LE PIEGE DE SetNativeSize, version Sliced : Image divise la bordure du sprite par ses
+        /// pixels par unite, seize, puis la multiplie par les cent du Canvas. Une bordure de six
+        /// pixels en faisait trente-sept, et la boite de 32 de haut n'etait plus que deux coins.
+        /// Vu sur la premiere capture de 18f. Ce multiplicateur ramene le sprite a cent pixels
+        /// par unite, ceux du Canvas : six pixels font six pixels.
+        /// </summary>
+        private const float HudBoxPixelsPerUnitMultiplier = 100f / PixelsPerUnit;
+
+        /// <summary>
+        /// UNE BOITE DE PAPIER du HUD : l'image en neuf morceaux de la phase 18f, etiree a la
+        /// taille demandee. Ancree par un coin, comme ce qu'elle encadre.
+        /// </summary>
+        private static Image CreateHudBox(Transform parent, string name, Vector2 anchor,
+            Vector2 position, Vector2 size)
+        {
+            GameObject boxObject = new GameObject(name);
+            boxObject.transform.SetParent(parent, false);
+
+            Image box = boxObject.AddComponent<Image>();
+            box.raycastTarget = false;
+            box.sprite = LoadSprite(PlaceholderArtGenerator.HudBoxTexture);
+            box.type = Image.Type.Sliced;
+            box.pixelsPerUnitMultiplier = HudBoxPixelsPerUnitMultiplier;
+
+            RectTransform rect = box.rectTransform;
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+
+            return box;
+        }
+
+        /// <summary>Habille une Image existante de la boite de papier, a la place d'une teinte.</summary>
+        private static void DressAsHudBox(Image image)
+        {
+            image.sprite = LoadSprite(PlaceholderArtGenerator.HudBoxTexture);
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = HudBoxPixelsPerUnitMultiplier;
+            image.color = Color.white;
+        }
+
         private static List<Image> CreateHouseDrops(Transform parent)
         {
-            const float size = 16f;
-            const float margin = 4f;
-            const float spacing = 2f;
+            const float size = DropSize;
+            // Dans la boite de droite : la marge de l'ecran plus celle de la boite, gouttes
+            // bord a bord — la boite fait le cadre, plus besoin d'air entre elles.
+            const float margin = ScreenMargin + HudBoxPadding;
+            const float spacing = 0f;
 
             // Une goutte par DESTINATION : les cinq maisons plus la fontaine du parc depuis
             // la phase 11. Le solveur les compte ensemble dans ServedCount.
@@ -725,14 +797,14 @@ namespace SousLaVille.EditorTools
             icon.raycastTarget = false;
             icon.sprite = LoadSprite(PlaceholderArtGenerator.PictoSurface);
 
-            // Coin haut gauche, marge de 4 px a la resolution de reference. Trente-deux
-            // pixels de cote : lisible a 320x180.
+            // Coin haut gauche, dans la boite de papier : vingt-quatre pixels de picto, quatre
+            // de marge de boite, quatre de marge d'ecran. Lisible a 320x180.
             RectTransform rect = icon.rectTransform;
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(32f, 32f);
-            rect.anchoredPosition = new Vector2(4f, -4f);
+            rect.sizeDelta = new Vector2(HudPicto, HudPicto);
+            rect.anchoredPosition = new Vector2(ScreenMargin + HudBoxPadding, -(ScreenMargin + HudBoxPadding));
 
             return icon;
         }
@@ -754,8 +826,9 @@ namespace SousLaVille.EditorTools
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(32f, 32f);
-            rect.anchoredPosition = new Vector2(40f, -4f);
+            rect.sizeDelta = new Vector2(HudPicto, HudPicto);
+            rect.anchoredPosition = new Vector2(ScreenMargin + HudBoxPadding * 2f + HudPicto,
+                -(ScreenMargin + HudBoxPadding));
 
             return icon;
         }
@@ -785,6 +858,9 @@ namespace SousLaVille.EditorTools
             Image veil = panel.AddComponent<Image>();
             veil.color = new Color(0f, 0f, 0f, 0.6f);
             veil.raycastTarget = false;
+
+            // Pas de boite de papier autour du plan, phase 18f : a quatre fois, 64 sur 45 cases
+            // font 256 sur 180 pixels, toute la hauteur de l'ecran. Le voile suffit.
 
             GameObject mapObject = new GameObject("Map");
             mapObject.transform.SetParent(panel.transform, false);
@@ -864,7 +940,7 @@ namespace SousLaVille.EditorTools
             panelRect.offsetMax = Vector2.zero;
 
             Image background = panel.AddComponent<Image>();
-            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.color = MiniGameBackground;
             background.raycastTarget = false;
 
             GameObject boardObject = new GameObject("Board");
@@ -888,11 +964,11 @@ namespace SousLaVille.EditorTools
                 GameObject cardObject = new GameObject($"Card_{i + 1:00}");
                 cardObject.transform.SetParent(boardObject.transform, false);
 
-                // Le fond de carte n'a AUCUN sprite : une Image sans sprite est un carre teinte,
-                // comme le voile du fondu depuis la phase 2. Le mini-jeu en change la couleur
-                // pour dire face cachee, face visible ou paire trouvee.
+                // Le fond de carte est la BOITE DE PAPIER en neuf morceaux, phase 18f, que le
+                // mini-jeu teinte pour dire face cachee, face visible ou paire trouvee.
                 Image card = cardObject.AddComponent<Image>();
                 card.raycastTarget = false;
+                DressAsHudBox(card);
                 card.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 card.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 card.rectTransform.pivot = new Vector2(0.5f, 0.5f);
@@ -1026,7 +1102,7 @@ namespace SousLaVille.EditorTools
             panelRect.offsetMax = Vector2.zero;
 
             Image background = panel.AddComponent<Image>();
-            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.color = MiniGameBackground;
             background.raycastTarget = false;
 
             float signWidth = 16f * QuizSignScale;
@@ -1050,6 +1126,7 @@ namespace SousLaVille.EditorTools
             {
                 Image row = CreateCenteredImage(panel.transform, $"Row_{i + 1}",
                     new Vector2(rowsCenterX, (1 - i) * pitch), new Vector2(QuizRowWidth, QuizRowHeight));
+                DressAsHudBox(row);   // phase 18f : une rangee est une boite de papier teintee
                 Image name = CreateCenteredImage(row.transform, "Name", Vector2.zero, Vector2.one);
                 rows.Add(row);
                 rowNames.Add(name);
@@ -1152,7 +1229,7 @@ namespace SousLaVille.EditorTools
             panelRect.offsetMax = Vector2.zero;
 
             Image background = panel.AddComponent<Image>();
-            background.color = new Color(0.10f, 0.11f, 0.13f, 1f);
+            background.color = MiniGameBackground;
             background.raycastTarget = false;
 
             GameObject boardObject = new GameObject("Board");
@@ -1321,8 +1398,9 @@ namespace SousLaVille.EditorTools
             panel.transform.SetParent(canvasObject.transform, false);
 
             Image background = panel.AddComponent<Image>();
-            background.color = new Color(0f, 0f, 0f, 0.78f);
             background.raycastTarget = false;
+            // Phase 18f : la boite de papier, et la phrase en Ink dessus.
+            DressAsHudBox(background);
 
             RectTransform panelRect = background.rectTransform;
             panelRect.anchorMin = new Vector2(0f, 0f);
@@ -1367,7 +1445,8 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static void CreateItemLabel(GameObject canvasObject)
         {
-            const float boxHeight = 24f;
+            // Trente-deux de haut depuis 18f : un picto de vingt-quatre et la boite autour.
+            const float boxHeight = 32f;
             const float margin = 6f;
             const float speechHeight = 34f;
 
@@ -1375,8 +1454,8 @@ namespace SousLaVille.EditorTools
             panel.transform.SetParent(canvasObject.transform, false);
 
             Image background = panel.AddComponent<Image>();
-            background.color = new Color(0f, 0f, 0f, 0.78f);
             background.raycastTarget = false;
+            DressAsHudBox(background);
 
             RectTransform panelRect = background.rectTransform;
             panelRect.anchorMin = new Vector2(0.5f, 0f);

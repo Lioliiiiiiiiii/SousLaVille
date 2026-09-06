@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a à 18e faites, 18f à 18h à faire |
+| 18 | Le style de la référence | 18a à 18f faites, 18g et 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -2999,6 +2999,61 @@ La fontaine fait une case de haut au milieu d'un labyrinthe de haies : elle est 
 qu'elle est. Deux cases de haut, comme l'arbre, lui rendraient sa place — hors plan de la phase 18,
 à trancher.
 
+## Phase 18f, ce qui est fait
+
+L'interface de la référence : **tout est dans une boîte de papier arrondie**, bord sombre, filet gris
+intérieur. Règle 6, et le diagnostic de 18a — « une rangée de gouttes grises à nu sur le monde ».
+
+- **Une seule image pour toutes les boîtes**, `hud_box.png` 24×24 à bordure de six
+  (`BuildHudBox`, `HudBoxBorder`), étirée par `Image.Type.Sliced` : les coins gardent leur
+  arrondi et leur filet, les bords et le centre s'allongent. `ConfigureImporter` pose la
+  `spriteBorder`. `CreateHudBox` et `DressAsHudBox` dans le constructeur de Persistent.
+- **Le HUD** : à gauche une boîte de 64×32 avec les deux pictos de 24 — la couche et la saison —,
+  à droite une boîte de 216×24 avec les treize gouttes bord à bord ; la boîte fait le cadre,
+  plus besoin d'air entre elles. Marges d'écran 4, de boîte 4.
+- **Les pictos font 24 px sur une plaque cernée** (`PictoPlate`) : soleil sur ciel, échelle d'or
+  sur terre, fleur sur pelouse, soleil orange sur sable, feuille rousse à nervure d'or sur chair,
+  flocon sur givre. `ItemLabel.IconSize` passe de 18 — une mise à l'échelle à virgule d'un picto de
+  32 — à 24, la taille exacte, et le cartel fait 32 de haut.
+- **Les gouttes** (`BuildDropV2`) : pleine, d'eau à reflet ; vide, de papier avec un fond d'ombre —
+  un verre à remplir, pas une goutte en panne. Les mêmes au-dessus des maisons.
+- **La boîte de dialogue et le cartel** sont la boîte de papier ; **les mots s'écrivent en Ink sans
+  liseré** (`BuildSentence`) puisqu'ils se posent tous sur du papier — le liseré blanc de la phase 7
+  protégeait un mot clair posé sur du pavé, il n'y a plus de mot posé sur le décor.
+- **Les trois mini-jeux** : fond gris acier clair de la palette, opaque pour la raison du memory ;
+  les cartes et les rangées du quiz sont la boîte de papier teintée — gris acier de dos ou au repos,
+  blanc de face ou sous le curseur, vert feuille pour la paire ou la bonne réponse, gris sombre
+  pour la mauvaise. Les défauts des champs de `SignMemory` et `SignQuiz` changent ; rien au jeu.
+- **Le plan du village garde son voile**, sans boîte : à quatre fois, 64 sur 45 cases font 256 sur
+  180, toute la hauteur de l'écran.
+- Suppression de `BuildSunPicto`, `BuildLadderPicto`, les quatre `Build…Picto` de saison,
+  `FilledPicto`, `BuildDrop`, `DrawDrop`, `PlotThick`.
+- **`BuildAllScenes` refuse en play**, en clair : « L'éditeur est en play : arrête-le avant de
+  construire les scènes. » Jusqu'ici c'était une `InvalidOperationException` au fond d'une pile
+  de dix appels.
+
+## Phase 18f, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement.
+- Art régénéré : **270 textures, 116 tuiles** ; palette tenue, 50 couleurs ; « 4 saisons —
+  aucune paire identique ».
+- Planche du HUD regardée (`Captures/planche_18f_hud.png`) : les six plaques, les deux gouttes,
+  la boîte, et un mot en Ink sur une boîte étirée à neuf morceaux.
+- Cinq scènes construites, après un play resté ouvert et arrêté.
+- **Captures en jeu regardées, deux fois.** La première montrait la boîte réduite à deux gros
+  coins d'Ink : `Image.Sliced` divise la bordure par les seize pixels par unité du sprite puis la
+  multiplie par les cent du Canvas — six pixels en faisaient trente-sept. Le piège de
+  `SetNativeSize` sous une autre forme ; `pixelsPerUnitMultiplier = 100 / 16` sur chaque boîte, et
+  la seconde capture montre la boîte de la référence, au pixel.
+- `git diff ProjectSettings/` vide.
+
+### Note d'atelier : le pilote attend un focus qu'`activate` ne donne pas toujours
+
+Le pilote est resté deux minutes en « playmode_transition », `is_focused` faux, malgré deux
+`osascript … activate`. `System Events … set frontmost … to true` l'a mis devant et les captures
+sont sorties dans la seconde. Et un play resté ouvert fait échouer la construction des scènes
+avec une exception au fond d'une pile : `BuildAllScenes` le dit désormais en clair.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -3020,11 +3075,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18f, l'interface
+## Prochaine étape : la phase 18g, les saisons
 
-Les boîtes blanches arrondies du HUD, les gouttes, les pictos de saison, de couche et d'action, le
-cartel, la boîte de dialogue, le fond et les cadres des trois mini-jeux. Puis 18g et 18h. Victorien
-joue après.
+Les variantes de tuiles et de sprites par saison, `SwapTile`, `SeasonalSprite`, la lumière adoucie.
+Puis 18h. Victorien joue après.
 
 ## Décisions prises
 

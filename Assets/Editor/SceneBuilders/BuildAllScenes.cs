@@ -15,6 +15,16 @@ namespace SousLaVille.EditorTools
         [MenuItem("Sous La Ville/Construire toutes les scènes")]
         public static void BuildAll()
         {
+            // PHASE 18F : en play, EditorSceneManager refuse avec « This cannot be used during play
+            // mode » au fond d'une pile de dix appels, et rien ne dit d'ou. On le dit ici, en clair,
+            // avant de toucher a quoi que ce soit.
+            if (EditorApplication.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                Debug.LogError("[Sous la Ville] L'éditeur est en play : arrête-le avant de " +
+                               "construire les scènes.");
+                return;
+            }
+
             // L'art doit exister avant tout le reste : Surface reference les assets Tile,
             // Persistent les sprites du personnage, et les saisons leur pictogramme.
             if (!PlaceholderArtGenerator.AreAssetsPresent())
