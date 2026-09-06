@@ -31,6 +31,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
 | 18 | Le style de la référence | Terminée |
+| 19 | Le jeu chez Victorien | Terminée, une vérification reste à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -3167,10 +3168,65 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : Victorien joue
+## Phase 19, ce qui est fait
 
-La phase 18 est terminée : le jeu ressemble à sa référence, de la surface au sous-sol, aux quatre
-saisons. Reste ce qui ne se décide qu'en regardant quelqu'un jouer.
+Le jeu tourne chez Victorien, sur un Mac qui n'est pas celui de développement.
+
+- **Build WebGL publié sur GitHub Pages.** Adresse : <https://lioliiiiiiiiii.github.io/SousLaVille/>.
+  Une adresse, un clic, il joue. Rien à télécharger, rien à installer.
+- **`Assets/WebGLTemplates/SousLaVille/index.html`**, le gabarit de la page. Canvas sur toute
+  la fenêtre, fond sombre, barre de chargement et le mot CHARGEMENT, bouton plein écran de
+  44 px dans le coin bas droit, `image-rendering: pixelated` pour que le navigateur n'adoucisse
+  pas les pixels de 16.
+- **`Assets/Editor/ProjectSetup/WebBuild.cs`**, deux entrées de menu : *Sous La Ville /
+  Régler le build web* et *Sous La Ville / Construire le jeu pour le web*. Les réglages du
+  build sont dans le script, pas posés à la main dans les Player Settings.
+- **`Tools/deployer-web.sh`**, la publication sur la branche `gh-pages` par un worktree
+  jetable. La branche est orpheline : elle ne porte que le jeu compilé, jamais les sources.
+- **Échap ferme le jeu**, dans `GameManager.Update`, compilé pour les seuls exécutables de
+  bureau (`#if !UNITY_EDITOR && !UNITY_WEBGL`). Dans le navigateur on ferme l'onglet.
+
+## Phase 19, vérifications faites
+
+- **Compilation propre** avant et après la bascule WebGL : zéro erreur, zéro avertissement.
+- **Build réussi** : 18,6 Mo, 469 s, aucun message d'erreur.
+- **Le jeu tourne dans le navigateur.** Vu par capture sur l'adresse publiée : le sous-sol
+  (galerie, échelle, plaque, panneaux, personnage), puis la surface après montée par l'échelle
+  (maisons, routes, panneaux, haies, villageois). Le HUD, l'indicateur de saison et les gouttes
+  du compteur s'affichent. Aucune erreur JavaScript, aucun shader manquant.
+- **`autoSyncPersistentDataPath` est actif** dans le gabarit, et la base IndexedDB `/idbfs`
+  est bien créée par le jeu au démarrage.
+
+## Phase 19, décisions prises le 6 septembre 2026
+
+- **WebGL plutôt qu'un `.app` macOS.** Le Mac de Victorien n'est pas celui de développement :
+  un exécutable non signé aurait obligé l'autre foyer à passer par les réglages de sécurité de
+  macOS pour l'autoriser. Une adresse web ne demande rien à personne.
+- **Gzip avec repli de décompression, et non Brotli.** GitHub Pages ne pose pas d'en-tête
+  `Content-Encoding` : sans repli, le navigateur recevrait du compressé qu'il ne saurait pas
+  lire et resterait bloqué sur la barre de chargement. Le repli fait décompresser le chargeur
+  d'Unity en JavaScript, et gzip y est nettement plus rapide que Brotli.
+- **La branche `gh-pages` est orpheline et écrasée à chaque publication.** Aucun historique de
+  builds ne s'accumule dans le dépôt.
+- **Le dépôt est public, donc l'adresse l'est aussi.** Quiconque a le lien peut jouer. Les
+  sources étaient déjà publiques ; le jeu l'est maintenant aussi.
+
+## Reste à faire
+
+- **Vérifier que la sauvegarde survit à la fermeture de l'onglet.** C'est le seul point que la
+  vérification par capture n'a pas pu établir : le panneau de navigation utilisé est masqué,
+  `requestAnimationFrame` y est gelé, et le jeu n'avance que d'une image par touche pressée —
+  impossible d'y creuser assez pour déclencher une écriture. `SaveSystem` n'écrit que sur
+  `Dig` et `PlacePipe`, jamais sur un simple déplacement, et `FILE_DATA` était donc vide.
+  **Le test, en trente secondes** : ouvrir l'adresse, creuser deux ou trois cases, attendre
+  trois secondes, fermer l'onglet, rouvrir l'adresse. Le tunnel doit être là. S'il ne l'est
+  pas, c'est `autoSyncPersistentDataPath` qu'il faut regarder, dans le gabarit.
+- **Git LFS.** Le dépôt porte les hooks de Git LFS (`post-checkout`, `post-commit`,
+  `post-merge`, `pre-push`) mais `git-lfs` n'est pas installé sur la machine, et
+  `.gitattributes` ne déclare aucun fichier LFS. Les hooks échouent donc pour rien, et
+  `pre-push` refuse les publications. `deployer-web.sh` les met de côté le temps du
+  déploiement avec `core.hooksPath`. À trancher : installer git-lfs, ou supprimer ces hooks.
+- Ce qui ne se décide qu'en regardant Victorien jouer. C'est maintenant possible.
 
 ## Décisions prises
 

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      /* La page entiere est le jeu : ni marge, ni barre de defilement, ni selection
+         accidentelle. Un enfant de six ans ne doit rien pouvoir deplacer autour du canvas. */
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #14181F;
+        font-family: system-ui, sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+      }
+
+      #unity-canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        background: {{{ BACKGROUND_COLOR }}};
+        /* Le jeu est en pixels de 16 : le navigateur ne doit pas les lisser en agrandissant. */
+        image-rendering: pixelated;
+        outline: none;
+      }
+
+      /* Le temps du chargement. Une barre qui se remplit, un mot court, rien d'autre. */
+      #chargement {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #14181F;
+        color: #C2C8D0;
+        font-size: 20px;
+        letter-spacing: 2px;
+      }
+
+      #barre-vide {
+        width: 240px;
+        height: 16px;
+        border: 2px solid #C2C8D0;
+        background: transparent;
+      }
+
+      #barre-pleine {
+        width: 0%;
+        height: 100%;
+        background: #C2C8D0;
+        transition: width 0.1s linear;
+      }
+
+      /* Le bouton plein ecran. Un carre d'au moins 32 px de cote, comme toute zone
+         cliquable du jeu, pose dans un coin pour ne jamais couvrir l'action. */
+      #plein-ecran {
+        position: fixed;
+        right: 12px;
+        bottom: 12px;
+        width: 44px;
+        height: 44px;
+        border: 2px solid #C2C8D0;
+        border-radius: 6px;
+        background: rgba(20, 24, 31, 0.6);
+        color: #C2C8D0;
+        font-size: 22px;
+        line-height: 40px;
+        text-align: center;
+        cursor: pointer;
+        opacity: 0.45;
+        display: none;
+      }
+
+      #plein-ecran:hover {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+
+    <div id="chargement">
+      <div>CHARGEMENT</div>
+      <div id="barre-vide"><div id="barre-pleine"></div></div>
+    </div>
+
+    <div id="plein-ecran" title="Plein écran">&#9974;</div>
+
+    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+
+      createUnityInstance(canvas, {
+        arguments: [],
+        dataUrl: "Build/{{{ DATA_FILENAME }}}",
+        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+        codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+
+        // NON NEGOCIABLE. Sans ceci, tout ce que le jeu ecrit dans persistentDataPath vit
+        // en memoire et meurt avec l'onglet : la sauvegarde automatique de la phase 6 ne
+        // survivrait pas a une fermeture. Avec ceci, elle part dans l'IndexedDB du
+        // navigateur et le joueur retrouve son reseau a la visite suivante.
+        autoSyncPersistentDataPath: true,
+      }, function (progression) {
+        document.querySelector("#barre-pleine").style.width = (100 * progression) + "%";
+      }).then(function (instance) {
+        document.querySelector("#chargement").style.display = "none";
+
+        var bouton = document.querySelector("#plein-ecran");
+        bouton.style.display = "block";
+        bouton.onclick = function () {
+          instance.SetFullscreen(1);
+          // Le clic a donne le focus au bouton : sans ceci, les fleches ne repondraient plus.
+          canvas.focus();
+        };
+
+        canvas.focus();
+      }).catch(function (message) {
+        document.querySelector("#chargement").textContent = message;
+      });
+
+      // Le canvas doit garder le clavier. Un clic n'importe ou dans la page le lui rend.
+      document.addEventListener("pointerdown", function () {
+        canvas.focus();
+      });
+
+      // Filet : si le navigateur laissait passer les fleches, la page defilerait sous le jeu.
+      window.addEventListener("keydown", function (evenement) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].indexOf(evenement.key) >= 0) {
+          evenement.preventDefault();
+        }
+      }, { passive: false });
+    </script>
+  </body>
+</html>

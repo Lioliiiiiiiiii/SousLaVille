@@ -94,6 +94,27 @@ namespace SousLaVille.Core
             }
         }
 
+#if !UNITY_EDITOR && !UNITY_WEBGL
+        // Echap ferme le jeu. C'est la seule touche hors des fleches et d'Espace, et elle ne
+        // sert qu'a sortir : un enfant de six ans doit pouvoir quitter un plein ecran seul,
+        // sans Cmd+Q ni Alt+F4, qui sont des combinaisons.
+        //
+        // Compilee pour les seuls executables de bureau. Dans l'editeur, Application.Quit ne
+        // fait rien ; dans le build web, on ferme l'onglet. Le sondage image par image de
+        // Keyboard.current ne pese donc sur aucune des deux plateformes de developpement.
+        //
+        // La sauvegarde suit toute seule : SaveSystem.OnApplicationQuit ecrit avant la sortie.
+        private void Update()
+        {
+            UnityEngine.InputSystem.Keyboard clavier = UnityEngine.InputSystem.Keyboard.current;
+
+            if (clavier != null && clavier.escapeKey.wasPressedThisFrame)
+            {
+                Application.Quit();
+            }
+        }
+#endif
+
         private void OnDestroy()
         {
             if (Instance == this)
