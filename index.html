@@ -94,19 +94,34 @@
 
     <div id="plein-ecran" title="Plein écran">&#9974;</div>
 
-    <script src="Build/Web.loader.js"></script>
+    <!--
+      LE « ?v= » N'EST PAS DECORATIF. WebBuild pose un numero de version neuf a chaque build.
+      Sans lui, deux caches rejouent l'ancien jeu :
+
+      - celui d'Unity, dataCaching, qui garde les fichiers du build dans l'IndexedDB du
+        navigateur et les ressert indefiniment tant que l'URL ne bouge pas ;
+      - celui de GitHub Pages, qui pose « max-age=600 » et peut donc melanger, dix minutes
+        durant, un ancien .wasm avec de nouvelles donnees — ce qui plante avant meme que le
+        moteur ne demarre.
+
+      Les deux se voient sur l'URL. Une URL neuve a chaque build les regle tous les deux.
+      Constate le 6 septembre 2026 : le jeu servi etait a jour, et le navigateur rejouait
+      la version d'avant.
+    -->
+    <script src="Build/Web.loader.js?v=2026.09.06.1533"></script>
     <script>
       var canvas = document.querySelector("#unity-canvas");
+      var version = "2026.09.06.1533";
 
       createUnityInstance(canvas, {
         arguments: [],
-        dataUrl: "Build/Web.data.unityweb",
-        frameworkUrl: "Build/Web.framework.js.unityweb",
-        codeUrl: "Build/Web.wasm.unityweb",
+        dataUrl: "Build/Web.data.unityweb?v=" + version,
+        frameworkUrl: "Build/Web.framework.js.unityweb?v=" + version,
+        codeUrl: "Build/Web.wasm.unityweb?v=" + version,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Lio",
         productName: "SousLaVille",
-        productVersion: "1.0",
+        productVersion: "2026.09.06.1533",
 
         // NON NEGOCIABLE. Sans ceci, tout ce que le jeu ecrit dans persistentDataPath vit
         // en memoire et meurt avec l'onglet : la sauvegarde automatique de la phase 6 ne
