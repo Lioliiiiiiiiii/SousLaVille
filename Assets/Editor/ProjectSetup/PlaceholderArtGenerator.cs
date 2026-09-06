@@ -710,10 +710,11 @@ namespace SousLaVille.EditorTools
                 WriteTexture(HouseInletTexture, BuildHouseInlet());
                 WriteTexture(PlantInletTexture, BuildPlantInlet());
 
-                WriteTexture(PlayerDown, BuildPlayer(Vector2Int.down), PlayerWidth);
-                WriteTexture(PlayerUp, BuildPlayer(Vector2Int.up), PlayerWidth);
-                WriteTexture(PlayerLeft, BuildPlayer(Vector2Int.left), PlayerWidth);
-                WriteTexture(PlayerRight, BuildPlayer(Vector2Int.right), PlayerWidth);
+                // PHASE 18E : les personnages de la reference, la tete fait la moitie, cernes.
+                WriteTexture(PlayerDown, BuildPlayerV2(Vector2Int.down), PlayerWidth);
+                WriteTexture(PlayerUp, BuildPlayerV2(Vector2Int.up), PlayerWidth);
+                WriteTexture(PlayerLeft, BuildPlayerV2(Vector2Int.left), PlayerWidth);
+                WriteTexture(PlayerRight, BuildPlayerV2(Vector2Int.right), PlayerWidth);
 
                 WriteTexture(PictoSurface, BuildSunPicto(), PictoSize);
                 WriteTexture(PictoUnderground, BuildLadderPicto(), PictoSize);
@@ -788,11 +789,11 @@ namespace SousLaVille.EditorTools
 
                 WriteTexture(DoorTexture, BuildDoorV2());
                 WriteTexture(VillagerGuide,
-                    BuildVillager(CharacterColors[6], VillagerTrade.Guide), PlayerWidth);
+                    BuildVillagerV2(CharacterColors[6], VillagerTrade.Guide), PlayerWidth);
                 WriteTexture(VillagerCraftsman,
-                    BuildVillager(CharacterColors[1], VillagerTrade.Covers), PlayerWidth);
+                    BuildVillagerV2(CharacterColors[1], VillagerTrade.Covers), PlayerWidth);
                 WriteTexture(VillagerWorker,
-                    BuildVillager(CharacterColors[2], VillagerTrade.Pipes), PlayerWidth);
+                    BuildVillagerV2(CharacterColors[2], VillagerTrade.Pipes), PlayerWidth);
                 WriteTexture(PictoEnter, BuildDoorPicto(entering: true));
                 WriteTexture(PictoExit, BuildDoorPicto(entering: false));
                 WriteTexture(PictoTalk, BuildTalkPicto());
@@ -819,7 +820,7 @@ namespace SousLaVille.EditorTools
                 for (int who = 0; who < SignFactoryVillagers.Length; who++)
                 {
                     WriteTexture(SignFactoryVillagers[who],
-                        BuildVillager(SignFactoryColors[who], SignFactoryTrades[who]), PlayerWidth);
+                        BuildVillagerV2(SignFactoryColors[who], SignFactoryTrades[who]), PlayerWidth);
 
                     for (int line = 0; line < SignFactoryLines[who].Length; line++)
                     {
@@ -2039,55 +2040,6 @@ namespace SousLaVille.EditorTools
             {
                 Fill(pixels, TileSize, 0, 5, 6 - grow, 9 + grow, color);
             }
-        }
-
-        /// <summary>
-        /// Personnage 16x24, un sprite par direction. Le corps ne change pas ; c'est le
-        /// visage qui dit ou l'on regarde, et le dos de la tete qui dit qu'on s'eloigne.
-        /// </summary>
-        private static Color32[] BuildPlayer(Vector2Int facing)
-        {
-            const int width = PlayerWidth;
-            const int height = PlayerHeight;
-
-            Color32 body = CharacterColors[0];
-            Color32 head = Palette.Skin;
-            Color32 legs = Palette.Shade(body);
-            Color32 hair = Palette.WoodDark;
-            Color32 eye = Palette.Ink;
-
-            Color32[] pixels = NewTransparent(width * height);
-
-            // Origine en bas a gauche : y = 0 est la ligne des pieds.
-            Fill(pixels, width, 4, 6, 0, 3, legs);      // jambe gauche
-            Fill(pixels, width, 9, 11, 0, 3, legs);     // jambe droite
-            Fill(pixels, width, 3, 12, 4, 14, body);    // torse
-            Fill(pixels, width, 3, 12, 15, 22, head);   // tete
-            Fill(pixels, width, 4, 11, 23, 23, head);   // sommet du crane, coins ronges
-
-            if (facing == Vector2Int.up)
-            {
-                // De dos : pas de visage, une nuque de cheveux.
-                Fill(pixels, width, 3, 12, 18, 23, hair);
-            }
-            else if (facing == Vector2Int.left)
-            {
-                Fill(pixels, width, 3, 12, 21, 23, hair);
-                Fill(pixels, width, 4, 5, 18, 19, eye);
-            }
-            else if (facing == Vector2Int.right)
-            {
-                Fill(pixels, width, 3, 12, 21, 23, hair);
-                Fill(pixels, width, 10, 11, 18, 19, eye);
-            }
-            else
-            {
-                Fill(pixels, width, 3, 12, 21, 23, hair);
-                Fill(pixels, width, 5, 6, 18, 19, eye);
-                Fill(pixels, width, 9, 10, 18, 19, eye);
-            }
-
-            return pixels;
         }
 
         /// <summary>
@@ -3362,108 +3314,6 @@ namespace SousLaVille.EditorTools
 
             /// <summary>Les huit guides : gilet de chantier et casquette, celui qui previent.</summary>
             Guide
-        }
-
-        private static Color32[] BuildVillager(Color32 body, VillagerTrade trade)
-        {
-            const int width = PlayerWidth;
-            const int height = PlayerHeight;
-
-            Color32 head = Palette.Skin;
-            Color32 legs = Palette.Shade(body);
-            Color32 hair = Palette.Charcoal;
-            Color32 eye = Palette.Ink;
-
-            Color32[] pixels = NewTransparent(width * height);
-
-            Fill(pixels, width, 4, 6, 0, 3, legs);
-            Fill(pixels, width, 9, 11, 0, 3, legs);
-            Fill(pixels, width, 3, 12, 4, 14, body);
-            Fill(pixels, width, 3, 12, 15, 22, head);
-            Fill(pixels, width, 4, 11, 23, 23, head);
-            Fill(pixels, width, 5, 6, 18, 19, eye);
-            Fill(pixels, width, 9, 10, 18, 19, eye);
-
-            switch (trade)
-            {
-                case VillagerTrade.Covers:
-                    // Casquette plate a visiere, et la plaque d'egout sur la poitrine.
-                    Fill(pixels, width, 3, 12, 21, 22, Palette.Charcoal);
-                    Fill(pixels, width, 4, 11, 23, 23, Palette.Charcoal);
-                    Fill(pixels, width, 1, 8, 20, 20, Palette.Charcoal);
-                    DrawDisc(pixels, width, 8, 9, 2.6f, Palette.Steel);
-                    Fill(pixels, width, 6, 10, 9, 9, Palette.Charcoal);
-                    break;
-
-                case VillagerTrade.Pipes:
-                    // Casque de chantier : une calotte qui deborde, et sa crete.
-                    Fill(pixels, width, 2, 13, 21, 22, Palette.Sun);
-                    Fill(pixels, width, 3, 12, 23, 23, Palette.Sun);
-                    Fill(pixels, width, 7, 8, 22, 23, Palette.Gold);
-                    // Un tuyau en travers de la poitrine.
-                    Fill(pixels, width, 2, 13, 10, 11, Palette.SteelLight);
-                    Fill(pixels, width, 2, 13, 9, 9, Palette.SteelDark);
-                    break;
-
-                case VillagerTrade.Stock:
-                    // Bonnet SUR TOUTE LA LARGEUR du crane : dessine de 4 a 11, il laissait deux
-                    // coins de peau nus et le personnage sortait avec des CORNES.
-                    Fill(pixels, width, 3, 12, 21, 23, hair);
-                    Fill(pixels, width, 3, 12, 20, 20, hair);
-                    Fill(pixels, width, 6, 9, 23, 23, Palette.Steel);
-
-                    // Un tablier de toile CLAIRE, et une caisse portee sous le bras.
-                    //
-                    // Premier jet : tablier en Shade(body) sur six rangees, caisse en bois par
-                    // dessus. Shade(Brick) EST WoodDark — le tablier et la caisse devenaient le
-                    // meme brun, et la couleur du corps, qui est justement ce qui distingue les
-                    // cinq de loin, ne se voyait plus du tout. Vu en relisant les pixels.
-                    Fill(pixels, width, 4, 11, 4, 6, Palette.Bone);
-                    Fill(pixels, width, 4, 11, 6, 6, Palette.StoneDark);
-                    Fill(pixels, width, 12, 15, 6, 12, Palette.Wood);
-                    Fill(pixels, width, 12, 15, 12, 12, Palette.WoodDark);
-                    Fill(pixels, width, 12, 15, 6, 6, Palette.WoodDark);
-                    Fill(pixels, width, 12, 15, 9, 9, Palette.WoodDark);
-                    break;
-
-                case VillagerTrade.Maker:
-                    // Beret : une calotte molle qui deborde d'un cote, et un crayon.
-                    Fill(pixels, width, 3, 12, 21, 22, Palette.BlueDeep);
-                    Fill(pixels, width, 4, 13, 23, 23, Palette.BlueDeep);
-                    Fill(pixels, width, 13, 14, 22, 22, Palette.BlueDeep);
-                    Fill(pixels, width, 12, 13, 6, 13, Palette.Sun);
-                    Fill(pixels, width, 12, 13, 13, 13, Palette.Ink);
-                    break;
-
-                case VillagerTrade.Guide:
-                    // Casquette et GILET DE CHANTIER : deux bandes claires en croix sur la
-                    // poitrine, le vetement de celui qui previent. On le reconnait de loin, et
-                    // c'est tout ce qu'on lui demande.
-                    Fill(pixels, width, 3, 12, 21, 23, Palette.Charcoal);
-                    Fill(pixels, width, 2, 8, 20, 20, Palette.Charcoal);
-                    Fill(pixels, width, 3, 12, 4, 14, Palette.Sun);
-                    Fill(pixels, width, 6, 9, 4, 14, body);
-                    Fill(pixels, width, 3, 12, 8, 9, Palette.Paper);
-                    Fill(pixels, width, 3, 12, 12, 13, Palette.Paper);
-                    break;
-
-                default:
-                    // Visiere claire, DE PETITES lunettes, et un rouleau de plans sous le bras.
-                    // Larges de quatre pixels sur quatre, elles couvraient tout le visage et il
-                    // sortait en masque de soudeur : deux verres serres autour des yeux suffisent.
-                    Fill(pixels, width, 3, 12, 21, 23, Palette.Paper);
-                    Fill(pixels, width, 2, 13, 20, 20, Palette.SteelLight);
-                    Fill(pixels, width, 4, 11, 17, 20, Palette.Ice);
-                    Fill(pixels, width, 7, 8, 18, 19, Palette.Skin);
-                    Fill(pixels, width, 5, 6, 18, 19, eye);
-                    Fill(pixels, width, 9, 10, 18, 19, eye);
-                    Fill(pixels, width, 0, 2, 6, 13, Palette.Paper);
-                    Fill(pixels, width, 0, 2, 13, 13, Palette.Steel);
-                    Fill(pixels, width, 0, 2, 9, 9, Palette.SignBlue);
-                    break;
-            }
-
-            return pixels;
         }
 
         /// <summary>

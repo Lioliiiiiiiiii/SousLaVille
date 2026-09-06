@@ -1071,12 +1071,112 @@ namespace SousLaVille.EditorTools
             }
         }
 
+        /// <summary>
+        /// LE JOUEUR, phase 18e : la figure de la reference dans sa couleur, CharacterColors[0],
+        /// un pantalon bleu profond, des cheveux bruns a meche claire. Quatre directions : le
+        /// corps ne change pas, c'est le visage qui dit ou l'on regarde.
+        /// </summary>
         private static Color32[] BuildPlayerV2(Vector2Int facing)
         {
             Color32[] pixels = NewTransparent(PlayerWidth * PlayerHeight);
-            DrawFigure(pixels, Palette.Orange, Palette.BlueDeep, Palette.WoodDark, Palette.Bark, facing);
+            DrawFigure(pixels, CharacterColors[0], Palette.BlueDeep, Palette.WoodDark, Palette.Bark, facing);
             Outline(pixels, PlayerWidth, Palette.Ink);
             return pixels;
+        }
+
+        /// <summary>
+        /// UN HABITANT, phase 18e : la figure de la reference dans la couleur de son corps, de
+        /// face, puis ce que son metier lui met sur la tete et dans les mains — la silhouette de
+        /// 17d, redessinee aux nouvelles proportions. Chacun se reconnait a sa silhouette, pas
+        /// seulement a sa couleur : c'est la regle du projet depuis la phase 0. Cerne d'Ink en
+        /// dernier, accessoires compris : ce qui deborde du corps prend son trait.
+        ///
+        /// Les rangees, y montant : chaussures 1..2, jambes 3..5, torse 6..12, visage 13..17,
+        /// cheveux 18..22. Un couvre-chef remplace les cheveux ; ce qu'on porte va sur le torse.
+        /// </summary>
+        private static Color32[] BuildVillagerV2(Color32 body, VillagerTrade trade)
+        {
+            const int w = PlayerWidth;
+            Color32[] p = NewTransparent(w * PlayerHeight);
+
+            DrawFigure(p, body, Palette.Shade(body), Palette.Charcoal, Palette.SteelDark, Vector2Int.down);
+
+            switch (trade)
+            {
+                case VillagerTrade.Covers:
+                    // Casquette plate a visiere, et la plaque d'egout sur la poitrine. En gris
+                    // ARDOISE, pas en anthracite : les cheveux le sont deja, et une casquette de
+                    // la couleur des cheveux n'est pas une casquette — vu sur la planche.
+                    Fill(p, w, 2, 13, 20, 22, Palette.SteelDark);
+                    Fill(p, w, 1, 8, 19, 19, Palette.SteelDark);
+                    FillEllipse(p, w, 7.5f, 9f, 2.6f, 2.6f, Palette.Steel);
+                    Fill(p, w, 6, 9, 9, 9, Palette.Charcoal);
+                    break;
+
+                case VillagerTrade.Pipes:
+                    // Casque de chantier : une calotte qui deborde, et sa crete. Un tuyau en travers.
+                    Fill(p, w, 1, 14, 19, 21, Palette.Sun);
+                    Fill(p, w, 2, 13, 22, 22, Palette.Sun);
+                    Fill(p, w, 7, 8, 21, 22, Palette.Gold);
+                    Fill(p, w, 1, 14, 19, 19, Palette.Gold);
+                    Fill(p, w, 2, 13, 9, 10, Palette.SteelLight);
+                    Fill(p, w, 2, 13, 9, 9, Palette.SteelDark);
+                    break;
+
+                case VillagerTrade.Stock:
+                    // Bonnet sur toute la largeur du crane, son pompon ; un tablier de toile claire
+                    // et une caisse sous le bras. Le tablier est CLAIR, pas Shade(body) : Shade(Brick)
+                    // est WoodDark, et tablier et caisse fondaient dans le meme brun (17d).
+                    Fill(p, w, 2, 13, 18, 22, Palette.Charcoal);
+                    Fill(p, w, 3, 12, 18, 18, Palette.SteelDark);
+                    Fill(p, w, 6, 9, 22, 22, Palette.Steel);
+                    Fill(p, w, 4, 11, 6, 9, Palette.Bone);
+                    Fill(p, w, 4, 11, 9, 9, Palette.StoneLight);
+                    Fill(p, w, 11, 15, 6, 11, Palette.Wood);
+                    Fill(p, w, 11, 15, 11, 11, Palette.WoodLight);
+                    Fill(p, w, 11, 15, 6, 6, Palette.WoodDark);
+                    Fill(p, w, 11, 15, 9, 9, Palette.WoodDark);
+                    break;
+
+                case VillagerTrade.Maker:
+                    // Beret : une calotte molle qui deborde d'un cote, et un crayon a la main.
+                    Fill(p, w, 2, 13, 20, 22, Palette.BlueDeep);
+                    Fill(p, w, 3, 14, 22, 22, Palette.BlueDeep);
+                    Fill(p, w, 13, 14, 21, 21, Palette.BlueDeep);
+                    Fill(p, w, 12, 13, 7, 12, Palette.Sun);
+                    Fill(p, w, 12, 13, 12, 12, Palette.Ink);
+                    break;
+
+                case VillagerTrade.Guide:
+                    // Casquette et GILET DE CHANTIER : deux bandes claires sur la poitrine, le
+                    // vetement de celui qui previent — le vocabulaire des panneaux.
+                    Fill(p, w, 2, 13, 20, 22, Palette.SteelDark);
+                    Fill(p, w, 1, 8, 19, 19, Palette.SteelDark);
+                    Fill(p, w, 3, 12, 6, 12, Palette.Sun);
+                    Fill(p, w, 6, 9, 6, 12, body);
+                    Fill(p, w, 3, 12, 8, 8, Palette.Paper);
+                    Fill(p, w, 3, 12, 11, 11, Palette.Paper);
+                    break;
+
+                default:
+                    // Le Plan : visiere claire, de PETITES lunettes autour des yeux, et un rouleau
+                    // de plans sous le bras. Larges, elles faisaient un masque de soudeur (17d).
+                    Fill(p, w, 2, 13, 20, 22, Palette.Paper);
+                    Fill(p, w, 1, 14, 19, 19, Palette.SteelLight);
+                    Fill(p, w, 4, 6, 14, 15, Palette.Ice);
+                    Fill(p, w, 9, 11, 14, 15, Palette.Ice);
+                    Fill(p, w, 5, 5, 14, 15, Palette.Ink);
+                    Fill(p, w, 10, 10, 14, 15, Palette.Ink);
+                    Plot(p, w, 7, 15, Palette.SteelDark);
+                    Plot(p, w, 8, 15, Palette.SteelDark);
+                    Fill(p, w, 0, 2, 7, 12, Palette.Paper);
+                    Fill(p, w, 0, 2, 12, 12, Palette.Steel);
+                    Fill(p, w, 0, 2, 9, 9, Palette.SignBlue);
+                    break;
+            }
+
+            Outline(p, w, Palette.Ink);
+            return p;
         }
 
         // ---------------------------------------------------------------- l'interface

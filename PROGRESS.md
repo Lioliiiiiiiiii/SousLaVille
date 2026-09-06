@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a à 18d faites, 18e à 18h à faire |
+| 18 | Le style de la référence | 18a à 18e faites, 18f à 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -2959,6 +2959,46 @@ trois tons par matière, un trait autour de tout ce qui se dresse, des angles de
   fontaine, qui bloque, et il la cache. Vue sur la planche ; à reprendre en jeu au pilote de 18e.
 - `git diff ProjectSettings/` vide.
 
+## Phase 18e, ce qui est fait
+
+Les personnages de la référence, règle 7 : **un personnage, c'est une tête** — la moitié des
+vingt-quatre pixels, les cheveux un tiers de la tête avec une mèche claire, des yeux d'un pixel sur
+deux, une ombre sous le menton, un petit corps, deux bras, deux jambes, des chaussures, le tout
+cerné d'Ink.
+
+- **Le joueur**, `BuildPlayerV2`, quatre directions sur `DrawFigure` : de dos la nuque, de côté un
+  œil et la frange qui retombe. Corps `CharacterColors[0]`, pantalon bleu profond, cheveux bruns.
+- **Les six métiers**, `BuildVillagerV2(body, trade)` : la figure de face dans sa couleur, puis la
+  silhouette de 17d redessinée aux nouvelles rangées (chaussures 1..2, jambes 3..5, torse 6..12,
+  visage 13..17, cheveux 18..22). L'artisan des plaques : casquette plate et plaque sur la
+  poitrine. L'ouvrier : casque jaune à crête, tuyau en travers. Le Stock : bonnet à pompon, tablier
+  clair, caisse sous le bras. La Fabrique : béret qui déborde, crayon. Le Plan : visière, petites
+  lunettes, rouleau de plans. Le guide : casquette et gilet à deux bandes. Le trait vient en
+  dernier, accessoires compris.
+- **Les casquettes sont en gris ardoise**, pas en anthracite : les cheveux le sont déjà, et sur la
+  première planche l'artisan et le guide semblaient nu-tête. Vu à six fois, corrigé, revu à huit.
+- Suppression de `BuildPlayer` et `BuildVillager`. Sept couleurs de corps, `ValidateDistinct`
+  toujours vrai.
+
+## Phase 18e, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement, trois fois.
+- Art régénéré : 269 textures, 116 tuiles ; palette tenue, 50 couleurs ; « 6 personnages, 7
+  couleurs de corps — aucune paire identique ».
+- Planche des personnages regardée à six puis huit fois (`Captures/planche_18e_personnages.png`).
+- Aucune scène à reconstruire : les sprites gardent leur chemin et leur pivot.
+- **Captures en jeu regardées** : le départ — le joueur devant la maison, le guide du but à sa
+  gauche, celui de la bouche plus bas, gilets et casquettes lisibles — et **la fontaine**, reprise
+  de 18d depuis la case voisine : bassin, colonne, vasque et jet cernés ; le joueur au sud passe
+  devant son bassin, comme il doit.
+- `git diff ProjectSettings/` vide.
+
+### Ce qui reste à l'œil
+
+La fontaine fait une case de haut au milieu d'un labyrinthe de haies : elle est petite pour ce
+qu'elle est. Deux cases de haut, comme l'arbre, lui rendraient sa place — hors plan de la phase 18,
+à trancher.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -2980,10 +3020,11 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18e, les personnages
+## Prochaine étape : la phase 18f, l'interface
 
-Le joueur dans ses quatre directions et les six métiers, aux proportions de la référence — la tête
-fait la moitié — et cernés. Puis 18f à 18h. Victorien joue après.
+Les boîtes blanches arrondies du HUD, les gouttes, les pictos de saison, de couche et d'action, le
+cartel, la boîte de dialogue, le fond et les cadres des trois mini-jeux. Puis 18g et 18h. Victorien
+joue après.
 
 ## Décisions prises
 
