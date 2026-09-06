@@ -31,7 +31,8 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
 | 18 | Le style de la référence | Terminée |
-| 19 | Le jeu chez Victorien | Terminée, une vérification reste à faire |
+| 19 | Le jeu chez Victorien | Terminée |
+| 20 | Deux villages | Terminée |
 
 ## Phase 0, ce qui est fait
 
@@ -3211,21 +3212,103 @@ Le jeu tourne chez Victorien, sur un Mac qui n'est pas celui de développement.
 - **Le dépôt est public, donc l'adresse l'est aussi.** Quiconque a le lien peut jouer. Les
   sources étaient déjà publiques ; le jeu l'est maintenant aussi.
 
+## Phase 20, ce qui est fait
+
+Deux villages menés en parallèle, choisis au démarrage. Le plan complet est dans
+`PLAN-PHASE-20.md`.
+
+- **Le nom se déduit de l'emplacement.** `partie-1.json` s'appelle `VILLAGE 1`, et rien n'est
+  stocké : `SaveData` ne change pas d'une ligne, `CurrentVersion` reste à 2. L'écran d'écriture
+  envisagé d'abord est abandonné — une trentaine de pressions de flèche pour nommer une partie.
+- **`SaveSystem`** porte un emplacement courant, `SlotExists`, `DeleteSlot` et
+  `MigrateLegacySave`. Le `partie.json` d'avant la phase 20 est **copié**, jamais déplacé, vers
+  `partie-1.json`, et jamais par-dessus un emplacement déjà pris.
+- **Le verrou.** `SaveSystem.Update` ne lit ni n'écrit rien tant que l'emplacement vaut zéro.
+  Sans lui, la résolution paresseuse chargerait le village 1 sous l'écran de choix.
+- **`Bootstrapper`** ouvre l'écran et attend **avant** de charger les couches de jeu. Sans écran
+  dans la scène, il prend le village 1 et le dit en console plutôt que de rester bloqué.
+- **`VillageSelectScreen`** et **`PersistentSceneBuilder.VillageSelect.cs`** : l'écran, piloté
+  aux flèches et à Espace comme le plan du village de la phase 7. `Move` et `Act` sont publiques
+  pour se vérifier sans clavier — c'est ainsi que toute la phase a été vérifiée.
+- **Cinq images neuves** dans `PlaceholderArtGenerator.VillageScreen.cs` : la vignette du
+  village, la croix du neuf, la poubelle, le oui et le non. Plus trois noms écrits par
+  `PixelFont`.
+
+## Phase 20, vérifications faites
+
+Toutes en mode play dans l'éditeur, sur la vraie scène `Boot`.
+
+- **Compilation propre** : zéro erreur, zéro avertissement.
+- **La migration marche** : `partie.json` est devenu `VILLAGE 1`, `partie-1.json` a le **hash
+  identique** à l'original, qui est toujours là.
+- **Le verrou tient** : écran ouvert, emplacement à zéro, aucune couche de jeu chargée.
+- **Jouer charge le bon fichier** : `partie-1.json`, 50 segments restaurés, l'hiver et les deux
+  maisons desservies du fichier migré.
+- **Un village neuf est neuf** : `VILLAGE 2` démarre à zéro segment quand le village 1 en a
+  cinquante, et écrit dans `partie-2.json`.
+- **La confirmation protège** : Espace sur la poubelle ouvre la bande, Espace sur NON referme
+  sans rien effacer.
+- **L'effacement est propre** : le village 2 effacé, `partie-1.json` garde le hash exact, et la
+  ligne de création réapparaît.
+
+Sur le build publié, à l'adresse réelle : le jeu démarre sans erreur et l'écran montre bien une
+seule ligne, `NOUVEAU VILLAGE`, sur un navigateur vierge. **Un point n'a pas pu être exercé
+là-bas** : l'appui sur Espace. Le panneau de navigation dont je dispose est masqué, `rAF` y est
+gelé, et chaque touche n'accorde qu'une image isolée — les flèches passent, parce qu'elles se
+lisent en continu, mais Espace se lit sur un front, qui demande deux images consécutives. Le
+chemin complet a été vérifié dans l'éditeur, sur le même code.
+
+### Deux défauts trouvés en jouant, et corrigés
+
+- **La flèche du bas ne menait nulle part.** Avec un seul village, la ligne éteinte du village 2
+  s'intercalait entre lui et « nouveau village » : le curseur s'y arrêtait, donc la ligne de
+  création était **inatteignable**. `Move` saute maintenant les lignes éteintes. Ce défaut ne se
+  voyait pas au code ; il s'est vu à l'écran.
+- **Le trou entre les lignes.** Une ligne éteinte laissait quarante pixels de vide qui se
+  lisaient comme un défaut d'affichage. `StackVisibleRows` resserre et recentre.
+
+### Le défaut le plus grave de la phase, invisible en local
+
+**Le navigateur rejouait l'ancienne version après une publication correcte.** GitHub Pages
+servait bien les nouveaux fichiers — vérifié au hash et à l'octet près — et le jeu qui démarrait
+était celui d'avant. Deux caches se superposaient :
+
+- **`dataCaching` d'Unity** garde les fichiers du build dans l'IndexedDB du navigateur et les
+  ressert **indéfiniment** tant que l'URL ne bouge pas. C'est ce qui masquait la mise à jour.
+- **GitHub Pages pose `cache-control: max-age=600`.** Dix minutes durant, un navigateur peut
+  donc mélanger un ancien `.wasm` avec de nouvelles données. Vu en vrai : `RangeError: Maximum
+  call stack size exceeded`, **avant même l'initialisation du moteur**. Le build, lui, était
+  sain — servi depuis un `python3 -m http.server` local, il démarrait sans une erreur.
+
+Sans correction, chaque mise à jour future serait restée invisible pour Victorien, ou aurait
+cassé son jeu pendant dix minutes.
+
+**Le correctif tient en deux endroits.** `WebBuild` pose un `bundleVersion` horodaté à chaque
+build (`2026.09.06.1533`), et le gabarit le colle en `?v=` sur l'adresse de **chaque** fichier,
+chargeur compris. Les deux caches se voient sur l'URL : une URL neuve les règle tous les deux.
+
+### Un piège de l'outillage, à retenir
+
+**Une image de mot doit passer par `ConfigureImporter`.** Sans cela, Unity l'importe en sprite
+sheet et la découpe : `LoadAssetAtPath<Sprite>` rend alors la **première lettre** au lieu du mot.
+L'écran a d'abord affiché « V » et « N ». Les noms sont donc dans `VillageScreenTextures`, avec
+les pictos, et la liste sert aux deux usages qui doivent rester d'accord : régler l'importeur, et
+vérifier que rien ne manque.
+
 ## Reste à faire
 
-- **Vérifier que la sauvegarde survit à la fermeture de l'onglet.** C'est le seul point que la
-  vérification par capture n'a pas pu établir : le panneau de navigation utilisé est masqué,
-  `requestAnimationFrame` y est gelé, et le jeu n'avance que d'une image par touche pressée —
-  impossible d'y creuser assez pour déclencher une écriture. `SaveSystem` n'écrit que sur
-  `Dig` et `PlacePipe`, jamais sur un simple déplacement, et `FILE_DATA` était donc vide.
-  **Le test, en trente secondes** : ouvrir l'adresse, creuser deux ou trois cases, attendre
-  trois secondes, fermer l'onglet, rouvrir l'adresse. Le tunnel doit être là. S'il ne l'est
-  pas, c'est `autoSyncPersistentDataPath` qu'il faut regarder, dans le gabarit.
 - **Git LFS.** Le dépôt porte les hooks de Git LFS (`post-checkout`, `post-commit`,
   `post-merge`, `pre-push`) mais `git-lfs` n'est pas installé sur la machine, et
   `.gitattributes` ne déclare aucun fichier LFS. Les hooks échouent donc pour rien, et
   `pre-push` refuse les publications. `deployer-web.sh` les met de côté le temps du
   déploiement avec `core.hooksPath`. À trancher : installer git-lfs, ou supprimer ces hooks.
+- **Deux villages suffisent-ils ?** `SaveSystem.SlotCount` est la seule source du nombre : la
+  génération des noms, la construction de l'écran et son filet de mise en page le lisent tous.
+  Passer à trois coûte la relecture de la mise en page, pas plus.
+- **Un seul village par ordinateur, par navigateur.** Le stockage est local : deux enfants sur
+  deux machines ne se voient jamais, sans rien à faire. Mais deux enfants sur le **même** Mac,
+  dans le **même** navigateur et la **même** session, partagent les deux emplacements. Si ce cas
+  se présente, il faudra un choix de joueur avant le choix du village.
 - Ce qui ne se décide qu'en regardant Victorien jouer. C'est maintenant possible.
 
 ## Décisions prises

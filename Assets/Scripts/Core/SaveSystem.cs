@@ -24,7 +24,17 @@ namespace SousLaVille.Core
     /// </summary>
     public class SaveSystem : MonoBehaviour
     {
-        public const string FileName = "partie.json";
+        /// <summary>
+        /// Le fichier d'avant la phase 20, quand il n'y avait qu'une partie. Il n'est plus
+        /// jamais ecrit ; il n'est lu qu'une fois, par la migration.
+        /// </summary>
+        public const string LegacyFileName = "partie.json";
+
+        /// <summary>
+        /// Deux villages au plus. Le nombre est ici et nulle part ailleurs : l'ecran de choix
+        /// le lit pour savoir combien de lignes dessiner.
+        /// </summary>
+        public const int SlotCount = 2;
 
         /// <summary>Au plus une ecriture toutes les deux secondes. Au pire, deux secondes perdues.</summary>
         private const float FlushInterval = 2f;
@@ -47,10 +57,105 @@ namespace SousLaVille.Core
         private bool dirty;
         private float nextFlush;
 
-        /// <summary>Chemin complet du fichier de partie.</summary>
-        public string FilePath => Path.Combine(Application.persistentDataPath, FileName);
+        /// <summary>
+        /// Emplacement choisi, de 1 a SlotCount. Zero tant que l'ecran de choix n'a rien dit :
+        /// c'est le verrou de la phase 20. Rien ne se lit ni ne s'ecrit a zero.
+        /// </summary>
+        public int Slot { get; private set; }
 
-        public bool HasSave => File.Exists(FilePath);
+        /// <summary>Chemin complet du fichier de partie de l'emplacement courant.</summary>
+        public string FilePath => PathForSlot(Slot);
+
+        public bool HasSave => Slot > 0 && File.Exists(FilePath);
+
+        /// <summary>Le nom affiche d'un emplacement. Il se deduit du numero, il n'est pas stocke.</summary>
+        public static string NameForSlot(int slot)
+        {
+            return $"VILLAGE {slot}";
+        }
+
+        /// <summary>Chemin du fichier d'un emplacement. Chaine vide hors des emplacements valides.</summary>
+        public static string PathForSlot(int slot)
+        {
+            if (slot < 1 || slot > SlotCount)
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(Application.persistentDataPath, $"partie-{slot}.json");
+        }
+
+        /// <summary>Vrai si cet emplacement porte un village. Ne charge rien.</summary>
+        public static bool SlotExists(int slot)
+        {
+            string path = PathForSlot(slot);
+            return !string.IsNullOrEmpty(path) && File.Exists(path);
+        }
+
+        /// <summary>
+        /// Efface un village. Appele par l'ecran de choix, apres double confirmation, et
+        /// jamais pendant une partie : le fichier de l'emplacement courant n'est pas ouvert.
+        /// </summary>
+        public static void DeleteSlot(int slot)
+        {
+            string path = PathForSlot(slot);
+
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                return;
+            }
+
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception error)
+            {
+                Debug.LogWarning($"[Sous la Ville] Effacement du village {slot} impossible : {error.Message}");
+            }
+        }
+
+        /// <summary>
+        /// La partie d'avant la phase 20 devient le village 1.
+        ///
+        /// Copie et non deplacement : si la copie tournait mal, l'original serait encore la.
+        /// N'ecrase jamais un emplacement 1 deja pris — auquel cas il n'y a rien a migrer,
+        /// la migration a deja eu lieu.
+        /// </summary>
+        public static void MigrateLegacySave()
+        {
+            string legacy = Path.Combine(Application.persistentDataPath, LegacyFileName);
+
+            if (!File.Exists(legacy) || SlotExists(1))
+            {
+                return;
+            }
+
+            try
+            {
+                File.Copy(legacy, PathForSlot(1));
+                Debug.Log("[Sous la Ville] Ancienne partie reprise comme VILLAGE 1.");
+            }
+            catch (Exception error)
+            {
+                Debug.LogWarning($"[Sous la Ville] Reprise de l'ancienne partie impossible : {error.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Ouvre le verrou. Appele une seule fois, par le Bootstrapper, une fois l'ecran de
+        /// choix referme et AVANT que les couches de jeu ne soient chargees.
+        /// </summary>
+        public void ChooseSlot(int slot)
+        {
+            if (slot < 1 || slot > SlotCount)
+            {
+                Debug.LogError($"[Sous la Ville] Emplacement {slot} hors des {SlotCount} villages.");
+                return;
+            }
+
+            Slot = slot;
+        }
 
         /// <summary>Nombre d'ecritures depuis le demarrage. Sert aux verifications.</summary>
         public int SaveCount { get; private set; }
@@ -78,6 +183,15 @@ namespace SousLaVille.Core
         /// </summary>
         private void Update()
         {
+            // LE VERROU DE LA PHASE 20. Sans lui, la resolution paresseuse ci-dessous chargerait
+            // un village des que la carte et le reseau repondent, c'est-a-dire pendant que
+            // l'ecran de choix est encore a l'ecran. Le Bootstrapper n'appelle ChooseSlot
+            // qu'une fois le choix fait ; jusque-la, ce composant ne lit ni n'ecrit rien.
+            if (Slot <= 0)
+            {
+                return;
+            }
+
             if (!loaded)
             {
                 TryLoad();

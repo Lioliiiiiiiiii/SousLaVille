@@ -94,19 +94,34 @@
 
     <div id="plein-ecran" title="Plein écran">&#9974;</div>
 
-    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <!--
+      LE « ?v= » N'EST PAS DECORATIF. WebBuild pose un numero de version neuf a chaque build.
+      Sans lui, deux caches rejouent l'ancien jeu :
+
+      - celui d'Unity, dataCaching, qui garde les fichiers du build dans l'IndexedDB du
+        navigateur et les ressert indefiniment tant que l'URL ne bouge pas ;
+      - celui de GitHub Pages, qui pose « max-age=600 » et peut donc melanger, dix minutes
+        durant, un ancien .wasm avec de nouvelles donnees — ce qui plante avant meme que le
+        moteur ne demarre.
+
+      Les deux se voient sur l'URL. Une URL neuve a chaque build les regle tous les deux.
+      Constate le 6 septembre 2026 : le jeu servi etait a jour, et le navigateur rejouait
+      la version d'avant.
+    -->
+    <script src="Build/{{{ LOADER_FILENAME }}}?v={{{ PRODUCT_VERSION }}}"></script>
     <script>
       var canvas = document.querySelector("#unity-canvas");
+      var version = {{{ JSON.stringify(PRODUCT_VERSION) }}};
 
       createUnityInstance(canvas, {
         arguments: [],
-        dataUrl: "Build/{{{ DATA_FILENAME }}}",
-        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+        dataUrl: "Build/{{{ DATA_FILENAME }}}?v=" + version,
+        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}?v=" + version,
 #if USE_WASM
-        codeUrl: "Build/{{{ CODE_FILENAME }}}",
+        codeUrl: "Build/{{{ CODE_FILENAME }}}?v=" + version,
 #endif
 #if SYMBOLS_FILENAME
-        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}?v=" + version,
 #endif
         streamingAssetsUrl: "StreamingAssets",
         companyName: {{{ JSON.stringify(COMPANY_NAME) }}},

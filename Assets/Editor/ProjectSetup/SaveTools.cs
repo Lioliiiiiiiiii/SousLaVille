@@ -19,8 +19,6 @@ namespace SousLaVille.EditorTools
     {
         private static string Folder => Application.persistentDataPath;
 
-        private static string FilePath => Path.Combine(Folder, SaveSystem.FileName);
-
         [MenuItem("Sous La Ville/Ouvrir le dossier de sauvegarde")]
         public static void OpenFolder()
         {
@@ -29,20 +27,40 @@ namespace SousLaVille.EditorTools
             Debug.Log($"[Sous la Ville] Dossier de sauvegarde : {Folder}");
         }
 
+        /// <summary>
+        /// Depuis la phase 20 il y a plusieurs villages : ils sont tous mis de cote, plus
+        /// l'ancien fichier d'avant la phase 20, sans quoi la migration les ferait revenir.
+        /// </summary>
         [MenuItem("Sous La Ville/Repartir d'une partie neuve")]
         public static void StartFresh()
         {
-            if (!File.Exists(FilePath))
+            string stamp = DateTime.Now.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture);
+            int moved = 0;
+
+            for (int slot = 1; slot <= SaveSystem.SlotCount; slot++)
             {
-                Debug.Log("[Sous la Ville] Aucune partie enregistrée : la prochaine sera neuve.");
-                return;
+                moved += SetAside(SaveSystem.PathForSlot(slot), $"village-{slot}", stamp) ? 1 : 0;
             }
 
-            string stamp = DateTime.Now.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture);
-            string target = Path.Combine(Folder, $"partie-de-cote-{stamp}.json");
+            moved += SetAside(Path.Combine(Folder, SaveSystem.LegacyFileName), "ancienne", stamp) ? 1 : 0;
 
-            File.Move(FilePath, target);
+            if (moved == 0)
+            {
+                Debug.Log("[Sous la Ville] Aucune partie enregistrée : la prochaine sera neuve.");
+            }
+        }
+
+        private static bool SetAside(string path, string label, string stamp)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                return false;
+            }
+
+            string target = Path.Combine(Folder, $"partie-de-cote-{label}-{stamp}.json");
+            File.Move(path, target);
             Debug.Log($"[Sous la Ville] Partie mise de côté, rien n'est perdu : {target}");
+            return true;
         }
     }
 }

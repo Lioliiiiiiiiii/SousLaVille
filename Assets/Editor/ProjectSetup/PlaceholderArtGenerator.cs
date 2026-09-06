@@ -828,6 +828,14 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoGrow, BuildGrowPicto());
                 WriteTexture(PlantBasinTexture, BuildPlantBasinV2());
 
+                // Les cinq images de l'ecran de choix, phase 20.
+                WriteTexture(PictoVillage, BuildVillagePicto());
+                WriteTexture(PictoNew, BuildNewPicto());
+                WriteTexture(PictoErase, BuildErasePicto());
+                WriteTexture(PictoYes, BuildYesPicto());
+                WriteTexture(PictoNo, BuildNoPicto());
+                WriteVillageNames();
+
                 WriteTexture(PictoSpring, BuildSpringPictoV2(), HudPictoSize);
                 WriteTexture(PictoSummer, BuildSummerPictoV2(), HudPictoSize);
                 WriteTexture(PictoAutumn, BuildAutumnPictoV2(), HudPictoSize);
@@ -1140,6 +1148,11 @@ namespace SousLaVille.EditorTools
                          PictoDig, PictoRemove, CursorTarget, PictoDropFull,
                          PictoDropEmpty, PictoRepair, PictoGrow, PlantBasinTexture,
                          PictoSpring, PictoSummer, PictoAutumn, PictoWinter })
+            {
+                ConfigureImporter(path, null);
+            }
+
+            foreach (string path in VillageScreenTextures)
             {
                 ConfigureImporter(path, null);
             }
@@ -1840,6 +1853,14 @@ namespace SousLaVille.EditorTools
                 SignBackTexture, PictoCardCursor, SignPostTexture, HouseIconTexture, PlantInletTexture,
                 HudBoxTexture
             };
+
+            foreach (string path in VillageScreenTextures)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null)
+                {
+                    return false;
+                }
+            }
 
             foreach (string path in sprites)
             {

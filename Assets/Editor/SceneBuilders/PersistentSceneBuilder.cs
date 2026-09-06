@@ -17,7 +17,7 @@ namespace SousLaVille.EditorTools
     /// Scene Persistent : le GameManager, le SceneRouter, la camera unique, le personnage et
     /// le HUD. Jamais dechargee, elle survit a toutes les bascules surface / sous-sol.
     /// </summary>
-    public static class PersistentSceneBuilder
+    public static partial class PersistentSceneBuilder
     {
         public const string SceneName = "Persistent";
 
@@ -627,6 +627,12 @@ namespace SousLaVille.EditorTools
             CreateSignPlan(canvasObject);
             CreateSpeechBox(canvasObject);
             CreateItemLabel(canvasObject);
+
+            // EN DERNIER, phase 20. L'ordre des enfants du Canvas EST l'ordre de dessin :
+            // l'ecran de choix doit couvrir les gouttes, la saison et tout le reste, puisqu'il
+            // s'ouvre alors qu'aucun village n'est encore charge et que ces indicateurs ne
+            // veulent rien dire.
+            CreateVillageSelect(canvasObject);
 
             ScreenFader fader = canvasObject.AddComponent<ScreenFader>();
             SerializedObject serializedFader = new SerializedObject(fader);

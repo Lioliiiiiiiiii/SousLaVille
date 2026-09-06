@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -93,6 +95,16 @@ namespace SousLaVille.EditorTools
             PlayerSettings.WebGL.dataCaching = true;
 
             PlayerSettings.WebGL.linkerTarget = WebGLLinkerTarget.Wasm;
+
+            // UN NUMERO DE VERSION NEUF A CHAQUE BUILD. Le gabarit le colle en « ?v= » sur
+            // l'adresse de chaque fichier du jeu. Sans cela, le navigateur de Victorien
+            // rejouerait l'ancienne version a chaque mise a jour : le cache d'Unity garde les
+            // fichiers dans l'IndexedDB tant que l'URL ne bouge pas, et celui de GitHub Pages
+            // peut melanger dix minutes durant un ancien .wasm avec de nouvelles donnees.
+            //
+            // Constate le 6 septembre 2026 : le jeu publie etait a jour, le navigateur non.
+            PlayerSettings.bundleVersion = DateTime.Now.ToString("yyyy.MM.dd.HHmm",
+                CultureInfo.InvariantCulture);
 
             // La fenetre du navigateur donne la taille ; ces valeurs ne servent qu'au canvas
             // avant que le gabarit ne l'etire sur toute la page. 16/9, comme le 320x180.

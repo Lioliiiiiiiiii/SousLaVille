@@ -1,3 +1,5 @@
+using System;
+using SousLaVille.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -39,11 +41,66 @@ namespace SousLaVille.Core
                 return;
             }
 
+            // PHASE 20 : le village se choisit AVANT que les couches de jeu ne se chargent.
+            //
+            // L'ordre n'est pas une commodite. SaveSystem lit son fichier des que la carte et
+            // le reseau repondent : si les couches etaient la pendant que l'ecran est ouvert,
+            // le village 1 serait charge sous l'ecran de choix, et le village choisi ensuite
+            // arriverait par-dessus une partie deja restauree.
+            await ChooseVillageAsync(manager);
+
             await manager.Router.LoadGameplayScenesAsync();
 
             // Boot n'a plus de raison d'exister. Le discard dit au compilateur que ne pas
             // attendre est voulu : cet objet meurt avec la scene qu'il decharge.
             _ = SceneManager.UnloadSceneAsync(bootScene);
+        }
+
+        /// <summary>
+        /// Ouvre l'ecran de choix et attend. En sortie, SaveSystem sait quel village il lira.
+        ///
+        /// Sans ecran dans la scene — une scene Persistent d'avant la phase 20, non
+        /// reconstruite — le jeu ne reste pas bloque : il prend le village 1 et le dit en
+        /// console. Un filet qui echoue en silence serait pire que pas de filet.
+        /// </summary>
+        private static async Awaitable ChooseVillageAsync(GameManager manager)
+        {
+            if (manager.Save == null)
+            {
+                Debug.LogError("[Sous la Ville] Aucune sauvegarde sur le GameManager.");
+                return;
+            }
+
+            VillageSelectScreen screen =
+                FindAnyObjectByType<VillageSelectScreen>(FindObjectsInactive.Include);
+
+            if (screen == null)
+            {
+                Debug.LogWarning("[Sous la Ville] Écran de choix absent de la scène Persistent : " +
+                                 "le village 1 est pris d'office.");
+                manager.Save.ChooseSlot(1);
+                return;
+            }
+
+            int chosen = 0;
+            Action<int> onChosen = slot => chosen = slot;
+
+            screen.Chosen += onChosen;
+            screen.Open();
+
+            try
+            {
+                while (screen.IsOpen)
+                {
+                    await Awaitable.NextFrameAsync();
+                }
+            }
+            finally
+            {
+                screen.Chosen -= onChosen;
+            }
+
+            manager.Save.ChooseSlot(chosen);
         }
     }
 }
