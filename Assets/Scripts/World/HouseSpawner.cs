@@ -14,16 +14,19 @@ namespace SousLaVille.World
     /// </summary>
     public class HouseSpawner : MonoBehaviour
     {
-        [Tooltip("Cases des maisons, cuites depuis le plan du village.")]
+        [Tooltip("Cases de raccordement des maisons, cuites depuis le plan du village.")]
         [SerializeField] private Vector2Int[] cells;
+
+        [Tooltip("Coin bas-gauche de l'empreinte de deux cases sur deux de chaque maison, meme ordre.")]
+        [SerializeField] private Vector2Int[] anchors;
 
         [SerializeField] private GridMap map;
         [SerializeField] private Sprite houseSprite;
         [SerializeField] private Sprite dropServed;
         [SerializeField] private Sprite dropIdle;
 
-        [Tooltip("Hauteur de la goutte au-dessus du sol de la maison, en unites.")]
-        [SerializeField] private float dropHeight = 1.4f;
+        [Tooltip("Hauteur de la goutte au-dessus de la rangee du bas de la maison, en unites. Le toit monte a 2.")]
+        [SerializeField] private float dropHeight = 2.6f;
 
         private readonly List<House> houses = new List<House>();
 
@@ -79,7 +82,18 @@ namespace SousLaVille.World
             {
                 GameObject houseObject = new GameObject($"House_{i + 1:00}");
                 houseObject.transform.SetParent(transform, false);
-                houseObject.transform.position = map.CellToWorld(cells[i]);
+
+                // PHASE 18D : la maison couvre deux cases sur deux. Son pivot est au milieu de sa
+                // largeur, donc elle se pose a un demi-carreau a l'est du centre de la case
+                // d'ancrage, le coin bas-gauche de l'empreinte. Sans ancre cuite, elle retombe
+                // sur sa case de raccordement et le dit.
+                Vector2Int anchor = anchors != null && i < anchors.Length ? anchors[i] : cells[i];
+                if (anchors == null || i >= anchors.Length)
+                {
+                    Debug.LogError($"[Sous la Ville] La maison {cells[i]} n'a pas d'ancre : reconstruis la scène Surface.");
+                }
+
+                houseObject.transform.position = map.CellToWorld(anchor) + new Vector3(0.5f, 0f, 0f);
 
                 SpriteRenderer body = houseObject.AddComponent<SpriteRenderer>();
                 body.sprite = houseSprite;

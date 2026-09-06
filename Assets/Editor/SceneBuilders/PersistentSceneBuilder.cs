@@ -1210,7 +1210,7 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("cursor").objectReferenceValue = cursor;
             serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
             serialized.FindProperty("grass").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.GrassTexture);
-            serialized.FindProperty("house").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.HouseTexture);
+            serialized.FindProperty("house").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.HouseIconTexture);
             serialized.FindProperty("emptyPost").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.SignPostTexture);
             serialized.FindProperty("maxWidth").intValue = maxWidth;
             serialized.FindProperty("maxHeight").intValue = maxHeight;

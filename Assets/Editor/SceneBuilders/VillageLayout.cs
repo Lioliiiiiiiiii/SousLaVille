@@ -15,7 +15,8 @@ namespace SousLaVille.EditorTools
     ///   .  herbe              #  chemin             P  dalle du parc
     ///   S  sol station        H  haie (bloquant)    B  batiment station (bloquant)
     ///   M  bouche d'egout     X  depart du joueur   T  entree de la station
-    ///   A  maison (bloquant)  F  facade de l'atelier (bloquant)   D  porte de l'atelier
+    ///   A  maison, case de raccordement (bloquant)   a  corps de la maison (bloquant)
+    ///   F  facade de l'atelier (bloquant)   D  porte de l'atelier
     ///   G  facade de l'usine a tuyaux (bloquant)                   E  sa porte
     ///   O  fontaine du parc (bloquant)   Y  arbre (bloquant)
     ///   I  panneau de signalisation (NE bloque PAS : c'est un repere)
@@ -85,6 +86,15 @@ namespace SousLaVille.EditorTools
         public const char PlayerStart = 'X';
         public const char PlantInlet = 'T';
         public const char House = 'A';
+
+        /// <summary>
+        /// LE CORPS D'UNE MAISON, phase 18d. Une maison fait deux cases sur deux : la case A,
+        /// qui reste la case de raccordement — l'alcove du sous-sol lui est alignee, rien ne
+        /// bouge dessous —, et trois cases a qui bloquent sans rien raccorder. Les quatre
+        /// forment un carre ; le sprite de 32 sur 40 se pose sur sa rangee du bas, et sa porte
+        /// regarde le sud, comme celles des trois batiments. ValidateHouses le verifie.
+        /// </summary>
+        public const char HouseBody = 'a';
         public const char Facade = 'F';
         public const char Door = 'D';
         public const char PipeFacade = 'G';
@@ -124,33 +134,33 @@ namespace SousLaVille.EditorTools
         {
             "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
             "H...........YYY....YYY...........YYYY.......Y.....Y.....YYY....H",
-            "H.....Y............YYY...........YYY....................YYY....H",
-            "H.........................................................A....H",
+            "H.....Y............YYY...........YYY...................YYYaa...H",
+            "H.........................................................Aa...H",
             "H.................#########################################....H",
-            "H.YYY.............#....#...........YYY........#................H",
-            "H.YYY...........Y.#....#......Y....YYY.......A#.....Y..........H",
-            "H.................#....#......................#................H",
-            "H.................#....#......NNNN......Y.....#...............YH",
-            "H.........#########....#...A..NNNN............####M............H",
-            "H..Y......A.......#....#...#...J..............#................H",
+            "H.YYY.............#....#...........YYY......aa#................H",
+            "H.YYY...........Y.#....#......Y....YYY......aA#.....Y..........H",
+            "H.........aa......#....#......................#................H",
+            "H.........Aa......#....#...aa.NNNN......Y.....#...............YH",
+            "H.........#########....#...Aa.NNNN............####M............H",
+            "H..Y..............#....#...#...J..............#................H",
             "H........M#################M########.......Y..#................H",
             "H..........#......#..#.....#.V.....#..Y.......#................H",
-            "H..........#......#..#.....#.......#..........#.............YY.H",
-            "H..........#......#..#.....#.....Y.#..........##########A...YY.H",
-            "H.YY.......#......A..#.....#.......#..........#................H",
-            "H.YY.......#.........#.....#.......#..........#................H",
+            "H..........#......#..#.....#.......#..........#.........aa..YY.H",
+            "H..........#......#..#.....#.....Y.#..........##########Aa..YY.H",
+            "H.YY.......#......Aa.#.....#.......#..........#................H",
+            "H.YY.......#......aa.#.....#.......#..........#................H",
             "H.BBBBBBBBB#.........#FFFF.#..GGGG.#YYY.......#.....YYY........H",
-            "H.BSSSSSSSB#.....YY..#FFFFV#..GGGG.#YYY.......#.....YYY.Y......H",
-            "H.BSSSTSSSB#.....YY..#.D...#...E...#.......A###................H",
+            "H.BSSSSSSSB#.....YY..#FFFFV#..GGGG.#YYY...aa..#.....YYY.Y......H",
+            "H.BSSSTSSSB#.....YY..#.D...#...E...#......aA###................H",
             "H.BSSSSSSSB#.........###############..........#................H",
             "H.BSSSSSSSB#...HHHHHHHHHHHHHPHHHHHHHHHHHHH....#................H",
             "H.BBBBSBBBB#...HPPPPPPPPPPPPPPPPPPPPPPPPPH....############M....H",
             "H....##....#...HPHHHHHHHPHHHHHHHHHPHHHHHPH....#................H",
-            "H....A#....#...HPHPPPPPPPPPPPPPPPPPPPHPHPH....#................H",
-            "H.....#....#...HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
-            "H.YY..#.######.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.............YYYH",
-            "H.YY..###....A.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY######AY......YYYH",
-            "H.....#.#...V.XPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
+            "H...aA#....#...HPHPPPPPPPPPPPPPPPPPPPHPHPH....#................H",
+            "H...aa#....#...HPHPHPHHHHHPHHHPHHHPHPHPHPH....#................H",
+            "H.YY..#.######.HPHPHPHPPPPPPPPPPPHPHPHPHPH..YY#.....aa......YYYH",
+            "H.YY..###...aA.HPHPHPHPHPHHHPHHHPHPHPHPHPH..YY######AaY.....YYYH",
+            "H.....#.#..VaaXPPHPHPHPHPHHHPHHHPHPHPHPHPH....#................H",
             "H.....#.#.Y....HPHPHPHPHPHHHHHHHPHPHPHPHPH....#................H",
             "H.....#.#......HPHPHPHPHPHPHOPPPPHPHPHPHPP....#................H",
             "H.....#.#......HPHPHPHPHHHPHHHHHHHHHPHPHPH....#............Y...H",
@@ -158,12 +168,12 @@ namespace SousLaVille.EditorTools
             "H.....#.#MV....HPHPHHHHHPHHHHHPHHHHHHHPHPH....#................H",
             "H.Y...#........HPHPPPPPPPPPPPPPPPPPPPPPPPH....####M###########.H",
             "H.....#........HPHHHHHPHHHPHHHHHPHHHPHHHPH...................#.H",
-            "H.....#........HPPPPPPPPPPPPPPPPPPPPPPPPPH...........YYY.....AYH",
-            "H.YYY.#.....YY.HHHHHHHHHHHHHPHHHHHHHHHHHHH..Y........YYY.......H",
+            "H.....#........HPPPPPPPPPPPPPPPPPPPPPPPPPH...........YYY....aAYH",
+            "H.YYY.#.....YY.HHHHHHHHHHHHHPHHHHHHHHHHHHH..Y........YYY....aa.H",
             "H.YYY.#.....YY.................................................H",
             "H.....#############################............................H",
-            "H..........................#......A..........................Y.H",
-            "H..........Y..YYY..........M...............YYY..Y..............H",
+            "H..........................#......Aa.........................Y.H",
+            "H..........Y..YYY..........M......aa.......YYY..Y..............H",
             "H.............YYY...Y.................Y....YYY..........Y......H",
             "H.............................Y................................H",
             "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH",
@@ -207,6 +217,7 @@ namespace SousLaVille.EditorTools
                     // De la dalle sous la fontaine : son bassin se pose par-dessus.
                     return Park;
                 case House:
+                case HouseBody:
                     // De l'herbe sous la maison : la tuile bloquante se pose par-dessus.
                     return Grass;
                 case Tree:
@@ -352,10 +363,96 @@ namespace SousLaVille.EditorTools
 
             ok &= ValidateDecor(reachable);
             ok &= ValidateRoads();
+            ok &= ValidateHouses();
 
             Debug.Log($"[Sous la Ville] Village : {reachable.Count} case(s) praticable(s), " +
                       $"toutes reliées ; {FindAll(Tree).Count} arbre(s), " +
                       $"{RoadSigns().Count} panneau(x) dérivé(s) des routes.");
+
+            return ok;
+        }
+
+        /// <summary>
+        /// LE COIN BAS-GAUCHE de l'empreinte d'une maison, phase 18d : le carre de deux sur deux
+        /// forme de la case A et de trois cases a. Rend faux si la case A n'est dans aucun tel
+        /// carre, ou dans plusieurs — une maison qu'on ne saurait pas poser.
+        /// </summary>
+        public static bool HouseAnchor(Vector2Int house, out Vector2Int anchor)
+        {
+            anchor = house;
+            int found = 0;
+
+            // A peut etre n'importe laquelle des quatre cases du carre.
+            foreach (Vector2Int corner in new[] { house, house + Vector2Int.left,
+                         house + Vector2Int.down, house + Vector2Int.down + Vector2Int.left })
+            {
+                bool complete = true;
+                for (int dy = 0; dy <= 1; dy++)
+                {
+                    for (int dx = 0; dx <= 1; dx++)
+                    {
+                        Vector2Int cell = corner + new Vector2Int(dx, dy);
+                        complete &= cell == house || At(cell.x, cell.y) == HouseBody;
+                    }
+                }
+
+                if (complete)
+                {
+                    anchor = corner;
+                    found++;
+                }
+            }
+
+            return found == 1;
+        }
+
+        /// <summary>
+        /// LES MAISONS TIENNENT-ELLES DEBOUT ? Chaque A a son carre de trois a, et un seul ;
+        /// chaque a appartient au carre d'un A — pas de corps orphelin ; et la porte, au milieu
+        /// de la rangee du sud, ouvre sur au moins une case praticable. Douze fois trois cases
+        /// ecrites a la main dans le plan : c'est exactement ce qu'un filet doit relire.
+        /// </summary>
+        private static bool ValidateHouses()
+        {
+            bool ok = true;
+            HashSet<Vector2Int> claimed = new HashSet<Vector2Int>();
+
+            foreach (Vector2Int house in FindAll(House))
+            {
+                if (!HouseAnchor(house, out Vector2Int anchor))
+                {
+                    Debug.LogError($"[Sous la Ville] La maison {house} n'a pas son carre de deux " +
+                                   "sur deux : il lui faut trois cases « a », et un seul carre.");
+                    ok = false;
+                    continue;
+                }
+
+                for (int dy = 0; dy <= 1; dy++)
+                {
+                    for (int dx = 0; dx <= 1; dx++)
+                    {
+                        claimed.Add(anchor + new Vector2Int(dx, dy));
+                    }
+                }
+
+                if (!IsWalkable(anchor + Vector2Int.down)
+                    && !IsWalkable(anchor + Vector2Int.down + Vector2Int.right))
+                {
+                    Debug.LogError($"[Sous la Ville] La maison {house} a sa porte au sud murée : " +
+                                   "aucune des deux cases devant elle n'est praticable.");
+                    ok = false;
+                }
+            }
+
+            foreach (Vector2Int body in FindAll(HouseBody))
+            {
+                if (!claimed.Contains(body))
+                {
+                    Debug.LogError($"[Sous la Ville] La case {body} est un corps de maison « a » " +
+                                   "qui n'appartient à aucune maison.");
+                    ok = false;
+                }
+            }
 
             return ok;
         }
@@ -619,7 +716,7 @@ namespace SousLaVille.EditorTools
             }
 
             char marker = At(cell.x, cell.y);
-            return marker != Hedge && marker != House && marker != PlantWall
+            return marker != Hedge && marker != House && marker != HouseBody && marker != PlantWall
                 && marker != Facade && marker != PipeFacade && marker != SignFacade
                 && marker != Fountain && marker != Tree && marker != GuidePost;
         }

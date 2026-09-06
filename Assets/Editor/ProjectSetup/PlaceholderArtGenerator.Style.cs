@@ -637,19 +637,368 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// LE POTEAU d'un panneau : un fut d'acier a deux tons, un pied, et son trait. Le poteau
-        /// des vingt-neuf panneaux du Code ; les plaques ne changent pas, elles sont le Code.
+        /// LE POTEAU d'un panneau : un fut d'acier a deux tons, un pied, et son trait d'Ink. Le
+        /// poteau des vingt-neuf panneaux du Code, du poteau vide et du dos de carte ; les
+        /// plaques ne changent pas, elles sont le Code. A dessiner AVANT la plaque : le trait ne
+        /// se pose que dans le vide, il ne mordra donc pas ce qui vient ensuite.
         /// </summary>
+        private static void DrawSignPost(Color32[] pixels, int width)
+        {
+            Fill(pixels, width, 7, 8, 1, 13, Palette.Steel);
+            Fill(pixels, width, 8, 8, 1, 13, Palette.SteelDark);
+            Fill(pixels, width, 6, 9, 1, 1, Palette.SteelDark);
+            Outline(pixels, width, Palette.Ink);
+        }
+
         private static Color32[] BuildSignPostV2()
         {
             Color32[] pixels = NewTransparent(PlayerWidth * PlayerHeight);
-
-            Fill(pixels, PlayerWidth, 7, 8, 1, 12, Palette.Steel);
-            Fill(pixels, PlayerWidth, 8, 8, 1, 12, Palette.SteelDark);
-            Fill(pixels, PlayerWidth, 6, 9, 1, 1, Palette.SteelDark);
-
-            Outline(pixels, PlayerWidth, Palette.Ink);
+            DrawSignPost(pixels, PlayerWidth);
             return pixels;
+        }
+
+        /// <summary>
+        /// LA MAISON DU PLAN, 16 sur 24 : le symbole d'une maison sur la carte du mini-jeu Le
+        /// Plan, ou une case fait seize pixels et ou la maison de deux cases sur deux n'a pas sa
+        /// place. La meme grammaire en petit : un toit en plan, deux fenetres, une porte, cernee.
+        /// </summary>
+        private static Color32[] BuildHouseIcon()
+        {
+            const int w = PlayerWidth;
+            Color32[] p = NewTransparent(w * PlayerHeight);
+
+            Fill(p, w, 2, 13, 1, 9, Palette.Bone);
+            Fill(p, w, 2, 13, 1, 1, Palette.SteelDark);            // la plinthe
+            Fill(p, w, 2, 13, 5, 5, Palette.StoneLight);
+            Fill(p, w, 6, 9, 2, 7, Palette.WoodDark);              // la porte
+            Fill(p, w, 7, 8, 2, 6, Palette.Wood);
+            Fill(p, w, 3, 4, 5, 7, Palette.Ice);                   // deux fenetres
+            Fill(p, w, 11, 12, 5, 7, Palette.Ice);
+            Fill(p, w, 2, 13, 10, 10, Palette.SteelDark);          // l'avant-toit
+            Fill(p, w, 1, 14, 11, 11, Palette.SteelLight);
+
+            Fill(p, w, 1, 14, 12, 22, Palette.Roof);
+            Fill(p, w, 1, 2, 12, 21, Palette.RoofLight);
+            Fill(p, w, 13, 14, 12, 21, Palette.RoofLight);
+            Fill(p, w, 3, 12, 15, 15, Palette.Brick);
+            Fill(p, w, 3, 12, 19, 19, Palette.Brick);
+            Fill(p, w, 1, 14, 12, 12, Palette.Brick);
+            Fill(p, w, 3, 12, 22, 22, Palette.RoofLight);         // le faite
+            Plot(p, w, 1, 22, new Color32(0, 0, 0, 0));
+            Plot(p, w, 14, 22, new Color32(0, 0, 0, 0));
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// UNE CASE DE FACADE des trois batiments, phase 18d, sur le patron des masques de 17b :
+        /// pas de voisin au nord, c'est la rangee du TOIT — un plan a planches, ses versants
+        /// clairs aux bouts libres, le faite en haut, l'egout dans l'ombre en bas ; sinon le MUR —
+        /// bardage clair, une fenetre a carreaux sur son appui, la plinthe, et l'avant-toit qui
+        /// le surplombe. Les cotes libres se cernent d'Ink et leurs angles s'arrondissent : le
+        /// meme Outline que tout ce qui se dresse, applique aux seuls bords ou le batiment
+        /// s'arrete. Meme grammaire que la maison, en plus grand.
+        /// </summary>
+        private static Color32[] BuildFacadeV2(int mask)
+        {
+            bool north = (mask & 1) != 0;
+            bool east = (mask & 2) != 0;
+            bool south = (mask & 4) != 0;
+            bool west = (mask & 8) != 0;
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            if (!north)
+            {
+                Fill(p, w, 0, 15, 0, 15, Palette.Roof);
+                foreach (int plank in new[] { 4, 8, 12 })
+                {
+                    Fill(p, w, 0, 15, plank, plank, Palette.Brick);
+                }
+
+                if (!west)
+                {
+                    Fill(p, w, 1, 2, 1, 15, Palette.RoofLight);
+                    Fill(p, w, 3, 3, 1, 12, Palette.Brick);
+                }
+
+                if (!east)
+                {
+                    Fill(p, w, 13, 14, 1, 15, Palette.RoofLight);
+                    Fill(p, w, 12, 12, 1, 12, Palette.Brick);
+                }
+
+                Fill(p, w, 0, 15, 13, 14, Palette.RoofLight);       // le faite
+                if (south)
+                {
+                    Fill(p, w, 0, 15, 0, 0, Palette.Brick);         // l'egout, dans l'ombre
+                }
+            }
+            else
+            {
+                Fill(p, w, 0, 15, 0, 12, Palette.Bone);
+                foreach (int line in new[] { 3, 7, 11 })
+                {
+                    Fill(p, w, 0, 15, line, line, Palette.StoneLight);
+                }
+
+                if (!south)
+                {
+                    Fill(p, w, 0, 15, 1, 1, Palette.SteelDark);     // la plinthe
+                }
+
+                DrawWindow(p, w, 4, 5);
+
+                Fill(p, w, 0, 15, 13, 13, Palette.SteelDark);       // l'ombre de l'avant-toit
+                Fill(p, w, 0, 15, 14, 15, Palette.SteelLight);      // l'avant-toit
+            }
+
+            // Les cotes libres : le bord se vide, l'angle se rogne, et le trait vient s'y poser.
+            if (!north) Fill(p, w, 0, 15, 15, 15, clear);
+            if (!south) Fill(p, w, 0, 15, 0, 0, clear);
+            if (!east) Fill(p, w, 15, 15, 0, 15, clear);
+            if (!west) Fill(p, w, 0, 0, 0, 15, clear);
+            // Seuls les angles du TOIT s'arrondissent : un batiment repose a plat sur le sol,
+            // et sa base a des angles droits, comme celle de la maison.
+            if (!north && !west) Plot(p, w, 1, 14, clear);
+            if (!north && !east) Plot(p, w, 14, 14, clear);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// UNE ENSEIGNE, phase 18d : un panonceau de bois arrondi a trois tons, et dessus le signe
+        /// du metier — zero les plaques, un les tuyaux, deux les panneaux. Cernee, comme tout ce
+        /// qui se dresse ; elle se pose sur le mur, au-dessus de la porte.
+        /// </summary>
+        private static Color32[] BuildSignboardV2(int trade)
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            RoundedBox(p, w, 1, 14, 2, 13, Palette.Wood, Palette.WoodDark, Palette.WoodLight);
+
+            switch (trade)
+            {
+                case 0:
+                    // Une plaque d'egout : un disque et ses deux barres.
+                    FillEllipse(p, w, 7.5f, 7.5f, 3.6f, 3.6f, Palette.Steel);
+                    Fill(p, w, 6, 9, 6, 6, Palette.Charcoal);
+                    Fill(p, w, 6, 9, 9, 9, Palette.Charcoal);
+                    break;
+
+                case 1:
+                    // Un tuyau vu en bout : un anneau clair et son trou sombre.
+                    FillEllipse(p, w, 7.5f, 7.5f, 3.6f, 3.6f, Palette.SteelLight);
+                    FillEllipse(p, w, 7.5f, 7.5f, 1.8f, 1.8f, Palette.Charcoal);
+                    break;
+
+                default:
+                    // Un panneau : le triangle borde de rouge, la forme que Victorien lit en premier.
+                    for (int row = 0; row < 7; row++)
+                    {
+                        int half = 6 - row;
+                        Fill(p, w, 8 - half, 7 + half, 4 + row, 4 + row, Palette.SignRed);
+                    }
+
+                    for (int row = 0; row < 3; row++)
+                    {
+                        int half = 3 - row;
+                        Fill(p, w, 8 - half, 7 + half, 5 + row, 5 + row, Palette.Paper);
+                    }
+
+                    break;
+            }
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LE MUR DE L'ENCEINTE de la station, phase 18d : des blocs de beton a trois tons — la
+        /// face, le joint dans l'ombre, l'arete du haut de chaque bloc eclairee — decales d'une
+        /// assise a l'autre. Plus le bleu de 17b, qui faisait un mur de piscine.
+        /// </summary>
+        private static Color32[] BuildPlantWallV2()
+        {
+            const int w = TileSize;
+            Color32[] p = new Color32[w * w];
+
+            for (int i = 0; i < p.Length; i++)
+            {
+                p[i] = Palette.Steel;
+            }
+
+            for (int y = 0; y < w; y++)
+            {
+                int course = y / 4;
+                if (y % 4 == 0)
+                {
+                    Fill(p, w, 0, 15, y, y, Palette.SteelDark);
+                    continue;
+                }
+
+                if (y % 4 == 3)
+                {
+                    Fill(p, w, 0, 15, y, y, Palette.SteelLight);
+                }
+
+                for (int x = (course % 2) * 4; x < w; x += 8)
+                {
+                    p[y * w + x] = Palette.SteelDark;
+                }
+            }
+
+            return p;
+        }
+
+        /// <summary>
+        /// L'ENTREE DE LA STATION, phase 18d : une grille carree aux coins arrondis, ses barreaux
+        /// d'acier sur le noir du puits. Le passage vers le sous-sol se lit comme la bouche
+        /// d'egout, et ne se confond plus avec le mur de l'enceinte dont il empruntait l'image.
+        /// </summary>
+        private static Color32[] BuildPlantInlet()
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            RoundedBox(p, w, 1, 14, 1, 14, Palette.Charcoal, Palette.SteelDark, Palette.Steel);
+            foreach (int x in new[] { 4, 7, 10 })
+            {
+                Fill(p, w, x, x + 1, 3, 12, Palette.Steel);
+                Fill(p, w, x, x, 3, 12, Palette.SteelLight);
+            }
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// UNE CUVE de la station, phase 18d : un bassin rond vu de dessus, le bord d'acier
+        /// eclaire vers la lumiere, l'eau dedans et son reflet. Cernee.
+        /// </summary>
+        private static Color32[] BuildPlantBasinV2()
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            FillEllipse(p, w, 7.5f, 7.5f, 6.6f, 6.6f, Palette.Steel);
+            LightRim(p, w, 7.5f, 7.5f, 6.6f, Palette.SteelLight);
+            FillEllipse(p, w, 7.5f, 7.5f, 4.6f, 4.6f, Palette.Water);
+            Fill(p, w, 5, 6, 9, 9, Palette.Ice);
+            Plot(p, w, 5, 8, Palette.Ice);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// Le bord eclaire d'un disque : sa moitie tournee vers la lumiere, en haut a gauche,
+        /// passe a la couleur claire, sur une couronne d'un pixel et demi. C'est ce qui fait
+        /// lire un rond comme un objet pose et non comme une tache.
+        /// </summary>
+        private static void LightRim(Color32[] p, int w, float cx, float cy, float radius, Color32 light)
+        {
+            int h = p.Length / w;
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    float dx = x - cx;
+                    float dy = y - cy;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (d <= radius && d > radius - 1.6f && dy - dx > 1.5f)
+                    {
+                        p[y * w + x] = light;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// LA BOUCHE D'EGOUT, phase 18d : le disque sombre de la plaque, un jonc d'acier
+        /// eclaire vers la lumiere, deux fentes, et le trait. Ronde, pour se distinguer des
+        /// dalles du chemin au premier coup d'oeil — decision de la phase 1, qui tient.
+        /// </summary>
+        private static Color32[] BuildManholeV2()
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            FillEllipse(p, w, 7.5f, 7.5f, 7.0f, 7.0f, Palette.Steel);
+            LightRim(p, w, 7.5f, 7.5f, 7.0f, Palette.SteelLight);
+            FillEllipse(p, w, 7.5f, 7.5f, 5.4f, 5.4f, Palette.Charcoal);
+            Fill(p, w, 6, 6, 5, 10, Palette.Ink);
+            Fill(p, w, 9, 9, 5, 10, Palette.Ink);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LA PORTE d'un batiment, posee sur le seuil devant sa facade : un encadrement sombre,
+        /// un vantail a trois tons, sa poignee, et le trait. On la reconnait de loin, et Espace
+        /// dessus fait entrer comme sur une bouche d'egout.
+        /// </summary>
+        private static Color32[] BuildDoorV2()
+        {
+            const int w = TileSize;
+            Color32[] p = NewTransparent(w * w);
+
+            Fill(p, w, 3, 12, 1, 14, Palette.WoodDark);
+            Fill(p, w, 4, 11, 1, 13, Palette.Wood);
+            Fill(p, w, 4, 4, 1, 13, Palette.WoodLight);
+            Fill(p, w, 4, 11, 13, 13, Palette.WoodLight);
+            Fill(p, w, 5, 10, 8, 8, Palette.WoodDark);
+            Fill(p, w, 10, 10, 6, 7, Palette.Sun);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LA FONTAINE du parc, 16 sur 24, phase 18d : un bassin de pierre a trois tons, l'eau
+        /// dedans, une colonne, une vasque haute, et le jet qui retombe. Cernee d'Ink.
+        /// </summary>
+        private static Color32[] BuildFountainSpriteV2()
+        {
+            const int w = PlayerWidth;
+            Color32[] p = NewTransparent(w * PlayerHeight);
+
+            RoundedBox(p, w, 1, 14, 1, 7, Palette.Steel, Palette.SteelDark, null);
+            Fill(p, w, 2, 13, 7, 7, Palette.SteelLight);        // la margelle
+            Fill(p, w, 3, 12, 3, 6, Palette.Water);
+            Fill(p, w, 4, 5, 5, 5, Palette.Ice);
+
+            Fill(p, w, 6, 9, 8, 14, Palette.Steel);               // la colonne
+            Fill(p, w, 6, 6, 8, 14, Palette.SteelLight);
+            Fill(p, w, 9, 9, 8, 14, Palette.SteelDark);
+
+            Fill(p, w, 4, 11, 15, 17, Palette.Steel);             // la vasque haute
+            Fill(p, w, 4, 11, 15, 15, Palette.SteelDark);
+            Fill(p, w, 4, 11, 17, 17, Palette.SteelLight);
+            Fill(p, w, 5, 10, 16, 16, Palette.Water);
+
+            Fill(p, w, 7, 8, 18, 22, Palette.Ice);                // le jet
+            Fill(p, w, 5, 5, 19, 20, Palette.Ice);
+            Fill(p, w, 10, 10, 19, 20, Palette.Ice);
+
+            Outline(p, w, Palette.Ink);
+            return p;
+        }
+
+        /// <summary>
+        /// LE PIED DE LA FONTAINE : la dalle du parc, et l'ombre du bassin dessus. La tuile
+        /// bloquante ; le sprite se pose par-dessus.
+        /// </summary>
+        private static Color32[] BuildFountainBaseV2()
+        {
+            Color32[] p = BuildSlabTile(Palette.SteelLight, Palette.Paper, Palette.Steel);
+            FillEllipse(p, TileSize, 7.5f, 4.0f, 7.4f, 3.2f, Palette.Steel);
+            return p;
         }
 
         // ---------------------------------------------------------------- les personnages

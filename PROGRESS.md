@@ -30,7 +30,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 15 | La Fabrique | Terminée |
 | 16 | Le Plan | Terminée |
 | 17 | Habillage | Terminée, et le rendu ne convient pas |
-| 18 | Le style de la référence | 18a à 18c faites, 18d à 18h à faire |
+| 18 | Le style de la référence | 18a à 18d faites, 18e à 18h à faire |
 
 ## Phase 0, ce qui est fait
 
@@ -2889,6 +2889,76 @@ précédent et a emporté `BuildPlantBasin`, deux méthodes plus haut. Un CS0103
 compilation suivante ; remis à sa place. Une suppression par script se relit dans le diff avant de
 compiler, ligne à ligne, et pas seulement par le nom de ce qu'on voulait supprimer.
 
+## Phase 18d, ce qui est fait
+
+Les bâtiments de la référence, règles 2, 3, 4 et 6 : un toit en plan sur la moitié de la hauteur,
+trois tons par matière, un trait autour de tout ce qui se dresse, des angles de toit arrondis.
+
+- **La maison fait deux cases sur deux**, `house.png` 32×40 (`BuildHouseV2`), pivot `HousePivot`
+  (0,5 ; 8/40) : posée à un demi-carreau à l'est du centre de sa case d'ancrage, elle couvre ses
+  deux cases du bas et se trie par Y sur cette rangée. Bardage clair à lignes, deux fenêtres à
+  carreaux sur leur appui, porte encadrée, plinthe, avant-toit et son ombre, toit à planches et
+  versants clairs, faîte, angles du haut arrondis, trait d'Ink.
+- **Le plan reçoit les maisons** : un marqueur `a`, corps de maison — bloquant, sans raccordement,
+  herbe dessous. La case `A` reste la case de raccordement, **n'importe où dans le carré** : pour
+  huit maisons sur douze la rue passe juste au nord de `A`, donc `A` est la rangée du toit et les
+  murs descendent au sud. `VillageLayout.HouseAnchor` trouve le carré ; `ValidateHouses` exige
+  pour chaque `A` un carré de trois `a` et un seul, aucun `a` orphelin, et une case praticable
+  devant la porte. Trente-six `a` écrits à la main par indice de ligne. Le village passe de 2233 à
+  **2197 cases praticables** ; 126 arbres, 32 panneaux, inchangés.
+- **Trois déplacements pour loger les carrés** : le guide du but de (12, 16) à (11, 16) — table
+  des leçons mise à jour —, l'arbre (53, 17) en (54, 17), l'arbre (58, 42) en (55, 42).
+- **Une maison remonte** : (10, 34) était coincée entre les rues y = 33 et y = 35, aucun carré
+  possible. Elle est en `A` = (10, 36), carré (10..11, 36..37), porte sur la rue y = 35. **Son
+  alcôve suit au sous-sol** : `A` en (10, 36), la galerie (10, 35) creusée depuis la chambre de
+  l'échelle (9, 33). Profondeur 2 des deux côtés, aucune crête traversée : « 14 destinations
+  atteignables sur 14 », bilan de l'eau inchangé. Une sauvegarde antérieure qui raccordait
+  (10, 34) perdrait ce raccord ; il n'y en a pas à garder.
+- `HouseSpawner` reçoit les **ancres** en plus des cases de raccordement, et pose la goutte à 2,6
+  unités, au-dessus du faîte. Sans ancre cuite il retombe sur la case et le dit.
+- **Le symbole de maison du mini-jeu Le Plan**, `house_icon.png` 16×24 (`BuildHouseIcon`) : la
+  carte du plan a des cases de seize pixels, la maison de deux sur deux n'y tient pas ; c'est un
+  symbole sur une carte, même grammaire en petit.
+- **Les trois façades** (`BuildFacadeV2`, seize masques) : rangée du toit — planches, versants
+  clairs aux bouts libres, faîte, égout dans l'ombre — et rangée du mur — bardage, fenêtre à
+  carreaux, plinthe, avant-toit. Les côtés libres se cernent d'Ink par le même `Outline` que tout
+  le reste, appliqué aux seuls bords où le bâtiment s'arrête ; seuls les angles du **toit**
+  s'arrondissent, la base d'un bâtiment est d'équerre.
+- **Les enseignes** (`BuildSignboardV2`) : un panonceau de bois arrondi à trois tons, cerné.
+- **La station** : le mur de l'enceinte en blocs de béton à trois tons (`BuildPlantWallV2`, plus
+  le bleu de piscine de 17b) ; **l'entrée a son image**, `plant_inlet.png`, une grille sur le puits
+  — elle empruntait celle du mur depuis la phase 1 ; les cuves sont des bassins ronds au bord
+  éclairé (`BuildPlantBasinV2`).
+- **La bouche** (`BuildManholeV2`) : disque de plaque, jonc d'acier éclairé vers la lumière par
+  `LightRim`, deux fentes, trait. **La porte** (`BuildDoorV2`) : vantail à trois tons, poignée,
+  trait. **La fontaine** (`BuildFountainSpriteV2`) : bassin de pierre, colonne, vasque, jet ; son
+  pied est la dalle du parc et l'ombre du bassin.
+- **Le poteau** : `DrawSignPost` — fût à deux tons, pied, trait d'Ink — dessiné **avant** la
+  plaque dans `BuildSign`, le poteau vide et le dos de carte. Les vingt-neuf plaques ne changent
+  pas : elles sont le Code.
+- Suppression de `BuildHouse`, `BuildFacade`, `BuildSignboard`, `BuildPlantWallTile`,
+  `BuildManhole`, `BuildPlantBasin`, `BuildFountainSprite`, `BuildFountainBase`, `BuildFountain`,
+  `BuildDoor`.
+
+## Phase 18d, vérifications faites
+
+- Compilation : zéro erreur, zéro avertissement, quatre fois (dessins et plan, sabotage, réparation,
+  pilote).
+- Art régénéré : **269 textures, 116 tuiles** ; palette tenue, 50 couleurs ; familles distinctes.
+- Planche des bâtiments regardée à cinq fois (`Captures/planche_18d_batiments.png`) : une reprise,
+  les angles du bas des façades remis d'équerre.
+- Cinq scènes construites : « 2197 cases praticables, toutes reliées », « 14 destinations
+  atteignables sur 14 », bilan de l'eau tenable.
+- **Sabotage** : le `a` de (42, 26) retiré → « La maison (43, 25) n'a pas son carré de deux sur
+  deux » et « La case (42, 25) est un corps de maison qui n'appartient à aucune maison », scène
+  Surface **non écrite**. Réparé, recompilé, reconstruit.
+- **Captures en jeu regardées** : le départ — la maison (12..13, 16..17) entre le guide et le
+  joueur, la goutte au-dessus du faîte —, l'atelier et l'usine à tuyaux avec toit, enseigne et
+  porte sur la rue, la station en béton avec sa grille, la maison remontée porte sur la rue y = 35.
+  **La capture de la fontaine ne montre rien** : le pilote a téléporté le joueur SUR la case de la
+  fontaine, qui bloque, et il la cache. Vue sur la planche ; à reprendre en jeu au pilote de 18e.
+- `git diff ProjectSettings/` vide.
+
 ## L'habillage de la phase 17 est terminé — et il ne convient pas
 
 Les sept sous-phases de la phase 17 sont faites : la palette et la méthode, la surface, le
@@ -2910,10 +2980,10 @@ panneaux et ses trois mini-jeux, et l'art. **Reste à le faire jouer par Victori
   Huit dimensions, chacune re-vérifiée adversarialement. **Il ne se refera pas** : les treize
   pannes silencieuses, les chiffrages et l'architecture des guides n'existent que là.
 
-## Prochaine étape : la phase 18d, les bâtiments
+## Prochaine étape : la phase 18e, les personnages
 
-Maisons de deux cases sur deux et le plan qui les reçoit, les trois façades, la station, la
-fontaine, la bouche, les portes, les enseignes, les poteaux. Puis 18e à 18h. Victorien joue après.
+Le joueur dans ses quatre directions et les six métiers, aux proportions de la référence — la tête
+fait la moitié — et cernés. Puis 18f à 18h. Victorien joue après.
 
 ## Décisions prises
 
@@ -2934,6 +3004,10 @@ fontaine, la bouche, les portes, les enseignes, les poteaux. Puis 18e à 18h. Vi
   deux sur deux, saisons par images.
 - **Phase 18b.** Ce qu'on foule est à l'ordre −1, ce qui se dresse à 0 et se trie par Y au pivot.
   Le réglage vit dans l'asset du Renderer2D, versionné sous `Assets/Settings`.
+- **Phase 18d.** La case `A` reste la case de raccordement mais peut être n'importe laquelle des
+  quatre du carré : la rue passe souvent juste au nord d'une maison, et son toit se tourne alors
+  vers la rue. Une maison qui n'a aucun carré possible **déménage avec son alcôve** plutôt que de
+  devenir une exception d'une case. Le plan du mini-jeu garde un symbole de maison de seize pixels.
 - **Phase 18c.** Les fleurs sont une tuile de sol semée par hachage, une case d'herbe libre sur
   vingt : c'est la tuile que les saisons échangeront. Rien de ce qu'on doit voir ne se tient juste
   au nord d'un arbre ; le plan bouge d'un arbre pour cela.

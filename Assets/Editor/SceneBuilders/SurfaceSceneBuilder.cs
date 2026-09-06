@@ -206,7 +206,7 @@ namespace SousLaVille.EditorTools
                     if (!VillageLayout.IsWalkable(new Vector2Int(x, y)))
                     {
                         blockingTiles[index] =
-                            marker == VillageLayout.House ? house
+                            marker == VillageLayout.House || marker == VillageLayout.HouseBody ? house
                             : marker == VillageLayout.Fountain ? fountainTile
                             : marker == VillageLayout.Tree ? tree
                             : marker == VillageLayout.Facade
@@ -447,10 +447,11 @@ namespace SousLaVille.EditorTools
         /// Le guide du but s'est d'abord tenu en (13, 16), DIRECTEMENT SOUS une maison : la
         /// goutte de la maison vit sur Surface_Overlay, un Sorting Layer au-dessus de
         /// Surface_Entities, et recouvrait donc son signal d'attention quel que soit son ordre
-        /// de tri. Un signal qu'on ne voit pas n'appelle personne. Il s'est décalé d'une case.
+        /// de tri. Un signal qu'on ne voit pas n'appelle personne. Il s'est décalé d'une case,
+        /// puis d'une seconde en 18d, quand la maison a pris deux cases sur deux.
         private static readonly GuideAssignment[] Guides =
         {
-            new GuideAssignment(new Vector2Int(12, 16), GuidePost.Lesson.Goal),
+            new GuideAssignment(new Vector2Int(11, 16), GuidePost.Lesson.Goal),
             new GuideAssignment(new Vector2Int(10, 11), GuidePost.Lesson.Manhole),
             new GuideAssignment(new Vector2Int(26, 26), GuidePost.Lesson.Seasons),
             new GuideAssignment(new Vector2Int(29, 32), GuidePost.Lesson.Repair)
@@ -578,7 +579,8 @@ namespace SousLaVille.EditorTools
             plant.transform.position = CellCenter(cell);
 
             SpriteRenderer renderer = plant.AddComponent<SpriteRenderer>();
-            renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlantWallTexture);
+            // Phase 18d : la grille de l'entree, et non plus l'image du mur de l'enceinte.
+            renderer.sprite = LoadSprite(PlaceholderArtGenerator.PlantInletTexture);
             SceneBuilderUtility.ApplyGroundMarkSort(renderer, EntitiesSortingLayer);
 
             // La station est un passage comme les autres : on y descend et on en remonte.
@@ -717,10 +719,17 @@ namespace SousLaVille.EditorTools
 
             SerializedObject serialized = new SerializedObject(spawner);
             SerializedProperty cellsProperty = serialized.FindProperty("cells");
+            SerializedProperty anchorsProperty = serialized.FindProperty("anchors");
             cellsProperty.arraySize = cells.Count;
+            anchorsProperty.arraySize = cells.Count;
             for (int i = 0; i < cells.Count; i++)
             {
                 cellsProperty.GetArrayElementAtIndex(i).vector2IntValue = cells[i];
+
+                // PHASE 18D : la case de raccordement et le coin bas-gauche de l'empreinte sont
+                // deux choses. ValidateVillage a deja refuse toute maison sans son carre.
+                VillageLayout.HouseAnchor(cells[i], out Vector2Int anchor);
+                anchorsProperty.GetArrayElementAtIndex(i).vector2IntValue = anchor;
             }
 
             serialized.FindProperty("map").objectReferenceValue = map;

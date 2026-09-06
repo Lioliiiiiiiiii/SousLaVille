@@ -31,10 +31,20 @@ namespace SousLaVille.EditorTools
         public const string PlantWallTexture = TilesFolder + "/tile_plant_wall.png";
         public const string LadderTexture = SpritesFolder + "/ladder.png";
 
-        // Les maisons, phase 4.
+        // Les maisons, phase 4 ; deux cases sur deux, 32 sur 40, depuis la phase 18d.
         public const string HouseTexture = SpritesFolder + "/house.png";
         public const string HouseInletTexture = SpritesFolder + "/house_inlet.png";
         public const string TileHouse = TilesFolder + "/Tile_House.asset";
+
+        /// <summary>
+        /// LE SYMBOLE DE MAISON du mini-jeu Le Plan, 16 sur 24, phase 18d : la carte du plan a
+        /// des cases de seize pixels, et la maison de deux cases sur deux du village n'y tient
+        /// pas. C'est un symbole sur une carte, pas la maison.
+        /// </summary>
+        public const string HouseIconTexture = SpritesFolder + "/house_icon.png";
+
+        /// <summary>L'entree de la station vue de la surface, phase 18d : une grille sur le puits.</summary>
+        public const string PlantInletTexture = SpritesFolder + "/plant_inlet.png";
 
         // Le personnage, un sprite par direction. Decide le 2 septembre 2026.
         public const string PlayerDown = SpritesFolder + "/player_down.png";
@@ -548,6 +558,14 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static readonly Vector2 TreePivot = new Vector2(0.5f, 0.25f);
 
+        /// <summary>
+        /// Phase 18d : la maison fait 32 sur 40 sur une empreinte de deux cases sur deux. Son
+        /// pivot est au milieu de sa largeur — la frontiere entre les deux cases du bas — et au
+        /// centre des seize pixels du bas : posee a un demi-carreau a l'est du centre de sa case
+        /// d'ancrage, elle couvre ses deux cases du bas et se trie par Y sur cette rangee.
+        /// </summary>
+        private static readonly Vector2 HousePivot = new Vector2(0.5f, 8f / 40f);
+
         // Le brun s'assombrit avec la profondeur, et la galerie vire au gris froid au plus
         // profond : la nuance se lit sans legende.
         private static readonly Color32[] EarthColors =
@@ -664,8 +682,10 @@ namespace SousLaVille.EditorTools
                 // ferme de toutes parts ; la pelouse fleurie est la pelouse et deux fleurs.
                 WriteTexture($"{TilesFolder}/tile_hedge.png", BuildBushTile(DecorMaskCount - 1));
                 WriteTexture(FlowersTexture, BuildFlowersTile());
-                WriteTexture($"{TilesFolder}/tile_plant_wall.png", BuildPlantWallTile());
-                WriteTileTexture("tile_house", Palette.Brick);
+                WriteTexture($"{TilesFolder}/tile_plant_wall.png", BuildPlantWallV2());
+                // Sous la maison, de la pelouse : le sprite couvre ses quatre cases, et ce qui
+                // depasse autour de son trait est de l'herbe.
+                WriteTexture($"{TilesFolder}/tile_house.png", BuildLawnTile());
 
                 for (int depth = 1; depth <= DepthCount; depth++)
                 {
@@ -681,10 +701,14 @@ namespace SousLaVille.EditorTools
                     }
                 }
 
-                WriteTexture(ManholeTexture, BuildManhole());
+                WriteTexture(ManholeTexture, BuildManholeV2());
                 WriteTexture(LadderTexture, BuildLadder(), PlayerWidth);
-                WriteTexture(HouseTexture, BuildHouse(), PlayerWidth);
+                // PHASE 18D : la maison de la reference, deux cases sur deux ; et son symbole
+                // de seize pour la carte du mini-jeu Le Plan.
+                WriteTexture(HouseTexture, BuildHouseV2(), HouseWidth);
+                WriteTexture(HouseIconTexture, BuildHouseIcon(), PlayerWidth);
                 WriteTexture(HouseInletTexture, BuildHouseInlet());
+                WriteTexture(PlantInletTexture, BuildPlantInlet());
 
                 WriteTexture(PlayerDown, BuildPlayer(Vector2Int.down), PlayerWidth);
                 WriteTexture(PlayerUp, BuildPlayer(Vector2Int.up), PlayerWidth);
@@ -702,7 +726,7 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoDropEmpty, BuildDrop(full: false));
                 WriteTexture(PictoRepair, BuildRepairPicto());
                 WriteTexture(PictoGrow, BuildGrowPicto());
-                WriteTexture(PlantBasinTexture, BuildPlantBasin());
+                WriteTexture(PlantBasinTexture, BuildPlantBasinV2());
 
                 WriteTexture(PictoSpring, BuildSpringPicto(), PictoSize);
                 WriteTexture(PictoSummer, BuildSummerPicto(), PictoSize);
@@ -713,16 +737,16 @@ namespace SousLaVille.EditorTools
 
                 for (int mask = 0; mask < DecorMaskCount; mask++)
                 {
-                    WriteTexture(FacadeTexture(mask), BuildFacade(mask));
+                    WriteTexture(FacadeTexture(mask), BuildFacadeV2(mask));
                 }
 
                 for (int who = 0; who < SignboardTextures.Length; who++)
                 {
-                    WriteTexture(SignboardTextures[who], BuildSignboard(who));
+                    WriteTexture(SignboardTextures[who], BuildSignboardV2(who));
                 }
                 WriteTexture($"{TilesFolder}/tile_water.png", BuildWater());
-                WriteTexture(FountainTexture, BuildFountainBase());
-                WriteTexture(FountainSprite, BuildFountainSprite(), PlayerWidth);
+                WriteTexture(FountainTexture, BuildFountainBaseV2());
+                WriteTexture(FountainSprite, BuildFountainSpriteV2(), PlayerWidth);
 
                 // Le decor de la phase 12c, redessine en 18b (les chemins) et 18c (les buissons).
                 for (int mask = 0; mask < DecorMaskCount; mask++)
@@ -762,7 +786,7 @@ namespace SousLaVille.EditorTools
                     WriteTexture(FurnitureTextures[piece], BuildFurniture(piece), PlayerWidth);
                 }
 
-                WriteTexture(DoorTexture, BuildDoor());
+                WriteTexture(DoorTexture, BuildDoorV2());
                 WriteTexture(VillagerGuide,
                     BuildVillager(CharacterColors[6], VillagerTrade.Guide), PlayerWidth);
                 WriteTexture(VillagerCraftsman,
@@ -953,14 +977,16 @@ namespace SousLaVille.EditorTools
             ConfigureImporter(ManholeTexture, null);
             ConfigureImporter(LadderTexture, PlayerPivot);
             ConfigureImporter(HouseInletTexture, null);
+            ConfigureImporter(PlantInletTexture, null);
+            ConfigureImporter(HouseIconTexture, PlayerPivot);
 
             for (int level = 0; level < ReserveLevelCount; level++)
             {
                 ConfigureImporter(ReserveTexture(level), null);
             }
 
-            // Meme pivot que le personnage : la maison se pose sur sa case et son toit deborde.
-            ConfigureImporter(HouseTexture, PlayerPivot);
+            // La maison se pose sur ses deux cases du bas et son toit deborde, phase 18d.
+            ConfigureImporter(HouseTexture, HousePivot);
 
             foreach (string path in new[] { PlayerDown, PlayerUp, PlayerLeft, PlayerRight })
             {
@@ -1600,7 +1626,7 @@ namespace SousLaVille.EditorTools
                 PictoDropEmpty, PictoRepair, PictoSpring, PictoSummer, PictoAutumn, PictoWinter,
                 DoorTexture, VillagerCraftsman, VillagerWorker, VillagerGuide, PictoEnter, PictoExit, PictoTalk,
                 FountainSprite, TreeTexture, PictoGrow, PlantBasinTexture, GuideAttention,
-                SignBackTexture, PictoCardCursor, SignPostTexture
+                SignBackTexture, PictoCardCursor, SignPostTexture, HouseIconTexture, PlantInletTexture
             };
 
             foreach (string path in sprites)
@@ -1656,141 +1682,6 @@ namespace SousLaVille.EditorTools
         }
 
         // ---------------------------------------------------------------- dessin
-
-        /// <summary>
-        /// UNE CASE DE FACADE. Le masque dit ou l'on se trouve dans le batiment : pas de voisin
-        /// au NORD veut dire rangee du haut, donc le TOIT ; sinon le mur, avec sa fenetre.
-        ///
-        /// Le bord se cerne d'un trait sombre du cote ou il n'y a pas de voisin, exactement
-        /// comme une haie ou une route : le batiment a donc une silhouette nette au lieu d'etre
-        /// un aplat ocre pose sur l'herbe.
-        /// </summary>
-        private static Color32[] BuildFacade(int mask)
-        {
-            bool north = (mask & 1) != 0;
-            bool east = (mask & 2) != 0;
-            bool south = (mask & 4) != 0;
-            bool west = (mask & 8) != 0;
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            if (!north)
-            {
-                // LE TOIT. Des rangees de tuiles decalees, et le faite en arete claire tout en
-                // haut : c'est ce qui manquait le plus, une facade sans toit ne se lit pas
-                // comme un batiment.
-                for (int y = 0; y < TileSize; y++)
-                {
-                    for (int x = 0; x < TileSize; x++)
-                    {
-                        pixels[y * TileSize + x] = Palette.Brick;
-                    }
-                }
-
-                for (int row = 2; row < TileSize - 2; row += 4)
-                {
-                    Fill(pixels, TileSize, 0, TileSize - 1, row, row, Palette.Shade(Palette.Brick));
-                }
-
-                // Le decalage d'une rangee sur deux : les tuiles ne s'alignent pas en colonnes.
-                for (int y = 0; y < TileSize; y++)
-                {
-                    int band = y / 4;
-                    for (int x = (band % 2) * 4; x < TileSize; x += 8)
-                    {
-                        pixels[y * TileSize + x] = Palette.Shade(Palette.Brick);
-                    }
-                }
-
-                Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 2, TileSize - 1, Palette.Orange);
-            }
-            else
-            {
-                // LE MUR, et une fenetre au milieu.
-                for (int y = 0; y < TileSize; y++)
-                {
-                    for (int x = 0; x < TileSize; x++)
-                    {
-                        pixels[y * TileSize + x] = Palette.Bark;
-                    }
-                }
-
-                for (int y = 0; y < TileSize; y++)
-                {
-                    for (int x = 0; x < TileSize; x++)
-                    {
-                        if (Speckle(x, y, 41) % 20 == 0)
-                        {
-                            pixels[y * TileSize + x] = Palette.Wood;
-                        }
-                    }
-                }
-
-                Fill(pixels, TileSize, 5, 10, 5, 10, Palette.WoodDark);
-                Fill(pixels, TileSize, 6, 9, 6, 9, Palette.Ice);
-                Fill(pixels, TileSize, 6, 7, 8, 9, Palette.Paper);
-            }
-
-            // Le contour, du cote ou le batiment s'arrete.
-            Color32 edge = Palette.Ink;
-            if (!north) Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 1, TileSize - 1, edge);
-            if (!south) Fill(pixels, TileSize, 0, TileSize - 1, 0, 0, edge);
-            if (!east) Fill(pixels, TileSize, TileSize - 1, TileSize - 1, 0, TileSize - 1, edge);
-            if (!west) Fill(pixels, TileSize, 0, 0, 0, TileSize - 1, edge);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// UNE ENSEIGNE : un panonceau de bois porte au mur, et dessus le signe du metier.
-        /// Zero pour les plaques, un pour les tuyaux, deux pour les panneaux.
-        /// </summary>
-        private static Color32[] BuildSignboard(int trade)
-        {
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            // Le panonceau, avec son ombre portee sur le mur.
-            Fill(pixels, TileSize, 2, 13, 2, 13, Palette.WoodDark);
-            Fill(pixels, TileSize, 3, 12, 3, 12, Palette.Wood);
-
-            switch (trade)
-            {
-                case 0:
-                    // Une plaque d'egout : un disque et ses deux barres.
-                    DrawDisc(pixels, TileSize, 8, 8, 4.2f, Palette.Steel);
-                    Fill(pixels, TileSize, 5, 10, 8, 8, Palette.Charcoal);
-                    Fill(pixels, TileSize, 5, 10, 6, 6, Palette.Charcoal);
-                    break;
-
-                case 1:
-                    // Un tuyau vu en bout : un anneau clair et son trou sombre.
-                    DrawDisc(pixels, TileSize, 8, 8, 4.2f, Palette.SteelLight);
-                    DrawDisc(pixels, TileSize, 8, 8, 2.2f, Palette.Charcoal);
-                    break;
-
-                default:
-                    // Un panneau : le triangle borde de rouge, la forme que Victorien lit
-                    // en premier.
-                    for (int row = 0; row < 7; row++)
-                    {
-                        int half = 6 - row;
-                        Fill(pixels, TileSize, 8 - half, 7 + half, 4 + row, 4 + row, Palette.SignRed);
-                    }
-
-                    for (int row = 0; row < 4; row++)
-                    {
-                        int half = 3 - row;
-                        if (half > 0)
-                        {
-                            Fill(pixels, TileSize, 8 - half, 7 + half, 6 + row, 6 + row, Palette.Paper);
-                        }
-                    }
-
-                    break;
-            }
-
-            return pixels;
-        }
 
         /// <summary>
         /// UN BRUIT STABLE, phase 17b. Le meme (x, y) rend toujours la meme valeur : la texture
@@ -2026,44 +1917,6 @@ namespace SousLaVille.EditorTools
             return pixels;
         }
 
-        /// <summary>
-        /// LE MUR DE L'ENCEINTE de la station : des blocs de beton peint, decales d'une assise a
-        /// l'autre, et l'arete du haut eclairee. C'etait un aplat bleu borde d'un lisere, donc
-        /// une boite de plus sur l'herbe texturee.
-        /// </summary>
-        private static Color32[] BuildPlantWallTile()
-        {
-            Color32[] pixels = new Color32[TileSize * TileSize];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = Palette.SignBlue;
-            }
-
-            Color32 joint = Palette.Shade(Palette.SignBlue);
-
-            // Quatre assises de quatre pixels, les joints verticaux decales d'une sur deux.
-            for (int y = 0; y < TileSize; y++)
-            {
-                if (y % 4 == 0)
-                {
-                    Fill(pixels, TileSize, 0, TileSize - 1, y, y, joint);
-                    continue;
-                }
-
-                int course = y / 4;
-                for (int x = (course % 2) * 4; x < TileSize; x += 8)
-                {
-                    pixels[y * TileSize + x] = joint;
-                }
-            }
-
-            // L'arete du haut, eclairee : c'est elle qui donne l'epaisseur au mur.
-            Fill(pixels, TileSize, 0, TileSize - 1, TileSize - 1, TileSize - 1, Palette.Water);
-
-            return pixels;
-        }
-
         /// <summary>Carre plein borde d'un lisere 1 px assombri.</summary>
         private static Color32[] BuildTile(Color32 fill)
         {
@@ -2189,53 +2042,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Bouche d'egout : disque sombre, lisere clair, deux fentes. Ronde plutot que
-        /// carree pour qu'elle se distingue au premier coup d'oeil des tuiles du chemin.
-        /// </summary>
-        private static Color32[] BuildManhole()
-        {
-            Color32 cover = Palette.Charcoal;
-            Color32 rim = Palette.Steel;
-            Color32 slot = Palette.Charcoal;
-            Color32 clear = new Color32(0, 0, 0, 0);
-
-            Color32[] pixels = new Color32[TileSize * TileSize];
-            const float center = (TileSize - 1) * 0.5f;
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    float dx = x - center;
-                    float dy = y - center;
-                    float distance = Mathf.Sqrt(dx * dx + dy * dy);
-
-                    Color32 pixel;
-                    if (distance > 7.4f)
-                    {
-                        pixel = clear;
-                    }
-                    else if (distance > 6.2f)
-                    {
-                        pixel = rim;
-                    }
-                    else if ((y == 6 || y == 9) && Mathf.Abs(dx) < 4f)
-                    {
-                        pixel = slot;
-                    }
-                    else
-                    {
-                        pixel = cover;
-                    }
-
-                    pixels[y * TileSize + x] = pixel;
-                }
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
         /// Personnage 16x24, un sprite par direction. Le corps ne change pas ; c'est le
         /// visage qui dit ou l'on regarde, et le dos de la tete qui dit qu'on s'eloigne.
         /// </summary>
@@ -2279,37 +2085,6 @@ namespace SousLaVille.EditorTools
                 Fill(pixels, width, 3, 12, 21, 23, hair);
                 Fill(pixels, width, 5, 6, 18, 19, eye);
                 Fill(pixels, width, 9, 10, 18, 19, eye);
-            }
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// Une maison 16x24 : quatre murs, un toit et une porte. Meme pivot que le
-        /// personnage, elle se pose sur sa case et son toit deborde vers le haut.
-        /// </summary>
-        private static Color32[] BuildHouse()
-        {
-            const int width = PlayerWidth;
-            const int height = PlayerHeight;
-
-            Color32 wall = Palette.StoneLight;
-            Color32 roof = Palette.Brick;
-            Color32 door = Palette.WoodDark;
-            Color32 window = Palette.Ice;
-
-            Color32[] pixels = NewTransparent(width * height);
-
-            Fill(pixels, width, 2, 13, 0, 14, wall);
-            Fill(pixels, width, 6, 9, 0, 6, door);
-            Fill(pixels, width, 3, 5, 9, 12, window);
-            Fill(pixels, width, 10, 12, 9, 12, window);
-
-            // Toit en pente : chaque ligne se resserre vers le faite.
-            for (int row = 0; row <= 7; row++)
-            {
-                int half = 8 - row;
-                Fill(pixels, width, 8 - half, 7 + half, 15 + row, 15 + row, roof);
             }
 
             return pixels;
@@ -2978,26 +2753,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// Un bassin de traitement pose sur le sol de la station, phase 12d. Un par
-        /// agrandissement : la station grossit a l'ecran, et le progres du joueur se voit sans
-        /// jauge et sans compteur au HUD.
-        /// </summary>
-        private static Color32[] BuildPlantBasin()
-        {
-            Color32 wall = Palette.Steel;
-            Color32 water = Palette.Water;
-            Color32 glint = Palette.Ice;
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            Fill(pixels, TileSize, 1, 14, 1, 14, wall);
-            Fill(pixels, TileSize, 3, 12, 3, 12, water);
-            Fill(pixels, TileSize, 4, 7, 9, 10, glint);
-
-            return pixels;
-        }
-
-        /// <summary>
         /// Un panneau de signalisation. Seize sur vingt-quatre : un poteau dans la case, la
         /// plaque au-dessus. Le catalogue est celui du CODE DE LA ROUTE FRANCAIS, et rien
         /// d'autre : chaque rang correspond a un panneau qui existe, avec son numero.
@@ -3044,7 +2799,6 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = Palette.Steel;
             Color32 red = Palette.SignRed;
             Color32 blue = Palette.SignBlue;
             Color32 white = Palette.Paper;
@@ -3053,7 +2807,8 @@ namespace SousLaVille.EditorTools
 
             Color32[] pixels = NewTransparent(width * height);
 
-            Fill(pixels, width, 7, 8, 0, 13, post);
+            // Le poteau de la phase 18d, cerne, AVANT la plaque : le trait ne mord que le vide.
+            DrawSignPost(pixels, width);
 
             const int cx = 8;
             const int cy = 18;
@@ -3569,123 +3324,6 @@ namespace SousLaVille.EditorTools
         }
 
         /// <summary>
-        /// La fontaine VUE DE FACE, phase 12c : seize sur vingt-quatre comme la maison. Un
-        /// bassin, une colonne, une vasque, un jet. Elle ne pouvait pas grandir tant que la
-        /// tuile bloquante et le sprite sortaient du meme fichier.
-        /// </summary>
-        private static Color32[] BuildFountainSprite()
-        {
-            const int width = PlayerWidth;
-            const int height = PlayerHeight;
-
-            Color32 stone = Palette.Steel;
-            Color32 rim = Palette.SteelLight;
-            Color32 water = Palette.Water;
-            Color32 jet = Palette.Ice;
-
-            Color32[] pixels = NewTransparent(width * height);
-
-            // Le bassin du bas, dans la case.
-            Fill(pixels, width, 1, 14, 0, 6, stone);
-            Fill(pixels, width, 2, 13, 1, 5, water);
-            Fill(pixels, width, 1, 14, 6, 6, rim);
-
-            // La colonne.
-            Fill(pixels, width, 6, 9, 7, 14, stone);
-            Fill(pixels, width, 7, 8, 7, 14, rim);
-
-            // La vasque haute.
-            Fill(pixels, width, 3, 12, 15, 17, stone);
-            Fill(pixels, width, 4, 11, 16, 17, water);
-            Fill(pixels, width, 3, 12, 17, 17, rim);
-
-            // Le jet, qui retombe de part et d'autre.
-            Fill(pixels, width, 7, 8, 18, 23, jet);
-            Fill(pixels, width, 5, 5, 19, 21, jet);
-            Fill(pixels, width, 10, 10, 19, 21, jet);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// La tuile BLOQUANTE de la fontaine : son socle vu de dessus. C'est l'ancienne image
-        /// de la phase 11, qui servait aussi de sprite ; depuis la phase 12c elle ne sert plus
-        /// qu'a bloquer, et le sprite vit dans fountain.png.
-        /// </summary>
-        private static Color32[] BuildFountainBase()
-        {
-            return BuildFountain();
-        }
-
-        private static Color32[] BuildFountain()
-        {
-            Color32 rim = Palette.SteelLight;
-            Color32 stone = Palette.Steel;
-            Color32 basin = Palette.Water;
-            Color32 jet = Palette.Ice;
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-            const float center = (TileSize - 1) * 0.5f;
-
-            for (int y = 0; y < TileSize; y++)
-            {
-                for (int x = 0; x < TileSize; x++)
-                {
-                    float dx = x - center;
-                    float dy = y - center;
-                    float radius = Mathf.Sqrt(dx * dx + dy * dy);
-
-                    if (radius > 7.4f)
-                    {
-                        continue;
-                    }
-
-                    Color32 pixel;
-                    if (radius > 6.2f)
-                    {
-                        pixel = stone;
-                    }
-                    else if (radius > 4.8f)
-                    {
-                        pixel = rim;
-                    }
-                    else
-                    {
-                        pixel = basin;
-                    }
-
-                    pixels[y * TileSize + x] = pixel;
-                }
-            }
-
-            // Le jet, une colonne au milieu du bassin.
-            Fill(pixels, TileSize, 7, 8, 6, 11, jet);
-            Fill(pixels, TileSize, 6, 9, 10, 11, jet);
-
-            return pixels;
-        }
-
-        /// <summary>
-        /// La porte d'un batiment, posee sur le seuil devant sa facade. Un encadrement clair,
-        /// une ouverture sombre, une poignee : on la reconnait de loin, et Espace dessus fait
-        /// entrer comme sur une bouche d'egout.
-        /// </summary>
-        private static Color32[] BuildDoor()
-        {
-            Color32 frame = Palette.Wood;
-            Color32 opening = Palette.Ink;
-            Color32 handle = Palette.Sun;
-
-            Color32[] pixels = NewTransparent(TileSize * TileSize);
-
-            Fill(pixels, TileSize, 2, 13, 0, 14, frame);
-            Fill(pixels, TileSize, 4, 11, 0, 12, opening);
-            Fill(pixels, TileSize, 9, 10, 6, 7, handle);
-
-            return pixels;
-        }
-
-        /// <summary>
         /// Un personnage de batiment. Meme silhouette que le personnage joueur, 16x24 et meme
         /// pivot, dans une autre couleur : on voit du premier coup d'oeil que c'est quelqu'un
         /// d'autre, sans avoir a le comparer.
@@ -4011,10 +3649,10 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = Palette.Steel;
             Color32 dots = Palette.SteelLight;
 
             Color32[] pixels = NewTransparent(width * height);
+            DrawSignPost(pixels, width);
 
             // Le pointille : un pixel sur deux, sur le bord de l'emprise de la plaque.
             for (int i = 2; i <= 13; i += 2)
@@ -4029,8 +3667,10 @@ namespace SousLaVille.EditorTools
                 Fill(pixels, width, 13, 13, j, j, dots);
             }
 
-            // Le poteau EN DERNIER : un point du pointille lui mordait un pixel en (8, 12).
-            Fill(pixels, width, 7, 8, 0, 13, post);
+            // Le poteau est dessine en premier depuis 18d, pour son trait ; le point du
+            // pointille qui lui mordait un pixel en (8, 12) se repose donc apres lui.
+            Fill(pixels, width, 7, 8, 12, 12, Palette.Steel);
+            Fill(pixels, width, 8, 8, 12, 12, Palette.SteelDark);
 
             return pixels;
         }
@@ -4040,14 +3680,12 @@ namespace SousLaVille.EditorTools
             const int width = PlayerWidth;
             const int height = PlayerHeight;
 
-            Color32 post = Palette.Steel;
             Color32 plate = Palette.SteelLight;
             Color32 edge = Palette.SteelDark;
             Color32 clamp = Palette.Steel;
 
             Color32[] pixels = NewTransparent(width * height);
-
-            Fill(pixels, width, 7, 8, 0, 13, post);
+            DrawSignPost(pixels, width);
 
             // La plaque, puis son lisere : douze sur douze, l'emprise commune des faces.
             Fill(pixels, width, 2, 13, 12, 23, plate);

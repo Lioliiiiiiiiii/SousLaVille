@@ -283,6 +283,10 @@ le montre — le plan, lui, n'a pas changé.
 visée n'a pas de résumé : la coupe de `BuildHedge` a emporté `BuildPlantBasin`. Relire le diff de
 la suppression ligne à ligne avant de compiler.
 
+**`PlayerController.Teleport` ne regarde pas si la case est praticable.** Un pilote qui vise la
+case d'un bloquant pour le photographier pose le joueur dessus, et le joueur le cache : la capture
+de la fontaine de 18d montrait le joueur. Viser la case voisine.
+
 **`maxTextureSize` réduit une image de moitié EN SILENCE.** Depuis la phase 12a il est calculé
 depuis l'en-tête du PNG ; ne pas le réécrire à la main.
 
