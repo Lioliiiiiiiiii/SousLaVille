@@ -853,8 +853,6 @@ namespace SousLaVille.EditorTools
         /// </summary>
         private static void AttachFloodView(GameObject root, SurfaceMap map, Tilemap water)
         {
-            List<Vector2Int> manholes = VillageLayout.FindAll(VillageLayout.Manhole);
-
             FloodView flood = root.AddComponent<FloodView>();
 
             SerializedObject serialized = new SerializedObject(flood);
@@ -863,13 +861,9 @@ namespace SousLaVille.EditorTools
             serialized.FindProperty("waterTile").objectReferenceValue =
                 LoadTile(PlaceholderArtGenerator.TileWater);
 
-            SerializedProperty cells = serialized.FindProperty("manholeCells");
-            cells.arraySize = manholes.Count;
-            for (int i = 0; i < manholes.Count; i++)
-            {
-                cells.GetArrayElementAtIndex(i).vector2IntValue = manholes[i];
-            }
-
+            // Les bouches ne sont plus cablees depuis la phase 22 : le debordement qui s'etalait
+            // autour d'elles a ete supprime. Il ne reste que les fuites, qui se lisent sur le
+            // reseau lui-meme, et le jet de la fontaine.
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -1045,6 +1045,9 @@ namespace SousLaVille.EditorTools
             SerializedObject serialized = new SerializedObject(memory);
             serialized.FindProperty("panel").objectReferenceValue = panel;
             serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Stock;
+
+            // La bande d'aide, phase 22 : ce que font les touches a cet instant.
+            CreateHintBar(panel.transform, serialized);
             serialized.FindProperty("cursor").objectReferenceValue = cursor;
             serialized.FindProperty("nameBand").objectReferenceValue = nameBand;
             serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
@@ -1127,9 +1130,21 @@ namespace SousLaVille.EditorTools
             float pitch = QuizRowHeight + QuizRowGutter;
             List<Image> rows = new List<Image>(3);
             List<Image> rowNames = new List<Image>(3);
+            List<Image> rowOutlines = new List<Image>(3);
 
             for (int i = 0; i < 3; i++)
             {
+                // Le cadre rouge d'abord : cree AVANT la rangee, il passe donc DERRIERE elle,
+                // et ne depasse que de deux pixels tout autour. Phase 22.
+                Image outline = CreateCenteredImage(panel.transform, $"Outline_{i + 1}",
+                    new Vector2(rowsCenterX, (1 - i) * pitch),
+                    new Vector2(QuizRowWidth + QuizOutlineBleed * 2f,
+                                QuizRowHeight + QuizOutlineBleed * 2f));
+                DressAsHudBox(outline);
+                outline.color = QuizOutlineColor;
+                outline.enabled = false;
+                rowOutlines.Add(outline);
+
                 Image row = CreateCenteredImage(panel.transform, $"Row_{i + 1}",
                     new Vector2(rowsCenterX, (1 - i) * pitch), new Vector2(QuizRowWidth, QuizRowHeight));
                 DressAsHudBox(row);   // phase 18f : une rangee est une boite de papier teintee
@@ -1171,6 +1186,9 @@ namespace SousLaVille.EditorTools
             SerializedObject serialized = new SerializedObject(quiz);
             serialized.FindProperty("panel").objectReferenceValue = panel;
             serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Fabrique;
+
+            // La bande d'aide, phase 22 : ce que font les touches a cet instant.
+            CreateHintBar(panel.transform, serialized);
             serialized.FindProperty("sign").objectReferenceValue = sign;
             serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
             serialized.FindProperty("families").intValue = MemoryFamilies;
@@ -1178,6 +1196,7 @@ namespace SousLaVille.EditorTools
 
             FillArray(serialized.FindProperty("rows"), rows);
             FillArray(serialized.FindProperty("rowNames"), rowNames);
+            FillArray(serialized.FindProperty("rowOutlines"), rowOutlines);
             FillArray(serialized.FindProperty("progress"), progress);
 
             SerializedProperty lures = serialized.FindProperty("sameFamilyLuresPerRound");
@@ -1290,6 +1309,9 @@ namespace SousLaVille.EditorTools
             SerializedObject serialized = new SerializedObject(game);
             serialized.FindProperty("panel").objectReferenceValue = panel;
             serialized.FindProperty("kind").enumValueIndex = (int)MiniGameKind.Plan;
+
+            // La bande d'aide, phase 22 : ce que font les touches a cet instant.
+            CreateHintBar(panel.transform, serialized);
             serialized.FindProperty("cursor").objectReferenceValue = cursor;
             serialized.FindProperty("exitPrompt").objectReferenceValue = exitPrompt;
             serialized.FindProperty("grass").objectReferenceValue = LoadSprite(PlaceholderArtGenerator.GrassTexture);

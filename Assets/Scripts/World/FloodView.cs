@@ -8,14 +8,25 @@ using UnityEngine.Tilemaps;
 namespace SousLaVille.World
 {
     /// <summary>
-    /// L'eau dans le village. Elle vient de trois endroits, et les trois ne disent pas la
-    /// meme chose.
+    /// L'eau dans le village. Elle vient de deux endroits depuis la phase 22.
     ///
-    /// LE DEBORDEMENT sort des bouches d'egout et s'etale autour d'elles. Il montre
-    /// SeasonSystem.LastBudget.Lost, le surplus que rien n'a retenu : le seul nombre que le
-    /// jeu calculait depuis la phase 8 et ne montrait nulle part. Il dit « ton reseau recoit
-    /// plus que la station ne traite ». Un joueur qui n'a pas relie le bassin voit son village
-    /// deborder a chaque automne, ce qui est la lecon de la phase 8 sans un mot.
+    /// LE DEBORDEMENT A ETE SUPPRIME. Il sortait des bouches d'egout et montrait
+    /// SeasonSystem.LastBudget.Lost, le surplus que rien n'a retenu. Deux choses l'ont
+    /// emporte, constatees le 6 septembre 2026 :
+    ///
+    /// 1. Il ne se recalculait qu'au tick de saison. Une nappe apparue a l'automne restait
+    ///    dix minutes durant, quoi que le joueur repare. « J'ai reparé et la flaque reste. »
+    /// 2. Il portait LA MEME IMAGE que la fuite. Le joueur ne pouvait pas distinguer « un
+    ///    tuyau est creve ici » de « la station recoit plus qu'elle ne traite », et lisait
+    ///    donc les deux comme la premiere.
+    ///
+    /// Le recalculer en continu aurait ete pire : reparer un tuyau RECONNECTE des maisons,
+    /// donc AUGMENTE l'arrivant, donc le debordement. Le geste juste aurait fait grandir la
+    /// flaque.
+    ///
+    /// CE QU'ON PERD, ET C'EST ASSUME : la lecon du bassin de la phase 8 n'a plus de signe
+    /// visible. Le bilan de l'eau continue de tourner, le bassin continue d'encaisser ; rien
+    /// ne le montre plus dans la rue.
     ///
     /// LA FUITE est une flaque posee dans la rue juste au-dessus d'un tuyau use sous le seuil.
     /// Elle dit « il y a un tuyau creve ici, sous tes pieds », et elle epargne une descente.
@@ -48,9 +59,6 @@ namespace SousLaVille.World
 
         [Tooltip("La tuile d'eau, semi-transparente : on voit le sol dessous.")]
         [SerializeField] private TileBase waterTile;
-
-        [Tooltip("Les bouches d'egout, telles que le plan du village les donne.")]
-        [SerializeField] private Vector2Int[] manholeCells;
 
         private SeasonSystem seasons;
         private PipeNetwork network;
@@ -134,47 +142,8 @@ namespace SousLaVille.World
             water.ClearAllTiles();
             FloodedCount = 0;
 
-            PaintOverflow();
             PaintLeaks();
             PaintFountain();
-        }
-
-        /// <summary>
-        /// Le debordement, autour de chaque bouche. Les SEPT debordent de la meme facon et
-        /// non d'un septieme chacune : le reseau deborde, c'est vrai partout, et il le voit ou
-        /// qu'il se trouve dans le village.
-        ///
-        /// L'etalement croit par anneaux de Manhattan, rayon = Lost - 1, et la table depend
-        /// donc du NOMBRE DE BOUCHES et du nombre de cases bloquantes. Elle a deja ete fausse
-        /// deux fois pour avoir ete crue « valable telle quelle » apres un changement de
-        /// plan : la recalculer fait partie de toute phase qui touche a la carte. Elle est
-        /// tenue a jour dans PROGRESS.md, jamais ici.
-        ///
-        /// Lost plafonne toujours a 5 : l'arrivant plafonne a treize destinations plus huit
-        /// de pluie d'automne, soit 21, la station en traite seize.
-        /// </summary>
-        private void PaintOverflow()
-        {
-            int lost = seasons != null ? seasons.LastBudget.Lost : 0;
-            if (lost <= 0 || manholeCells == null)
-            {
-                return;
-            }
-
-            int radius = lost - 1;
-
-            foreach (Vector2Int manhole in manholeCells)
-            {
-                for (int dy = -radius; dy <= radius; dy++)
-                {
-                    int span = radius - Mathf.Abs(dy);
-
-                    for (int dx = -span; dx <= span; dx++)
-                    {
-                        Paint(manhole + new Vector2Int(dx, dy));
-                    }
-                }
-            }
         }
 
         /// <summary>

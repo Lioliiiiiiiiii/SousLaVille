@@ -226,6 +226,39 @@ namespace SousLaVille.Minigames
         /// pas encore fixes. Mais d'abord, si tous les poteaux sont garnis, LE PLAN VERIFIE :
         /// c'est le geste qui dit « j'ai fini de poser ».
         /// </summary>
+        /// <summary>
+        /// LE POINT QUI MANQUAIT, phase 22. Une fleche DEPLACE tant qu'un poteau est vide, et
+        /// VERIFIE des que tous sont garnis. La meme touche, deux actions, et rien ne le disait :
+        /// « je ne comprenais pas qu'il fallait appuyer sur la fleche du bas pour valider ».
+        /// </summary>
+        protected override int ArrowsHintIndex
+        {
+            get
+            {
+                if (IsFinished)
+                {
+                    return -1;
+                }
+
+                return AllFilled ? HintCheck : HintChoose;
+            }
+        }
+
+        protected override int SpaceHintIndex
+        {
+            get
+            {
+                if (IsFinished)
+                {
+                    return HintExit;
+                }
+
+                // Sur un poteau deja fixe, Espace ne fait rien : le mot s'eteint plutot que
+                // de promettre une action qui n'arrivera pas.
+                return IsFixed(CursorPost) ? -1 : HintPlace;
+            }
+        }
+
         public override void Move(Vector2Int direction)
         {
             if (planIndex < 0 || IsFinished)

@@ -264,6 +264,23 @@ namespace SousLaVille.Minigames
         /// Espace : retourne la carte visee. La manche finie, il referme — le meme geste que
         /// partout ailleurs dans le jeu.
         /// </summary>
+        protected override int ArrowsHintIndex => IsFinished ? -1 : HintChoose;
+
+        protected override int SpaceHintIndex
+        {
+            get
+            {
+                if (deck.Length == 0 || IsFinished)
+                {
+                    return HintExit;
+                }
+
+                // Une carte deja trouvee ou deja retournee ne se retourne pas : le mot
+                // s'eteint plutot que de promettre un geste sans effet.
+                return matched[cursorIndex] || faceUp[cursorIndex] ? -1 : HintFlip;
+            }
+        }
+
         public override void Validate()
         {
             if (deck.Length == 0 || IsFinished)

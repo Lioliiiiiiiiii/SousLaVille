@@ -34,6 +34,7 @@ Aucun package supplémentaire n'a été ajouté au projet.
 | 19 | Le jeu chez Victorien | Terminée |
 | 20 | Deux villages | Terminée |
 | 21 | L'eau coule où les tuyaux se touchent | Terminée |
+| 22 | Les touches se disent | Terminée |
 
 ## Phase 0, ce qui est fait
 
@@ -3353,6 +3354,58 @@ restaurée au hash près depuis `partie.json`, que la migration ne touche jamais
 des essais est mise de côté sous `partie-de-cote-tests-phase21.json`. **Un prochain essai de ce
 genre doit se faire sur `VILLAGE 2`.**
 
+## Phase 22, ce qui est fait
+
+Cinq points signalés après avoir joué. Le plan complet est dans `PLAN-PHASE-22.md`.
+
+- **Échap sort des mini-jeux.** Dans `MiniGameScreen`, donc les trois d'un coup. `GameManager`
+  lui cède le pas : depuis la phase 20, Échap ferme le jeu sur les exécutables de bureau, et un
+  seul appui aurait fait les deux.
+- **Une bande d'aide en bas des trois mini-jeux** : un picto de touche, un mot court, et les
+  deux premiers **changent avec l'état**. Au Plan, la flèche devient `VERIFIER` dès que tous les
+  poteaux sont garnis. À La Fabrique, Espace devient `SUITE` une fois répondu. Ce sont
+  exactement les deux informations qui manquaient.
+- **Un cadre rouge** derrière une réponse écartée à La Fabrique. Le gris se lisait autant comme
+  « pas encore choisi » que comme « faux ».
+- **Le débordement est supprimé** de `FloodView`. Il ne reste que les fuites et le jet de la
+  fontaine.
+
+## Phase 22, ce que la vérification a redressé
+
+**Deux des cinq signalements n'étaient pas ce qu'ils paraissaient.** Les deux ont été vérifiés
+avant qu'une ligne ne soit écrite.
+
+- **Le Plan n'a pas de bug d'ordre.** Le plan à deux poteaux a été rejoué dans les deux sens :
+  gauche-puis-droite et droite-puis-gauche donnent le même résultat, et les deux se valident. La
+  cause réelle : une flèche ne vérifie que si TOUS les poteaux portent un panneau, et un poteau
+  faux **se vide** à la vérification — le joueur se retrouve avec un blanc, et les flèches ne
+  font plus que déplacer. C'est un défaut de retour, pas de logique, et la bande d'aide le règle.
+- **La flaque de fuite disparaissait déjà.** Trajet complet rejoué : abîmer, remonter (3
+  flaques), redescendre, réparer, remonter — **0 flaque**.
+
+Ce qui ne disparaissait jamais, c'est **le débordement**. `ApplyWaterBudget` n'est appelée que
+depuis `ApplySeason` : le bilan ne se recalcule qu'au tick de saison, et une nappe apparue à
+l'automne restait dix minutes durant, quoi qu'on répare. Les deux eaux portaient **la même
+image**, donc rien ne les distinguait.
+
+Le recalcul en continu aurait été pire : réparer un tuyau reconnecte des maisons, donc augmente
+l'arrivant, donc le débordement. **Le geste juste aurait fait grandir la flaque.** D'où la
+suppression, tranchée le 6 septembre 2026. **Ce qu'on perd, et c'est assumé** : la leçon du
+bassin de la phase 8 n'a plus de signe visible dans la rue.
+
+## Phase 22, vérifications faites
+
+- **Compilation propre**, art régénéré (364 textures, palette tenue à 47 couleurs), **les cinq
+  scènes construites sans une erreur ni un avertissement**.
+- **Échap ferme le mini-jeu** : prouvé en jeu. `wasPressedThisFrame` n'étant pas observable par
+  injection — sa comptabilité est liée à la boucle de jeu, pas aux appels du pont — la détection
+  a été basculée sur `isPressed` le temps d'un essai, l'écran s'est fermé et `AnyOpen` est
+  retombé à faux, puis la bascule a été **remise sur front** et recompilée.
+- **La bande suit l'état** : au Plan, `CHOISIR` puis `VERIFIER` dès que tout est garni ; à La
+  Fabrique, `VALIDER` puis `SUITE` après une bonne réponse.
+- **Les cadres rouges** s'allument sur les rangées écartées et s'éteignent à la question
+  suivante.
+
 ## Reste à faire
 
 - **Git LFS.** Le dépôt porte les hooks de Git LFS (`post-checkout`, `post-commit`,
@@ -3367,6 +3420,11 @@ genre doit se faire sur `VILLAGE 2`.**
   deux machines ne se voient jamais, sans rien à faire. Mais deux enfants sur le **même** Mac,
   dans le **même** navigateur et la **même** session, partagent les deux emplacements. Si ce cas
   se présente, il faudra un choix de joueur avant le choix du village.
+- **Le picto d'Échap est perfectible.** Cinq dessins essayés ; celui-ci lit encore un peu « T ».
+  CLAUDE.md dit « art placeholder d'abord, le pixel art vient à la toute fin », et le mot SORTIR
+  porte le sens juste à côté.
+- **La leçon du bassin n'a plus de signe visible**, depuis la suppression du débordement. À
+  reprendre si Victorien cesse de relier le bassin.
 - Ce qui ne se décide qu'en regardant Victorien jouer. C'est maintenant possible.
 
 ## Décisions prises

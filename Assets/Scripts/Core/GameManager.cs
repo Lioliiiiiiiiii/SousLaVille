@@ -106,6 +106,14 @@ namespace SousLaVille.Core
         // La sauvegarde suit toute seule : SaveSystem.OnApplicationQuit ecrit avant la sortie.
         private void Update()
         {
+            // PHASE 22 : un mini-jeu ouvert prend Echap pour lui. Sans cette garde, un seul
+            // appui refermerait le mini-jeu ET quitterait le jeu, dans un ordre que rien ne
+            // garantit. Le mini-jeu passe en premier : c'est l'ecran que le joueur regarde.
+            if (SousLaVille.Minigames.MiniGameScreen.AnyOpen)
+            {
+                return;
+            }
+
             UnityEngine.InputSystem.Keyboard clavier = UnityEngine.InputSystem.Keyboard.current;
 
             if (clavier != null && clavier.escapeKey.wasPressedThisFrame)

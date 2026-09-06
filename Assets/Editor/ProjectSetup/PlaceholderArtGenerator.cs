@@ -837,6 +837,9 @@ namespace SousLaVille.EditorTools
                 WriteTexture(PictoNo, BuildNoPicto());
                 WriteVillageNames();
 
+                // La bande d'aide des mini-jeux, phase 22.
+                WriteHints();
+
                 WriteTexture(PictoSpring, BuildSpringPictoV2(), HudPictoSize);
                 WriteTexture(PictoSummer, BuildSummerPictoV2(), HudPictoSize);
                 WriteTexture(PictoAutumn, BuildAutumnPictoV2(), HudPictoSize);
@@ -1156,6 +1159,16 @@ namespace SousLaVille.EditorTools
             foreach (string path in VillageScreenTextures)
             {
                 ConfigureImporter(path, null);
+            }
+
+            foreach (string path in HintKeyTextures)
+            {
+                ConfigureImporter(path, null);
+            }
+
+            for (int index = 0; index < HintWords.Length; index++)
+            {
+                ConfigureImporter(HintWordTexture(index), null);
             }
 
             // La boite en neuf morceaux porte sa bordure : c'est elle qui dit a Image.Type.Sliced
@@ -1856,6 +1869,14 @@ namespace SousLaVille.EditorTools
             };
 
             foreach (string path in VillageScreenTextures)
+            {
+                if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null)
+                {
+                    return false;
+                }
+            }
+
+            foreach (string path in HintKeyTextures)
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null)
                 {

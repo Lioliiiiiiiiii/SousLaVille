@@ -42,6 +42,9 @@ namespace SousLaVille.Minigames
         [Tooltip("Le nom ecrit dans chaque rangee, dans le meme ordre.")]
         [SerializeField] private Image[] rowNames;
 
+        [Tooltip("Le cadre rouge d'une rangée écartée, posé derrière elle. Éteint le reste du temps.")]
+        [SerializeField] private Image[] rowOutlines;
+
         [Tooltip("La jauge : un carre par question, allume quand elle est faite.")]
         [SerializeField] private Image[] progress;
 
@@ -272,6 +275,37 @@ namespace SousLaVille.Minigames
         }
 
         /// <summary>Espace : ce nom-la. La manche finie, il referme.</summary>
+        /// <summary>
+        /// Une bonne reponse ne passe PAS toute seule a la question suivante : l'enfant regarde
+        /// le panneau et son nom aussi longtemps qu'il veut, decision de la phase 15. Mais rien
+        /// ne disait qu'il fallait ensuite appuyer. La bande le dit : SUITE.
+        /// </summary>
+        protected override int ArrowsHintIndex
+        {
+            get
+            {
+                if (IsFinished)
+                {
+                    return -1;
+                }
+
+                return answered ? HintNext : HintChoose;
+            }
+        }
+
+        protected override int SpaceHintIndex
+        {
+            get
+            {
+                if (IsFinished)
+                {
+                    return HintExit;
+                }
+
+                return answered ? HintNext : HintConfirm;
+            }
+        }
+
         public override void Validate()
         {
             if (IsFinished)
@@ -383,20 +417,33 @@ namespace SousLaVille.Minigames
                 }
 
                 Color color;
+                bool ecartee;
+
                 if (answered)
                 {
-                    color = row == questions[current].Answer ? rightColor : wrongColor;
+                    ecartee = row != questions[current].Answer;
+                    color = ecartee ? wrongColor : rightColor;
                 }
                 else if (ruledOut[row])
                 {
+                    ecartee = true;
                     color = wrongColor;
                 }
                 else
                 {
+                    ecartee = false;
                     color = row == selection ? selectedColor : idleColor;
                 }
 
                 rows[row].color = color;
+
+                // PHASE 22 : un cadre ROUGE, et plus seulement un gris. « Ce n'est pas tres
+                // clair lorsqu'on n'a pas eu bon » — le gris se lisait comme « pas encore
+                // choisi » autant que comme « faux ». Le rouge ne dit qu'une chose.
+                if (rowOutlines != null && row < rowOutlines.Length && rowOutlines[row] != null)
+                {
+                    rowOutlines[row].enabled = ecartee;
+                }
             }
         }
 
